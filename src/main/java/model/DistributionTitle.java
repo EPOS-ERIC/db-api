@@ -3,35 +3,37 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "distribution_title", schema = "public", catalog = "cerif")
+@Table(name = "distribution_title")
 public class DistributionTitle {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "instance_id", nullable = false, length = 100)
     private String instanceId;
-    @Basic
-    @Column(name = "meta_id", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "meta_id", length = 100)
     private String metaId;
-    @Basic
-    @Column(name = "uid", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "uid", length = 1024)
     private String uid;
-    @Basic
-    @Column(name = "version_id", nullable = true, length = 100)
-    private String versionId;
-    @Basic
-    @Column(name = "title", nullable = true, length = 1024)
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "version_id")
+    private model.Versioningstatus version;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "title", length = 1024)
     private String title;
-    @Basic
-    @Column(name = "lang", nullable = true, length = 20)
+
+    @jakarta.validation.constraints.Size(max = 50)
+    @Column(name = "lang", length = 50)
     private String lang;
-    @Basic
-    @Column(name = "distribution_instance_id", nullable = false, length = 100)
-    private String distributionInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "version_id", referencedColumnName = "version_id")
-    private Versioningstatus versioningstatusByVersionId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "distribution_instance_id", referencedColumnName = "instance_id")
-    private Distribution distributionByDistributionInstanceId;
+
+    @jakarta.validation.constraints.NotNull
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "distribution_instance_id", nullable = false)
+    private Distribution distributionInstance;
 
     public String getInstanceId() {
         return instanceId;
@@ -57,12 +59,12 @@ public class DistributionTitle {
         this.uid = uid;
     }
 
-    public String getVersionId() {
-        return versionId;
+    public model.Versioningstatus getVersion() {
+        return version;
     }
 
-    public void setVersionId(String versionId) {
-        this.versionId = versionId;
+    public void setVersion(model.Versioningstatus version) {
+        this.version = version;
     }
 
     public String getTitle() {
@@ -81,58 +83,12 @@ public class DistributionTitle {
         this.lang = lang;
     }
 
-    public String getDistributionInstanceId() {
-        return distributionInstanceId;
+    public Distribution getDistributionInstance() {
+        return distributionInstance;
     }
 
-    public void setDistributionInstanceId(String distributionInstanceId) {
-        this.distributionInstanceId = distributionInstanceId;
+    public void setDistributionInstance(Distribution distributionInstance) {
+        this.distributionInstance = distributionInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DistributionTitle that = (DistributionTitle) o;
-
-        if (instanceId != null ? !instanceId.equals(that.instanceId) : that.instanceId != null) return false;
-        if (metaId != null ? !metaId.equals(that.metaId) : that.metaId != null) return false;
-        if (uid != null ? !uid.equals(that.uid) : that.uid != null) return false;
-        if (versionId != null ? !versionId.equals(that.versionId) : that.versionId != null) return false;
-        if (title != null ? !title.equals(that.title) : that.title != null) return false;
-        if (lang != null ? !lang.equals(that.lang) : that.lang != null) return false;
-        if (distributionInstanceId != null ? !distributionInstanceId.equals(that.distributionInstanceId) : that.distributionInstanceId != null)
-            return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = instanceId != null ? instanceId.hashCode() : 0;
-        result = 31 * result + (metaId != null ? metaId.hashCode() : 0);
-        result = 31 * result + (uid != null ? uid.hashCode() : 0);
-        result = 31 * result + (versionId != null ? versionId.hashCode() : 0);
-        result = 31 * result + (title != null ? title.hashCode() : 0);
-        result = 31 * result + (lang != null ? lang.hashCode() : 0);
-        result = 31 * result + (distributionInstanceId != null ? distributionInstanceId.hashCode() : 0);
-        return result;
-    }
-
-    public Versioningstatus getVersioningstatusByVersionId() {
-        return versioningstatusByVersionId;
-    }
-
-    public void setVersioningstatusByVersionId(Versioningstatus versioningstatusByVersionId) {
-        this.versioningstatusByVersionId = versioningstatusByVersionId;
-    }
-
-    public Distribution getDistributionByDistributionInstanceId() {
-        return distributionByDistributionInstanceId;
-    }
-
-    public void setDistributionByDistributionInstanceId(Distribution distributionByDistributionInstanceId) {
-        this.distributionByDistributionInstanceId = distributionByDistributionInstanceId;
-    }
 }

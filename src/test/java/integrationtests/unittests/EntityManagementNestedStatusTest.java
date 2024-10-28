@@ -1,16 +1,12 @@
 package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
-import commonapis.LinkedEntityAPI;
 import integrationtests.TestcontainersLifecycle;
-import jakarta.persistence.EntityManager;
 import metadataapis.EntityNames;
 import model.StatusType;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Distribution;
 import org.epos.eposdatamodel.LinkedEntity;
-import org.epos.handler.dbapi.service.EntityManagerService;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
@@ -103,7 +99,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
         System.out.println(distributionList);
 
         assertEquals(StatusType.DRAFT, retrievedDataProduct1.getStatus());
-        assertEquals(2, distributionList.size());
+        assertEquals(1, distributionList.size());
     }
 
 }

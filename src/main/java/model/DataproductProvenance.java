@@ -3,32 +3,33 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "dataproduct_provenance", schema = "public", catalog = "cerif")
+@Table(name = "dataproduct_provenance")
 public class DataproductProvenance {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "instance_id", nullable = false, length = 100)
     private String instanceId;
-    @Basic
-    @Column(name = "meta_id", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "meta_id", length = 100)
     private String metaId;
-    @Basic
-    @Column(name = "uid", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "uid", length = 1024)
     private String uid;
-    @Basic
-    @Column(name = "version_id", nullable = true, length = 100)
-    private String versionId;
-    @Basic
-    @Column(name = "provenance", nullable = true, length = 1024)
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "version_id")
+    private model.Versioningstatus version;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "provenance", length = 1024)
     private String provenance;
-    @Basic
-    @Column(name = "dataproduct_instance_id", nullable = false, length = 100)
-    private String dataproductInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "version_id", referencedColumnName = "version_id")
-    private Versioningstatus versioningstatusByVersionId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "dataproduct_instance_id", referencedColumnName = "instance_id")
-    private Dataproduct dataproductByDataproductInstanceId;
+
+    @jakarta.validation.constraints.NotNull
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "dataproduct_instance_id", nullable = false)
+    private Dataproduct dataproductInstance;
 
     public String getInstanceId() {
         return instanceId;
@@ -54,12 +55,12 @@ public class DataproductProvenance {
         this.uid = uid;
     }
 
-    public String getVersionId() {
-        return versionId;
+    public model.Versioningstatus getVersion() {
+        return version;
     }
 
-    public void setVersionId(String versionId) {
-        this.versionId = versionId;
+    public void setVersion(model.Versioningstatus version) {
+        this.version = version;
     }
 
     public String getProvenance() {
@@ -70,56 +71,12 @@ public class DataproductProvenance {
         this.provenance = provenance;
     }
 
-    public String getDataproductInstanceId() {
-        return dataproductInstanceId;
+    public Dataproduct getDataproductInstance() {
+        return dataproductInstance;
     }
 
-    public void setDataproductInstanceId(String dataproductInstanceId) {
-        this.dataproductInstanceId = dataproductInstanceId;
+    public void setDataproductInstance(Dataproduct dataproductInstance) {
+        this.dataproductInstance = dataproductInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DataproductProvenance that = (DataproductProvenance) o;
-
-        if (instanceId != null ? !instanceId.equals(that.instanceId) : that.instanceId != null) return false;
-        if (metaId != null ? !metaId.equals(that.metaId) : that.metaId != null) return false;
-        if (uid != null ? !uid.equals(that.uid) : that.uid != null) return false;
-        if (versionId != null ? !versionId.equals(that.versionId) : that.versionId != null) return false;
-        if (provenance != null ? !provenance.equals(that.provenance) : that.provenance != null) return false;
-        if (dataproductInstanceId != null ? !dataproductInstanceId.equals(that.dataproductInstanceId) : that.dataproductInstanceId != null)
-            return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = instanceId != null ? instanceId.hashCode() : 0;
-        result = 31 * result + (metaId != null ? metaId.hashCode() : 0);
-        result = 31 * result + (uid != null ? uid.hashCode() : 0);
-        result = 31 * result + (versionId != null ? versionId.hashCode() : 0);
-        result = 31 * result + (provenance != null ? provenance.hashCode() : 0);
-        result = 31 * result + (dataproductInstanceId != null ? dataproductInstanceId.hashCode() : 0);
-        return result;
-    }
-
-    public Versioningstatus getVersioningstatusByVersionId() {
-        return versioningstatusByVersionId;
-    }
-
-    public void setVersioningstatusByVersionId(Versioningstatus versioningstatusByVersionId) {
-        this.versioningstatusByVersionId = versioningstatusByVersionId;
-    }
-
-    public Dataproduct getDataproductByDataproductInstanceId() {
-        return dataproductByDataproductInstanceId;
-    }
-
-    public void setDataproductByDataproductInstanceId(Dataproduct dataproductByDataproductInstanceId) {
-        this.dataproductByDataproductInstanceId = dataproductByDataproductInstanceId;
-    }
 }

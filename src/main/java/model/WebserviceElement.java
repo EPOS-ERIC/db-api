@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "webservice_element", schema = "public", catalog = "cerif")
-@IdClass(WebserviceElementPK.class)
+@Table(name = "webservice_element")
 public class WebserviceElement {
-    @Id
-    @Column(name = "webservice_instance_id", nullable = false, length = 100)
-    private String webserviceInstanceId;
-    @Id
-    @Column(name = "element_instance_id", nullable = false, length = 100)
-    private String elementInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "webservice_instance_id", referencedColumnName = "instance_id")
-    private Webservice webserviceByWebserviceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "element_instance_id", referencedColumnName = "instance_id")
-    private Element elementByElementInstanceId;
+    @EmbeddedId
+    private WebserviceElementId id;
 
-    public String getWebserviceInstanceId() {
-        return webserviceInstanceId;
+    @MapsId("webserviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "webservice_instance_id", nullable = false)
+    private Webservice webserviceInstance;
+
+    @MapsId("elementInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "element_instance_id", nullable = false)
+    private Element elementInstance;
+
+    public WebserviceElementId getId() {
+        return id;
     }
 
-    public void setWebserviceInstanceId(String webserviceInstanceId) {
-        this.webserviceInstanceId = webserviceInstanceId;
+    public void setId(WebserviceElementId id) {
+        this.id = id;
     }
 
-    public String getElementInstanceId() {
-        return elementInstanceId;
+    public Webservice getWebserviceInstance() {
+        return webserviceInstance;
     }
 
-    public void setElementInstanceId(String elementInstanceId) {
-        this.elementInstanceId = elementInstanceId;
+    public void setWebserviceInstance(Webservice webserviceInstance) {
+        this.webserviceInstance = webserviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        WebserviceElement that = (WebserviceElement) o;
-
-        if (webserviceInstanceId != null ? !webserviceInstanceId.equals(that.webserviceInstanceId) : that.webserviceInstanceId != null)
-            return false;
-        if (elementInstanceId != null ? !elementInstanceId.equals(that.elementInstanceId) : that.elementInstanceId != null)
-            return false;
-
-        return true;
+    public Element getElementInstance() {
+        return elementInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = webserviceInstanceId != null ? webserviceInstanceId.hashCode() : 0;
-        result = 31 * result + (elementInstanceId != null ? elementInstanceId.hashCode() : 0);
-        return result;
+    public void setElementInstance(Element elementInstance) {
+        this.elementInstance = elementInstance;
     }
 
-    public Webservice getWebserviceByWebserviceInstanceId() {
-        return webserviceByWebserviceInstanceId;
-    }
-
-    public void setWebserviceByWebserviceInstanceId(Webservice webserviceByWebserviceInstanceId) {
-        this.webserviceByWebserviceInstanceId = webserviceByWebserviceInstanceId;
-    }
-
-    public Element getElementByElementInstanceId() {
-        return elementByElementInstanceId;
-    }
-
-    public void setElementByElementInstanceId(Element elementByElementInstanceId) {
-        this.elementByElementInstanceId = elementByElementInstanceId;
-    }
 }

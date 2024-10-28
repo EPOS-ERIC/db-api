@@ -3,74 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "publication_identifier", schema = "public", catalog = "cerif")
-@IdClass(PublicationIdentifierPK.class)
+@Table(name = "publication_identifier")
 public class PublicationIdentifier {
-    @Id
-    @Column(name = "publication_instance_id", nullable = false, length = 100)
-    private String publicationInstanceId;
+    @EmbeddedId
+    private PublicationIdentifierId id;
 
-    @Id
-    @Column(name = "identifier_instance_id", nullable = false, length = 100)
-    private String identifierInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "publication_instance_id", referencedColumnName = "instance_id")
-    private Publication publicationByPublicationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "identifier_instance_id", referencedColumnName = "instance_id")
-    private Identifier identifierByIdentifierInstanceId;
+    @MapsId("publicationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "publication_instance_id", nullable = false)
+    private Publication publicationInstance;
 
-    public String getPublicationInstanceId() {
-        return publicationInstanceId;
+    @MapsId("identifierInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "identifier_instance_id", nullable = false)
+    private Identifier identifierInstance;
+
+    public PublicationIdentifierId getId() {
+        return id;
     }
 
-    public void setPublicationInstanceId(String publicationInstanceId) {
-        this.publicationInstanceId = publicationInstanceId;
+    public void setId(PublicationIdentifierId id) {
+        this.id = id;
     }
 
-    public String getIdentifierInstanceId() {
-        return identifierInstanceId;
+    public Publication getPublicationInstance() {
+        return publicationInstance;
     }
 
-    public void setIdentifierInstanceId(String identifierInstanceId) {
-        this.identifierInstanceId = identifierInstanceId;
+    public void setPublicationInstance(Publication publicationInstance) {
+        this.publicationInstance = publicationInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        PublicationIdentifier that = (PublicationIdentifier) o;
-
-        if (publicationInstanceId != null ? !publicationInstanceId.equals(that.publicationInstanceId) : that.publicationInstanceId != null)
-            return false;
-        if (identifierInstanceId != null ? !identifierInstanceId.equals(that.identifierInstanceId) : that.identifierInstanceId != null)
-            return false;
-
-        return true;
+    public Identifier getIdentifierInstance() {
+        return identifierInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = publicationInstanceId != null ? publicationInstanceId.hashCode() : 0;
-        result = 31 * result + (identifierInstanceId != null ? identifierInstanceId.hashCode() : 0);
-        return result;
+    public void setIdentifierInstance(Identifier identifierInstance) {
+        this.identifierInstance = identifierInstance;
     }
 
-    public Publication getPublicationByPublicationInstanceId() {
-        return publicationByPublicationInstanceId;
-    }
-
-    public void setPublicationByPublicationInstanceId(Publication publicationByPublicationInstanceId) {
-        this.publicationByPublicationInstanceId = publicationByPublicationInstanceId;
-    }
-
-    public Identifier getIdentifierByIdentifierInstanceId() {
-        return identifierByIdentifierInstanceId;
-    }
-
-    public void setIdentifierByIdentifierInstanceId(Identifier identifierByIdentifierInstanceId) {
-        this.identifierByIdentifierInstanceId = identifierByIdentifierInstanceId;
-    }
 }

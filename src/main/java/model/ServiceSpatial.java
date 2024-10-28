@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "service_spatial", schema = "public", catalog = "cerif")
-@IdClass(ServiceSpatialPK.class)
+@Table(name = "service_spatial")
 public class ServiceSpatial {
-    @Id
-    @Column(name = "service_instance_id", nullable = false, length = 100)
-    private String serviceInstanceId;
-    @Id
-    @Column(name = "spatial_instance_id", nullable = false, length = 100)
-    private String spatialInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "service_instance_id", referencedColumnName = "instance_id")
-    private Service serviceByServiceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "spatial_instance_id", referencedColumnName = "instance_id")
-    private Spatial spatialBySpatialInstanceId;
+    @EmbeddedId
+    private ServiceSpatialId id;
 
-    public String getServiceInstanceId() {
-        return serviceInstanceId;
+    @MapsId("serviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "service_instance_id", nullable = false)
+    private Service serviceInstance;
+
+    @MapsId("spatialInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "spatial_instance_id", nullable = false)
+    private model.Spatial spatialInstance;
+
+    public ServiceSpatialId getId() {
+        return id;
     }
 
-    public void setServiceInstanceId(String serviceInstanceId) {
-        this.serviceInstanceId = serviceInstanceId;
+    public void setId(ServiceSpatialId id) {
+        this.id = id;
     }
 
-    public String getSpatialInstanceId() {
-        return spatialInstanceId;
+    public Service getServiceInstance() {
+        return serviceInstance;
     }
 
-    public void setSpatialInstanceId(String spatialInstanceId) {
-        this.spatialInstanceId = spatialInstanceId;
+    public void setServiceInstance(Service serviceInstance) {
+        this.serviceInstance = serviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ServiceSpatial that = (ServiceSpatial) o;
-
-        if (serviceInstanceId != null ? !serviceInstanceId.equals(that.serviceInstanceId) : that.serviceInstanceId != null)
-            return false;
-        if (spatialInstanceId != null ? !spatialInstanceId.equals(that.spatialInstanceId) : that.spatialInstanceId != null)
-            return false;
-
-        return true;
+    public model.Spatial getSpatialInstance() {
+        return spatialInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = serviceInstanceId != null ? serviceInstanceId.hashCode() : 0;
-        result = 31 * result + (spatialInstanceId != null ? spatialInstanceId.hashCode() : 0);
-        return result;
+    public void setSpatialInstance(model.Spatial spatialInstance) {
+        this.spatialInstance = spatialInstance;
     }
 
-    public Service getServiceByServiceInstanceId() {
-        return serviceByServiceInstanceId;
-    }
-
-    public void setServiceByServiceInstanceId(Service serviceByServiceInstanceId) {
-        this.serviceByServiceInstanceId = serviceByServiceInstanceId;
-    }
-
-    public Spatial getSpatialBySpatialInstanceId() {
-        return spatialBySpatialInstanceId;
-    }
-
-    public void setSpatialBySpatialInstanceId(Spatial spatialBySpatialInstanceId) {
-        this.spatialBySpatialInstanceId = spatialBySpatialInstanceId;
-    }
 }

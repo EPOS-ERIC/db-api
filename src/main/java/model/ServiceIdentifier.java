@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "service_identifier", schema = "public", catalog = "cerif")
-@IdClass(ServiceIdentifierPK.class)
+@Table(name = "service_identifier")
 public class ServiceIdentifier {
-    @Id
-    @Column(name = "service_instance_id", nullable = false, length = 100)
-    private String serviceInstanceId;
-    @Id
-    @Column(name = "identifier_instance_id", nullable = false, length = 100)
-    private String identifierInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "service_instance_id", referencedColumnName = "instance_id")
-    private Service serviceByServiceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "identifier_instance_id", referencedColumnName = "instance_id")
-    private Identifier identifierByIdentifierInstanceId;
+    @EmbeddedId
+    private ServiceIdentifierId id;
 
-    public String getServiceInstanceId() {
-        return serviceInstanceId;
+    @MapsId("serviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "service_instance_id", nullable = false)
+    private Service serviceInstance;
+
+    @MapsId("identifierInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "identifier_instance_id", nullable = false)
+    private Identifier identifierInstance;
+
+    public ServiceIdentifierId getId() {
+        return id;
     }
 
-    public void setServiceInstanceId(String serviceInstanceId) {
-        this.serviceInstanceId = serviceInstanceId;
+    public void setId(ServiceIdentifierId id) {
+        this.id = id;
     }
 
-    public String getIdentifierInstanceId() {
-        return identifierInstanceId;
+    public Service getServiceInstance() {
+        return serviceInstance;
     }
 
-    public void setIdentifierInstanceId(String identifierInstanceId) {
-        this.identifierInstanceId = identifierInstanceId;
+    public void setServiceInstance(Service serviceInstance) {
+        this.serviceInstance = serviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ServiceIdentifier that = (ServiceIdentifier) o;
-
-        if (serviceInstanceId != null ? !serviceInstanceId.equals(that.serviceInstanceId) : that.serviceInstanceId != null)
-            return false;
-        if (identifierInstanceId != null ? !identifierInstanceId.equals(that.identifierInstanceId) : that.identifierInstanceId != null)
-            return false;
-
-        return true;
+    public Identifier getIdentifierInstance() {
+        return identifierInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = serviceInstanceId != null ? serviceInstanceId.hashCode() : 0;
-        result = 31 * result + (identifierInstanceId != null ? identifierInstanceId.hashCode() : 0);
-        return result;
+    public void setIdentifierInstance(Identifier identifierInstance) {
+        this.identifierInstance = identifierInstance;
     }
 
-    public Service getServiceByServiceInstanceId() {
-        return serviceByServiceInstanceId;
-    }
-
-    public void setServiceByServiceInstanceId(Service serviceByServiceInstanceId) {
-        this.serviceByServiceInstanceId = serviceByServiceInstanceId;
-    }
-
-    public Identifier getIdentifierByIdentifierInstanceId() {
-        return identifierByIdentifierInstanceId;
-    }
-
-    public void setIdentifierByIdentifierInstanceId(Identifier identifierByIdentifierInstanceId) {
-        this.identifierByIdentifierInstanceId = identifierByIdentifierInstanceId;
-    }
 }

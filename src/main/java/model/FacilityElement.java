@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "facility_element", schema = "public", catalog = "cerif")
-@IdClass(FacilityElementPK.class)
+@Table(name = "facility_element")
 public class FacilityElement {
-    @Id
-    @Column(name = "facility_instance_id", nullable = false, length = 100)
-    private String facilityInstanceId;
-    @Id
-    @Column(name = "element_instance_id", nullable = false, length = 100)
-    private String elementInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "facility_instance_id", referencedColumnName = "instance_id")
-    private Facility facilityByFacilityInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "element_instance_id", referencedColumnName = "instance_id")
-    private Element elementByElementInstanceId;
+    @EmbeddedId
+    private FacilityElementId id;
 
-    public String getFacilityInstanceId() {
-        return facilityInstanceId;
+    @MapsId("facilityInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "facility_instance_id", nullable = false)
+    private Facility facilityInstance;
+
+    @MapsId("elementInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "element_instance_id", nullable = false)
+    private Element elementInstance;
+
+    public FacilityElementId getId() {
+        return id;
     }
 
-    public void setFacilityInstanceId(String facilityInstanceId) {
-        this.facilityInstanceId = facilityInstanceId;
+    public void setId(FacilityElementId id) {
+        this.id = id;
     }
 
-    public String getElementInstanceId() {
-        return elementInstanceId;
+    public Facility getFacilityInstance() {
+        return facilityInstance;
     }
 
-    public void setElementInstanceId(String elementInstanceId) {
-        this.elementInstanceId = elementInstanceId;
+    public void setFacilityInstance(Facility facilityInstance) {
+        this.facilityInstance = facilityInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        FacilityElement that = (FacilityElement) o;
-
-        if (facilityInstanceId != null ? !facilityInstanceId.equals(that.facilityInstanceId) : that.facilityInstanceId != null)
-            return false;
-        if (elementInstanceId != null ? !elementInstanceId.equals(that.elementInstanceId) : that.elementInstanceId != null)
-            return false;
-
-        return true;
+    public Element getElementInstance() {
+        return elementInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = facilityInstanceId != null ? facilityInstanceId.hashCode() : 0;
-        result = 31 * result + (elementInstanceId != null ? elementInstanceId.hashCode() : 0);
-        return result;
+    public void setElementInstance(Element elementInstance) {
+        this.elementInstance = elementInstance;
     }
 
-    public Facility getFacilityByFacilityInstanceId() {
-        return facilityByFacilityInstanceId;
-    }
-
-    public void setFacilityByFacilityInstanceId(Facility facilityByFacilityInstanceId) {
-        this.facilityByFacilityInstanceId = facilityByFacilityInstanceId;
-    }
-
-    public Element getElementByElementInstanceId() {
-        return elementByElementInstanceId;
-    }
-
-    public void setElementByElementInstanceId(Element elementByElementInstanceId) {
-        this.elementByElementInstanceId = elementByElementInstanceId;
-    }
 }

@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "organization_identifier", schema = "public", catalog = "cerif")
-@IdClass(OrganizationIdentifierPK.class)
+@Table(name = "organization_identifier")
 public class OrganizationIdentifier {
-    @Id
-    @Column(name = "organization_instance_id", nullable = false, length = 100)
-    private String organizationInstanceId;
-    @Id
-    @Column(name = "identifier_instance_id", nullable = false, length = 100)
-    private String identifierInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "organization_instance_id", referencedColumnName = "instance_id")
-    private Organization organizationByOrganizationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "identifier_instance_id", referencedColumnName = "instance_id")
-    private Identifier identifierByIdentifierInstanceId;
+    @EmbeddedId
+    private OrganizationIdentifierId id;
 
-    public String getOrganizationInstanceId() {
-        return organizationInstanceId;
+    @MapsId("organizationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "organization_instance_id", nullable = false)
+    private Organization organizationInstance;
+
+    @MapsId("identifierInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "identifier_instance_id", nullable = false)
+    private Identifier identifierInstance;
+
+    public OrganizationIdentifierId getId() {
+        return id;
     }
 
-    public void setOrganizationInstanceId(String organizationInstanceId) {
-        this.organizationInstanceId = organizationInstanceId;
+    public void setId(OrganizationIdentifierId id) {
+        this.id = id;
     }
 
-    public String getIdentifierInstanceId() {
-        return identifierInstanceId;
+    public Organization getOrganizationInstance() {
+        return organizationInstance;
     }
 
-    public void setIdentifierInstanceId(String identifierInstanceId) {
-        this.identifierInstanceId = identifierInstanceId;
+    public void setOrganizationInstance(Organization organizationInstance) {
+        this.organizationInstance = organizationInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        OrganizationIdentifier that = (OrganizationIdentifier) o;
-
-        if (organizationInstanceId != null ? !organizationInstanceId.equals(that.organizationInstanceId) : that.organizationInstanceId != null)
-            return false;
-        if (identifierInstanceId != null ? !identifierInstanceId.equals(that.identifierInstanceId) : that.identifierInstanceId != null)
-            return false;
-
-        return true;
+    public Identifier getIdentifierInstance() {
+        return identifierInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = organizationInstanceId != null ? organizationInstanceId.hashCode() : 0;
-        result = 31 * result + (identifierInstanceId != null ? identifierInstanceId.hashCode() : 0);
-        return result;
+    public void setIdentifierInstance(Identifier identifierInstance) {
+        this.identifierInstance = identifierInstance;
     }
 
-    public Organization getOrganizationByOrganizationInstanceId() {
-        return organizationByOrganizationInstanceId;
-    }
-
-    public void setOrganizationByOrganizationInstanceId(Organization organizationByOrganizationInstanceId) {
-        this.organizationByOrganizationInstanceId = organizationByOrganizationInstanceId;
-    }
-
-    public Identifier getIdentifierByIdentifierInstanceId() {
-        return identifierByIdentifierInstanceId;
-    }
-
-    public void setIdentifierByIdentifierInstanceId(Identifier identifierByIdentifierInstanceId) {
-        this.identifierByIdentifierInstanceId = identifierByIdentifierInstanceId;
-    }
 }

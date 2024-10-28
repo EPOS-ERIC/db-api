@@ -104,11 +104,11 @@ public abstract class AbstractAPI<T> {
                 api = new CategorySchemeAPI(entityType, edmClass);
                 break;
             case SOFTWARESOURCECODE:
-                edmClass = SoftwareSourceCode.class;
+                edmClass = Softwaresourcecode.class;
                 api = new SoftwareSourceCodeAPI(entityType, edmClass);
                 break;
             case SOFTWAREAPPLICATION:
-                edmClass = SoftwareApplication.class;
+                edmClass = Softwareapplication.class;
                 api = new SoftwareApplicationAPI(entityType, edmClass);
                 break;
             case ADDRESS:
@@ -132,7 +132,7 @@ public abstract class AbstractAPI<T> {
                 api = new IdentifierAPI(entityType, edmClass);
                 break;
             case QUANTITATIVEVALUE:
-                edmClass = QuantitativeValue.class;
+                edmClass = Quantitativevalue.class;
                 api = new QuantitativeValueAPI(entityType, edmClass);
                 break;
             case DOCUMENTATION:
@@ -140,7 +140,7 @@ public abstract class AbstractAPI<T> {
                 api = new DocumentationAPI(entityType, edmClass);
                 break;
             case PARAMETER:
-                edmClass = SoftwareapplicationParameters.class;
+                edmClass = SoftwareapplicationParameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 break;
             case RELATION:
@@ -192,10 +192,10 @@ public abstract class AbstractAPI<T> {
                 edmClass = CategoryScheme.class;
                 break;
             case SOFTWARESOURCECODE:
-                edmClass = SoftwareSourceCode.class;
+                edmClass = Softwaresourcecode.class;
                 break;
             case SOFTWAREAPPLICATION:
-                edmClass = SoftwareApplication.class;
+                edmClass = Softwareapplication.class;
                 break;
             case ADDRESS:
                 edmClass = Address.class;
@@ -213,13 +213,13 @@ public abstract class AbstractAPI<T> {
                 edmClass = Identifier.class;
                 break;
             case QUANTITATIVEVALUE:
-                edmClass = QuantitativeValue.class;
+                edmClass = Quantitativevalue.class;
                 break;
             case DOCUMENTATION:
                 edmClass = Element.class;
                 break;
             case PARAMETER:
-                edmClass = SoftwareapplicationParameters.class;
+                edmClass = SoftwareapplicationParameter.class;
                 break;
             case RELATION:
                 System.out.println("Relation empty case");

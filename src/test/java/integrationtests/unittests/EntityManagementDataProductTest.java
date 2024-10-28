@@ -3,7 +3,6 @@ package integrationtests.unittests;
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
-import model.DistributionDataproduct;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Distribution;
 import org.epos.eposdatamodel.LinkedEntity;

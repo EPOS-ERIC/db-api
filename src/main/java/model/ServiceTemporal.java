@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "service_temporal", schema = "public", catalog = "cerif")
-@IdClass(ServiceTemporalPK.class)
+@Table(name = "service_temporal")
 public class ServiceTemporal {
-    @Id
-    @Column(name = "service_instance_id", nullable = false, length = 100)
-    private String serviceInstanceId;
-    @Id
-    @Column(name = "temporal_instance_id", nullable = false, length = 100)
-    private String temporalInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "service_instance_id", referencedColumnName = "instance_id")
-    private Service serviceByServiceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "temporal_instance_id", referencedColumnName = "instance_id")
-    private Temporal temporalByTemporalInstanceId;
+    @EmbeddedId
+    private ServiceTemporalId id;
 
-    public String getServiceInstanceId() {
-        return serviceInstanceId;
+    @MapsId("serviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "service_instance_id", nullable = false)
+    private Service serviceInstance;
+
+    @MapsId("temporalInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "temporal_instance_id", nullable = false)
+    private model.Temporal temporalInstance;
+
+    public ServiceTemporalId getId() {
+        return id;
     }
 
-    public void setServiceInstanceId(String serviceInstanceId) {
-        this.serviceInstanceId = serviceInstanceId;
+    public void setId(ServiceTemporalId id) {
+        this.id = id;
     }
 
-    public String getTemporalInstanceId() {
-        return temporalInstanceId;
+    public Service getServiceInstance() {
+        return serviceInstance;
     }
 
-    public void setTemporalInstanceId(String temporalInstanceId) {
-        this.temporalInstanceId = temporalInstanceId;
+    public void setServiceInstance(Service serviceInstance) {
+        this.serviceInstance = serviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ServiceTemporal that = (ServiceTemporal) o;
-
-        if (serviceInstanceId != null ? !serviceInstanceId.equals(that.serviceInstanceId) : that.serviceInstanceId != null)
-            return false;
-        if (temporalInstanceId != null ? !temporalInstanceId.equals(that.temporalInstanceId) : that.temporalInstanceId != null)
-            return false;
-
-        return true;
+    public model.Temporal getTemporalInstance() {
+        return temporalInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = serviceInstanceId != null ? serviceInstanceId.hashCode() : 0;
-        result = 31 * result + (temporalInstanceId != null ? temporalInstanceId.hashCode() : 0);
-        return result;
+    public void setTemporalInstance(model.Temporal temporalInstance) {
+        this.temporalInstance = temporalInstance;
     }
 
-    public Service getServiceByServiceInstanceId() {
-        return serviceByServiceInstanceId;
-    }
-
-    public void setServiceByServiceInstanceId(Service serviceByServiceInstanceId) {
-        this.serviceByServiceInstanceId = serviceByServiceInstanceId;
-    }
-
-    public Temporal getTemporalByTemporalInstanceId() {
-        return temporalByTemporalInstanceId;
-    }
-
-    public void setTemporalByTemporalInstanceId(Temporal temporalByTemporalInstanceId) {
-        this.temporalByTemporalInstanceId = temporalByTemporalInstanceId;
-    }
 }

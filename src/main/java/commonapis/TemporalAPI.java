@@ -2,12 +2,12 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Spatial;
 import model.StatusType;
 import model.Temporal;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +33,7 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -41,12 +41,12 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Temporal edmobj = new Temporal();
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setStartdate(obj.getStartDate()!=null? Timestamp.valueOf(obj.getStartDate()) : null);
-        edmobj.setEnddate(obj.getEndDate()!=null? Timestamp.valueOf(obj.getEndDate()) : null);
+        edmobj.setStartdate(obj.getStartDate());
+        edmobj.setEnddate(obj.getEndDate());
 
         getDbaccess().updateObject(edmobj);
 
@@ -66,8 +66,8 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setStartDate(edmobj.getStartdate() != null ? edmobj.getStartdate().toLocalDateTime() : null);
-            o.setEndDate(edmobj.getEnddate() != null ? edmobj.getEnddate().toLocalDateTime() : null);
+            o.setStartDate(LocalDateTime.from(edmobj.getStartdate() != null ? edmobj.getStartdate() : null));
+            o.setEndDate(LocalDateTime.from(edmobj.getEnddate() != null ? edmobj.getEnddate() : null));
 
             o = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
 

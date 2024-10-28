@@ -3,29 +3,29 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "metadata_group_user", schema = "public", catalog = "cerif")
+@Table(name = "metadata_group_user")
 public class MetadataGroupUser {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "id", nullable = false, length = 100)
     private String id;
-    @Column(name = "auth_identifier", nullable = false, length = 100)
-    private String authIdentifier;
-    @Column(name = "group_id", nullable = false, length = 100)
-    private String groupId;
-    @Basic
-    @Column(name = "request_status", nullable = true, length = 100)
-    @Enumerated(EnumType.STRING)
-    private RequestStatusType requestStatus;
-    @Basic
-    @Column(name = "role", nullable = true, length = 100)
-    @Enumerated(EnumType.STRING)
-    private RoleType role;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "auth_identifier", referencedColumnName = "auth_identifier")
-    private User userByAuthIdentifier;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "group_id", referencedColumnName = "id")
-    private MetadataGroup metadataGroupByGroupId;
+
+    @jakarta.validation.constraints.NotNull
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "auth_identifier", nullable = false)
+    private model.MetadataUser authIdentifier;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "group_id")
+    private MetadataGroup group;
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "request_status", length = 100)
+    private String requestStatus;
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "role", length = 100)
+    private String role;
 
     public String getId() {
         return id;
@@ -35,77 +35,36 @@ public class MetadataGroupUser {
         this.id = id;
     }
 
-    public String getAuthIdentifier() {
+    public model.MetadataUser getAuthIdentifier() {
         return authIdentifier;
     }
 
-    public void setAuthIdentifier(String authIdentifier) {
+    public void setAuthIdentifier(model.MetadataUser authIdentifier) {
         this.authIdentifier = authIdentifier;
     }
 
-    public String getGroupId() {
-        return groupId;
+    public MetadataGroup getGroup() {
+        return group;
     }
 
-    public void setGroupId(String groupId) {
-        this.groupId = groupId;
+    public void setGroup(MetadataGroup group) {
+        this.group = group;
     }
 
-    public RequestStatusType getRequestStatus() {
+    public String getRequestStatus() {
         return requestStatus;
     }
 
-    public void setRequestStatus(RequestStatusType requestStatus) {
+    public void setRequestStatus(String requestStatus) {
         this.requestStatus = requestStatus;
     }
 
-    public RoleType getRole() {
+    public String getRole() {
         return role;
     }
 
-    public void setRole(RoleType role) {
+    public void setRole(String role) {
         this.role = role;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        MetadataGroupUser that = (MetadataGroupUser) o;
-
-        if (authIdentifier != null ? !authIdentifier.equals(that.authIdentifier) : that.authIdentifier != null)
-            return false;
-        if (groupId != null ? !groupId.equals(that.groupId) : that.groupId != null) return false;
-        if (requestStatus != null ? !requestStatus.equals(that.requestStatus) : that.requestStatus != null) return false;
-        if (role != null ? !role.equals(that.role) : that.role != null) return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = authIdentifier != null ? authIdentifier.hashCode() : 0;
-        result = 31 * result + (groupId != null ? groupId.hashCode() : 0);
-        result = 31 * result + (requestStatus != null ? requestStatus.hashCode() : 0);
-        result = 31 * result + (role != null ? role.hashCode() : 0);
-        return result;
-    }
-
-    public User getUserByAuthIdentifier() {
-        return userByAuthIdentifier;
-    }
-
-    public void setUserByAuthIdentifier(User userByAuthIdentifier) {
-        this.userByAuthIdentifier = userByAuthIdentifier;
-    }
-
-    public MetadataGroup getMetadataGroupByGroupId() {
-        return metadataGroupByGroupId;
-    }
-
-    public void setMetadataGroupByGroupId(MetadataGroup metadataGroupByGroupId) {
-        this.metadataGroupByGroupId = metadataGroupByGroupId;
     }
 
 }

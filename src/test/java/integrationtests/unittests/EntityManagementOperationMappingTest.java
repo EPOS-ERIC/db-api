@@ -5,7 +5,6 @@ import commonapis.LinkedEntityAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import model.StatusType;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.Mapping;
 import org.epos.eposdatamodel.Operation;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "category_hastopconcept", schema = "public", catalog = "cerif")
-@IdClass(CategoryHastopconceptPK.class)
+@Table(name = "category_hastopconcept")
 public class CategoryHastopconcept {
-    @Id
-    @Column(name = "category_scheme_instance_id", nullable = false, length = 100)
-    private String categorySchemeInstanceId;
-    @Id
-    @Column(name = "category_instance_id", nullable = false, length = 100)
-    private String categoryInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "category_scheme_instance_id", referencedColumnName = "instance_id")
-    private CategoryScheme categorySchemeByCategorySchemeInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "category_instance_id", referencedColumnName = "instance_id")
-    private Category categoryByCategoryInstanceId;
+    @EmbeddedId
+    private CategoryHastopconceptId id;
 
-    public String getCategorySchemeInstanceId() {
-        return categorySchemeInstanceId;
+    @MapsId("categorySchemeInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "category_scheme_instance_id", nullable = false)
+    private model.CategoryScheme categorySchemeInstance;
+
+    @MapsId("categoryInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "category_instance_id", nullable = false)
+    private Category categoryInstance;
+
+    public CategoryHastopconceptId getId() {
+        return id;
     }
 
-    public void setCategorySchemeInstanceId(String categorySchemeInstanceId) {
-        this.categorySchemeInstanceId = categorySchemeInstanceId;
+    public void setId(CategoryHastopconceptId id) {
+        this.id = id;
     }
 
-    public String getCategoryInstanceId() {
-        return categoryInstanceId;
+    public model.CategoryScheme getCategorySchemeInstance() {
+        return categorySchemeInstance;
     }
 
-    public void setCategoryInstanceId(String categoryInstanceId) {
-        this.categoryInstanceId = categoryInstanceId;
+    public void setCategorySchemeInstance(model.CategoryScheme categorySchemeInstance) {
+        this.categorySchemeInstance = categorySchemeInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        CategoryHastopconcept that = (CategoryHastopconcept) o;
-
-        if (categorySchemeInstanceId != null ? !categorySchemeInstanceId.equals(that.categorySchemeInstanceId) : that.categorySchemeInstanceId != null)
-            return false;
-        if (categoryInstanceId != null ? !categoryInstanceId.equals(that.categoryInstanceId) : that.categoryInstanceId != null)
-            return false;
-
-        return true;
+    public Category getCategoryInstance() {
+        return categoryInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = categorySchemeInstanceId != null ? categorySchemeInstanceId.hashCode() : 0;
-        result = 31 * result + (categoryInstanceId != null ? categoryInstanceId.hashCode() : 0);
-        return result;
+    public void setCategoryInstance(Category categoryInstance) {
+        this.categoryInstance = categoryInstance;
     }
 
-    public CategoryScheme getCategorySchemeByCategorySchemeInstanceId() {
-        return categorySchemeByCategorySchemeInstanceId;
-    }
-
-    public void setCategorySchemeByCategorySchemeInstanceId(CategoryScheme categorySchemeByCategorySchemeInstanceId) {
-        this.categorySchemeByCategorySchemeInstanceId = categorySchemeByCategorySchemeInstanceId;
-    }
-
-    public Category getCategoryByCategoryInstanceId() {
-        return categoryByCategoryInstanceId;
-    }
-
-    public void setCategoryByCategoryInstanceId(Category categoryByCategoryInstanceId) {
-        this.categoryByCategoryInstanceId = categoryByCategoryInstanceId;
-    }
 }

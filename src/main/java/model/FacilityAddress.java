@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "facility_address", schema = "public", catalog = "cerif")
-@IdClass(FacilityAddressPK.class)
+@Table(name = "facility_address")
 public class FacilityAddress {
-    @Id
-    @Column(name = "facility_instance_id", nullable = false, length = 100)
-    private String facilityInstanceId;
-    @Id
-    @Column(name = "address_instance_id", nullable = false, length = 100)
-    private String addressInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "facility_instance_id", referencedColumnName = "instance_id")
-    private Facility facilityByFacilityInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "address_instance_id", referencedColumnName = "instance_id")
-    private Address addressByAddressInstanceId;
+    @EmbeddedId
+    private FacilityAddressId id;
 
-    public String getFacilityInstanceId() {
-        return facilityInstanceId;
+    @MapsId("facilityInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "facility_instance_id", nullable = false)
+    private Facility facilityInstance;
+
+    @MapsId("addressInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "address_instance_id", nullable = false)
+    private Address addressInstance;
+
+    public FacilityAddressId getId() {
+        return id;
     }
 
-    public void setFacilityInstanceId(String facilityInstanceId) {
-        this.facilityInstanceId = facilityInstanceId;
+    public void setId(FacilityAddressId id) {
+        this.id = id;
     }
 
-    public String getAddressInstanceId() {
-        return addressInstanceId;
+    public Facility getFacilityInstance() {
+        return facilityInstance;
     }
 
-    public void setAddressInstanceId(String addressInstanceId) {
-        this.addressInstanceId = addressInstanceId;
+    public void setFacilityInstance(Facility facilityInstance) {
+        this.facilityInstance = facilityInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        FacilityAddress that = (FacilityAddress) o;
-
-        if (facilityInstanceId != null ? !facilityInstanceId.equals(that.facilityInstanceId) : that.facilityInstanceId != null)
-            return false;
-        if (addressInstanceId != null ? !addressInstanceId.equals(that.addressInstanceId) : that.addressInstanceId != null)
-            return false;
-
-        return true;
+    public Address getAddressInstance() {
+        return addressInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = facilityInstanceId != null ? facilityInstanceId.hashCode() : 0;
-        result = 31 * result + (addressInstanceId != null ? addressInstanceId.hashCode() : 0);
-        return result;
+    public void setAddressInstance(Address addressInstance) {
+        this.addressInstance = addressInstance;
     }
 
-    public Facility getFacilityByFacilityInstanceId() {
-        return facilityByFacilityInstanceId;
-    }
-
-    public void setFacilityByFacilityInstanceId(Facility facilityByFacilityInstanceId) {
-        this.facilityByFacilityInstanceId = facilityByFacilityInstanceId;
-    }
-
-    public Address getAddressByAddressInstanceId() {
-        return addressByAddressInstanceId;
-    }
-
-    public void setAddressByAddressInstanceId(Address addressByAddressInstanceId) {
-        this.addressByAddressInstanceId = addressByAddressInstanceId;
-    }
 }

@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "category_ispartof", schema = "public", catalog = "cerif")
-@IdClass(CategoryIspartofPK.class)
+@Table(name = "category_ispartof")
 public class CategoryIspartof {
-    @Id
-    @Column(name = "category1_instance_id", nullable = false, length = 100)
-    private String category1InstanceId;
-    @Id
-    @Column(name = "category2_instance_id", nullable = false, length = 100)
-    private String category2InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "category1_instance_id", referencedColumnName = "instance_id")
-    private Category categoryByCategory1InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "category2_instance_id", referencedColumnName = "instance_id")
-    private Category categoryByCategory2InstanceId;
+    @EmbeddedId
+    private CategoryIspartofId id;
 
-    public String getCategory1InstanceId() {
-        return category1InstanceId;
+    @MapsId("category1InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "category1_instance_id", nullable = false)
+    private Category category1Instance;
+
+    @MapsId("category2InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "category2_instance_id", nullable = false)
+    private Category category2Instance;
+
+    public CategoryIspartofId getId() {
+        return id;
     }
 
-    public void setCategory1InstanceId(String category1InstanceId) {
-        this.category1InstanceId = category1InstanceId;
+    public void setId(CategoryIspartofId id) {
+        this.id = id;
     }
 
-    public String getCategory2InstanceId() {
-        return category2InstanceId;
+    public Category getCategory1Instance() {
+        return category1Instance;
     }
 
-    public void setCategory2InstanceId(String category2InstanceId) {
-        this.category2InstanceId = category2InstanceId;
+    public void setCategory1Instance(Category category1Instance) {
+        this.category1Instance = category1Instance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        CategoryIspartof that = (CategoryIspartof) o;
-
-        if (category1InstanceId != null ? !category1InstanceId.equals(that.category1InstanceId) : that.category1InstanceId != null)
-            return false;
-        if (category2InstanceId != null ? !category2InstanceId.equals(that.category2InstanceId) : that.category2InstanceId != null)
-            return false;
-
-        return true;
+    public Category getCategory2Instance() {
+        return category2Instance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = category1InstanceId != null ? category1InstanceId.hashCode() : 0;
-        result = 31 * result + (category2InstanceId != null ? category2InstanceId.hashCode() : 0);
-        return result;
+    public void setCategory2Instance(Category category2Instance) {
+        this.category2Instance = category2Instance;
     }
 
-    public Category getCategoryByCategory1InstanceId() {
-        return categoryByCategory1InstanceId;
-    }
-
-    public void setCategoryByCategory1InstanceId(Category categoryByCategory1InstanceId) {
-        this.categoryByCategory1InstanceId = categoryByCategory1InstanceId;
-    }
-
-    public Category getCategoryByCategory2InstanceId() {
-        return categoryByCategory2InstanceId;
-    }
-
-    public void setCategoryByCategory2InstanceId(Category categoryByCategory2InstanceId) {
-        this.categoryByCategory2InstanceId = categoryByCategory2InstanceId;
-    }
 }

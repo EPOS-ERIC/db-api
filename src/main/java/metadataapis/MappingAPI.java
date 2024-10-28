@@ -32,7 +32,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Mapping) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -41,7 +41,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
         Mapping edmobj = new Mapping();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -62,8 +62,6 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
 
         /** RETURNS **/
-
-        edmobj.setMappingElementsByInstanceId(new ArrayList<>());
         if(obj.getParamValue()!=null && !obj.getParamValue().isEmpty()){
             for(String paramvalue : obj.getParamValue()) {
                 createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
@@ -87,13 +85,8 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         MappingElement ce = new MappingElement();
-        ce.setMappingByMappingInstanceId(edmobj);
-        ce.setMappingInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getMappingElementsByInstanceId().add(ce);
-
+        ce.setMappingInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -114,15 +107,16 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             o.setMinValue(edmobj.getMinvalue());
             o.setMultipleValues(edmobj.getMultipleValues());
             o.setReadOnlyValue(edmobj.getReadOnlyValue());
-            o.setRequired(Boolean.toString(edmobj.isRequired()));
+            o.setRequired(Boolean.toString(edmobj.getRequired()));
             o.setRange(edmobj.getRange());
             o.setProperty(edmobj.getProperty());
             o.setVariable(edmobj.getVariable());
 
-            if (edmobj.getMappingElementsByInstanceId().size() > 0) {
-                for (MappingElement ed : edmobj.getMappingElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.PARAMVALUE)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("mapping_instance_id", edmobj.getInstanceId(),MappingElement.class)) {
+                MappingElement item = (MappingElement) object;
+                if(item.getMappingInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.PARAMVALUE.name())) {
                         o.addParamValue(el.getValue());
                     }
                 }

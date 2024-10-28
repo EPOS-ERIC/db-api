@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "person_contactpoint", schema = "public", catalog = "cerif")
-@IdClass(PersonContactpointPK.class)
+@Table(name = "person_contactpoint")
 public class PersonContactpoint {
-    @Id
-    @Column(name = "person_instance_id", nullable = false, length = 100)
-    private String personInstanceId;
-    @Id
-    @Column(name = "contactpoint_instance_id", nullable = false, length = 100)
-    private String contactpointInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "person_instance_id", referencedColumnName = "instance_id")
-    private Person personByPersonInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "contactpoint_instance_id", referencedColumnName = "instance_id")
-    private Contactpoint contactpointByContactpointInstanceId;
+    @EmbeddedId
+    private PersonContactpointId id;
 
-    public String getPersonInstanceId() {
-        return personInstanceId;
+    @MapsId("personInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "person_instance_id", nullable = false)
+    private Person personInstance;
+
+    @MapsId("contactpointInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "contactpoint_instance_id", nullable = false)
+    private Contactpoint contactpointInstance;
+
+    public PersonContactpointId getId() {
+        return id;
     }
 
-    public void setPersonInstanceId(String personInstanceId) {
-        this.personInstanceId = personInstanceId;
+    public void setId(PersonContactpointId id) {
+        this.id = id;
     }
 
-    public String getContactpointInstanceId() {
-        return contactpointInstanceId;
+    public Person getPersonInstance() {
+        return personInstance;
     }
 
-    public void setContactpointInstanceId(String contactpointInstanceId) {
-        this.contactpointInstanceId = contactpointInstanceId;
+    public void setPersonInstance(Person personInstance) {
+        this.personInstance = personInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        PersonContactpoint that = (PersonContactpoint) o;
-
-        if (personInstanceId != null ? !personInstanceId.equals(that.personInstanceId) : that.personInstanceId != null)
-            return false;
-        if (contactpointInstanceId != null ? !contactpointInstanceId.equals(that.contactpointInstanceId) : that.contactpointInstanceId != null)
-            return false;
-
-        return true;
+    public Contactpoint getContactpointInstance() {
+        return contactpointInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = personInstanceId != null ? personInstanceId.hashCode() : 0;
-        result = 31 * result + (contactpointInstanceId != null ? contactpointInstanceId.hashCode() : 0);
-        return result;
+    public void setContactpointInstance(Contactpoint contactpointInstance) {
+        this.contactpointInstance = contactpointInstance;
     }
 
-    public Person getPersonByPersonInstanceId() {
-        return personByPersonInstanceId;
-    }
-
-    public void setPersonByPersonInstanceId(Person personByPersonInstanceId) {
-        this.personByPersonInstanceId = personByPersonInstanceId;
-    }
-
-    public Contactpoint getContactpointByContactpointInstanceId() {
-        return contactpointByContactpointInstanceId;
-    }
-
-    public void setContactpointByContactpointInstanceId(Contactpoint contactpointByContactpointInstanceId) {
-        this.contactpointByContactpointInstanceId = contactpointByContactpointInstanceId;
-    }
 }

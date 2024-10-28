@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "facility_ispartof", schema = "public", catalog = "cerif")
-@IdClass(FacilityIspartofPK.class)
+@Table(name = "facility_ispartof")
 public class FacilityIspartof {
-    @Id
-    @Column(name = "facility1_instance_id", nullable = false, length = 100)
-    private String facility1InstanceId;
-    @Id
-    @Column(name = "facility2_instance_id", nullable = false, length = 100)
-    private String facility2InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "facility1_instance_id", referencedColumnName = "instance_id")
-    private Facility facilityByFacility1InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "facility2_instance_id", referencedColumnName = "instance_id")
-    private Facility facilityByFacility2InstanceId;
+    @EmbeddedId
+    private FacilityIspartofId id;
 
-    public String getFacility1InstanceId() {
-        return facility1InstanceId;
+    @MapsId("facility1InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "facility1_instance_id", nullable = false)
+    private Facility facility1Instance;
+
+    @MapsId("facility2InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "facility2_instance_id", nullable = false)
+    private Facility facility2Instance;
+
+    public FacilityIspartofId getId() {
+        return id;
     }
 
-    public void setFacility1InstanceId(String facility1InstanceId) {
-        this.facility1InstanceId = facility1InstanceId;
+    public void setId(FacilityIspartofId id) {
+        this.id = id;
     }
 
-    public String getFacility2InstanceId() {
-        return facility2InstanceId;
+    public Facility getFacility1Instance() {
+        return facility1Instance;
     }
 
-    public void setFacility2InstanceId(String facility2InstanceId) {
-        this.facility2InstanceId = facility2InstanceId;
+    public void setFacility1Instance(Facility facility1Instance) {
+        this.facility1Instance = facility1Instance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        FacilityIspartof that = (FacilityIspartof) o;
-
-        if (facility1InstanceId != null ? !facility1InstanceId.equals(that.facility1InstanceId) : that.facility1InstanceId != null)
-            return false;
-        if (facility2InstanceId != null ? !facility2InstanceId.equals(that.facility2InstanceId) : that.facility2InstanceId != null)
-            return false;
-
-        return true;
+    public Facility getFacility2Instance() {
+        return facility2Instance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = facility1InstanceId != null ? facility1InstanceId.hashCode() : 0;
-        result = 31 * result + (facility2InstanceId != null ? facility2InstanceId.hashCode() : 0);
-        return result;
+    public void setFacility2Instance(Facility facility2Instance) {
+        this.facility2Instance = facility2Instance;
     }
 
-    public Facility getFacilityByFacility1InstanceId() {
-        return facilityByFacility1InstanceId;
-    }
-
-    public void setFacilityByFacility1InstanceId(Facility facilityByFacility1InstanceId) {
-        this.facilityByFacility1InstanceId = facilityByFacility1InstanceId;
-    }
-
-    public Facility getFacilityByFacility2InstanceId() {
-        return facilityByFacility2InstanceId;
-    }
-
-    public void setFacilityByFacility2InstanceId(Facility facilityByFacility2InstanceId) {
-        this.facilityByFacility2InstanceId = facilityByFacility2InstanceId;
-    }
 }

@@ -31,7 +31,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.ContactPoint) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -40,7 +40,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
         Contactpoint edmobj = new Contactpoint();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -49,15 +49,6 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
         edmobj.setRole(obj.getRole());
 
-
-        List<ContactpointElement> elementslist = getDbaccess().getAllFromDB(ContactpointElement.class);
-        for(ContactpointElement item : elementslist){
-            if(item.getContactpointInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-
-        edmobj.setContactpointElementsByInstanceId(new ArrayList<>());
 
         /* LANGUAGE */
         if(obj.getLanguage()!=null && !obj.getLanguage().isEmpty()){
@@ -97,12 +88,8 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         ContactpointElement ce = new ContactpointElement();
-        ce.setContactpointByContactpointInstanceId(edmobj);
-        ce.setContactpointInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getContactpointElementsByInstanceId().add(ce);
+        ce.setContactpointInstance(edmobj);
+        ce.setElementInstance(el.get(0));
 
         dbaccess.updateObject(ce);
     }
@@ -119,24 +106,29 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             o.setUid(edmobj.getUid());
             o.setRole(edmobj.getRole());
 
-            if (edmobj.getContactpointElementsByInstanceId().size() > 0) {
-                for (ContactpointElement ed : edmobj.getContactpointElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.TELEPHONE)) o.addTelephone(el.getValue());
-                    if (el.getType().equals(ElementType.EMAIL)) o.addEmail(el.getValue());
-                    if (el.getType().equals(ElementType.LANGUAGE)) o.addLanguage(el.getValue());
+            for(Object contactpointElement : getDbaccess().getAllFromDB(ContactpointElement.class)){
+                ContactpointElement ce = (ContactpointElement) contactpointElement;
+                if(ce.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
+                    Element el = ce.getElementInstance();
+                    if (el.getType().equals(ElementType.TELEPHONE.name())) o.addTelephone(el.getValue());
+                    if (el.getType().equals(ElementType.EMAIL.name())) o.addEmail(el.getValue());
+                    if (el.getType().equals(ElementType.LANGUAGE.name())) o.addLanguage(el.getValue());
                 }
             }
 
-            for (OrganizationContactpoint organizationContactpoint : edmobj.getOrganizationContactpointsByInstanceId()) {
-                OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-                o.setOrganization(organizationAPI.retrieveLinkedEntity(organizationContactpoint.getOrganizationInstanceId()));
+            for(Object organizationContactpoint : getDbaccess().getAllFromDB(ContactpointElement.class)){
+                OrganizationContactpoint item = (OrganizationContactpoint) organizationContactpoint;
+                if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
+                    OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
+                    o.setOrganization(organizationAPI.retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId()));
+                }
             }
 
-            for (Object personContactpoint : dbaccess.getAllFromDB(PersonContactpoint.class)) {
-                if(((PersonContactpoint)personContactpoint).getContactpointInstanceId().equals(o.getInstanceId())) {
+            for(Object personContactpoint : getDbaccess().getAllFromDB(PersonContactpoint.class)){
+                PersonContactpoint item = (PersonContactpoint) personContactpoint;
+                if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     PersonAPI personAPI = new PersonAPI(EntityNames.PERSON.name(), Person.class);
-                    o.setPerson(personAPI.retrieveLinkedEntity(((PersonContactpoint) personContactpoint).getPersonInstanceId()));
+                    o.setPerson(personAPI.retrieveLinkedEntity(item.getPersonInstance().getInstanceId()));
                 }
             }
 

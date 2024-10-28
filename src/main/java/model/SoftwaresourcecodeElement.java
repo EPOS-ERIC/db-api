@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "softwaresourcecode_element", schema = "public", catalog = "cerif")
-@IdClass(SoftwaresourcecodeElementPK.class)
+@Table(name = "softwaresourcecode_element")
 public class SoftwaresourcecodeElement {
-    @Id
-    @Column(name = "softwaresourcecode_instance_id", nullable = false, length = 100)
-    private String softwaresourcecodeInstanceId;
-    @Id
-    @Column(name = "element_instance_id", nullable = false, length = 100)
-    private String elementInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "softwaresourcecode_instance_id", referencedColumnName = "instance_id")
-    private SoftwareSourceCode softwaresourcecodeBySoftwareSourceCodeInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "element_instance_id", referencedColumnName = "instance_id")
-    private Element elementByElementInstanceId;
+    @EmbeddedId
+    private SoftwaresourcecodeElementId id;
 
-    public String getSoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeInstanceId;
+    @MapsId("softwaresourcecodeInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
+    private Softwaresourcecode softwaresourcecodeInstance;
+
+    @MapsId("elementInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "element_instance_id", nullable = false)
+    private Element elementInstance;
+
+    public SoftwaresourcecodeElementId getId() {
+        return id;
     }
 
-    public void setSoftwaresourcecodeInstanceId(String softwaresourcecodeInstanceId) {
-        this.softwaresourcecodeInstanceId = softwaresourcecodeInstanceId;
+    public void setId(SoftwaresourcecodeElementId id) {
+        this.id = id;
     }
 
-    public String getElementInstanceId() {
-        return elementInstanceId;
+    public Softwaresourcecode getSoftwaresourcecodeInstance() {
+        return softwaresourcecodeInstance;
     }
 
-    public void setElementInstanceId(String elementInstanceId) {
-        this.elementInstanceId = elementInstanceId;
+    public void setSoftwaresourcecodeInstance(Softwaresourcecode softwaresourcecodeInstance) {
+        this.softwaresourcecodeInstance = softwaresourcecodeInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        SoftwaresourcecodeElement that = (SoftwaresourcecodeElement) o;
-
-        if (softwaresourcecodeInstanceId != null ? !softwaresourcecodeInstanceId.equals(that.softwaresourcecodeInstanceId) : that.softwaresourcecodeInstanceId != null)
-            return false;
-        if (elementInstanceId != null ? !elementInstanceId.equals(that.elementInstanceId) : that.elementInstanceId != null)
-            return false;
-
-        return true;
+    public Element getElementInstance() {
+        return elementInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = softwaresourcecodeInstanceId != null ? softwaresourcecodeInstanceId.hashCode() : 0;
-        result = 31 * result + (elementInstanceId != null ? elementInstanceId.hashCode() : 0);
-        return result;
+    public void setElementInstance(Element elementInstance) {
+        this.elementInstance = elementInstance;
     }
 
-    public SoftwareSourceCode getSoftwaresourcecodeBySoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeBySoftwareSourceCodeInstanceId;
-    }
-
-    public void setSoftwaresourcecodeBySoftwaresourcecodeInstanceId(SoftwareSourceCode softwaresourcecodeBySoftwareSourceCodeInstanceId) {
-        this.softwaresourcecodeBySoftwareSourceCodeInstanceId = softwaresourcecodeBySoftwareSourceCodeInstanceId;
-    }
-
-    public Element getElementByElementInstanceId() {
-        return elementByElementInstanceId;
-    }
-
-    public void setElementByElementInstanceId(Element elementByElementInstanceId) {
-        this.elementByElementInstanceId = elementByElementInstanceId;
-    }
 }

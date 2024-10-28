@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "dataproduct_contactpoint", schema = "public", catalog = "cerif")
-@IdClass(DataproductContactpointPK.class)
+@Table(name = "dataproduct_contactpoint")
 public class DataproductContactpoint {
-    @Id
-    @Column(name = "dataproduct_instance_id", nullable = false, length = 100)
-    private String dataproductInstanceId;
-    @Id
-    @Column(name = "contactpoint_instance_id", nullable = false, length = 100)
-    private String contactpointInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "dataproduct_instance_id", referencedColumnName = "instance_id")
-    private Dataproduct dataproductByDataproductInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "contactpoint_instance_id", referencedColumnName = "instance_id")
-    private Contactpoint contactpointByContactpointInstanceId;
+    @EmbeddedId
+    private DataproductContactpointId id;
 
-    public String getDataproductInstanceId() {
-        return dataproductInstanceId;
+    @MapsId("dataproductInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "dataproduct_instance_id", nullable = false)
+    private Dataproduct dataproductInstance;
+
+    @MapsId("contactpointInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "contactpoint_instance_id", nullable = false)
+    private Contactpoint contactpointInstance;
+
+    public DataproductContactpointId getId() {
+        return id;
     }
 
-    public void setDataproductInstanceId(String dataproductInstanceId) {
-        this.dataproductInstanceId = dataproductInstanceId;
+    public void setId(DataproductContactpointId id) {
+        this.id = id;
     }
 
-    public String getContactpointInstanceId() {
-        return contactpointInstanceId;
+    public Dataproduct getDataproductInstance() {
+        return dataproductInstance;
     }
 
-    public void setContactpointInstanceId(String contactpointInstanceId) {
-        this.contactpointInstanceId = contactpointInstanceId;
+    public void setDataproductInstance(Dataproduct dataproductInstance) {
+        this.dataproductInstance = dataproductInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DataproductContactpoint that = (DataproductContactpoint) o;
-
-        if (dataproductInstanceId != null ? !dataproductInstanceId.equals(that.dataproductInstanceId) : that.dataproductInstanceId != null)
-            return false;
-        if (contactpointInstanceId != null ? !contactpointInstanceId.equals(that.contactpointInstanceId) : that.contactpointInstanceId != null)
-            return false;
-
-        return true;
+    public Contactpoint getContactpointInstance() {
+        return contactpointInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = dataproductInstanceId != null ? dataproductInstanceId.hashCode() : 0;
-        result = 31 * result + (contactpointInstanceId != null ? contactpointInstanceId.hashCode() : 0);
-        return result;
+    public void setContactpointInstance(Contactpoint contactpointInstance) {
+        this.contactpointInstance = contactpointInstance;
     }
 
-    public Dataproduct getDataproductByDataproductInstanceId() {
-        return dataproductByDataproductInstanceId;
-    }
-
-    public void setDataproductByDataproductInstanceId(Dataproduct dataproductByDataproductInstanceId) {
-        this.dataproductByDataproductInstanceId = dataproductByDataproductInstanceId;
-    }
-
-    public Contactpoint getContactpointByContactpointInstanceId() {
-        return contactpointByContactpointInstanceId;
-    }
-
-    public void setContactpointByContactpointInstanceId(Contactpoint contactpointByContactpointInstanceId) {
-        this.contactpointByContactpointInstanceId = contactpointByContactpointInstanceId;
-    }
 }

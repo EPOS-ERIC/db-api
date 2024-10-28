@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "webservice_distribution", schema = "public", catalog = "cerif")
-@IdClass(WebserviceDistributionPK.class)
+@Table(name = "webservice_distribution")
 public class WebserviceDistribution {
-    @Id
-    @Column(name = "distribution_instance_id", nullable = false, length = 100)
-    private String distributionInstanceId;
-    @Id
-    @Column(name = "webservice_instance_id", nullable = false, length = 100)
-    private String webserviceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "distribution_instance_id", referencedColumnName = "instance_id")
-    private Distribution distributionByDistributionInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "webservice_instance_id", referencedColumnName = "instance_id")
-    private Webservice webserviceByWebserviceInstanceId;
+    @EmbeddedId
+    private WebserviceDistributionId id;
 
-    public String getDistributionInstanceId() {
-        return distributionInstanceId;
+    @MapsId("webserviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "webservice_instance_id", nullable = false)
+    private Webservice webserviceInstance;
+
+    @MapsId("distributionInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "distribution_instance_id", nullable = false)
+    private Distribution distributionInstance;
+
+    public WebserviceDistributionId getId() {
+        return id;
     }
 
-    public void setDistributionInstanceId(String distributionInstanceId) {
-        this.distributionInstanceId = distributionInstanceId;
+    public void setId(WebserviceDistributionId id) {
+        this.id = id;
     }
 
-    public String getWebserviceInstanceId() {
-        return webserviceInstanceId;
+    public Webservice getWebserviceInstance() {
+        return webserviceInstance;
     }
 
-    public void setWebserviceInstanceId(String webserviceInstanceId) {
-        this.webserviceInstanceId = webserviceInstanceId;
+    public void setWebserviceInstance(Webservice webserviceInstance) {
+        this.webserviceInstance = webserviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        WebserviceDistribution that = (WebserviceDistribution) o;
-
-        if (distributionInstanceId != null ? !distributionInstanceId.equals(that.distributionInstanceId) : that.distributionInstanceId != null)
-            return false;
-        if (webserviceInstanceId != null ? !webserviceInstanceId.equals(that.webserviceInstanceId) : that.webserviceInstanceId != null)
-            return false;
-
-        return true;
+    public Distribution getDistributionInstance() {
+        return distributionInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = distributionInstanceId != null ? distributionInstanceId.hashCode() : 0;
-        result = 31 * result + (webserviceInstanceId != null ? webserviceInstanceId.hashCode() : 0);
-        return result;
+    public void setDistributionInstance(Distribution distributionInstance) {
+        this.distributionInstance = distributionInstance;
     }
 
-    public Distribution getDistributionByDistributionInstanceId() {
-        return distributionByDistributionInstanceId;
-    }
-
-    public void setDistributionByDistributionInstanceId(Distribution distributionByDistributionInstanceId) {
-        this.distributionByDistributionInstanceId = distributionByDistributionInstanceId;
-    }
-
-    public Webservice getWebserviceByWebserviceInstanceId() {
-        return webserviceByWebserviceInstanceId;
-    }
-
-    public void setWebserviceByWebserviceInstanceId(Webservice webserviceByWebserviceInstanceId) {
-        this.webserviceByWebserviceInstanceId = webserviceByWebserviceInstanceId;
-    }
 }

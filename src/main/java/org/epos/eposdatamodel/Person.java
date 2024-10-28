@@ -1,8 +1,6 @@
 package org.epos.eposdatamodel;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import model.RoleType;
-import org.eclipse.persistence.internal.jpa.rs.metadata.model.Link;
 
 import java.util.ArrayList;
 import java.util.List;

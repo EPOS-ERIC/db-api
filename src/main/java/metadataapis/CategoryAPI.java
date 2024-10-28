@@ -30,7 +30,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Category) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -39,7 +39,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
         Category edmobj = new Category();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -50,9 +50,6 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         edmobj.setDescription(Optional.ofNullable(obj.getDescription()).orElse(""));
 
         if (Objects.nonNull(obj.getInScheme())) createInscheme(obj.getInScheme(), edmobj, overrideStatus);
-
-        edmobj.setCategoryIspartofsByInstanceId(new ArrayList<>());
-
         if (Objects.nonNull(obj.getBroader())) createBroaders(obj.getBroader(), edmobj, overrideStatus);
         if (Objects.nonNull(obj.getNarrower())) createNarrowers(obj.getNarrower(), edmobj, overrideStatus);
 
@@ -72,7 +69,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         childObj.setMetaId(inscheme.getMetaId());
         childObj.setUid(inscheme.getUid());
         LinkedEntity le = api.create(childObj, overrideStatus);
-        edmobj.setInScheme(le.getInstanceId());
+        edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
 
     }
 
@@ -80,22 +77,18 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         for(LinkedEntity broader : broaders) {
 
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus);
-
-            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
-            for(CategoryIspartof item : list){
-                if(item.getCategory1InstanceId().equals(le.getInstanceId())
-                        && item.getCategory2InstanceId().equals(edmobj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
+//
+//            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
+//            for(CategoryIspartof item : list){
+//                if(item.getCategory1Instance().equals(le.getInstanceId())
+//                        && item.getCategory2InstanceId().equals(edmobj.getInstanceId())){
+//                    getDbaccess().deleteObject(item);
+//                }
+//            }
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
-            categoryIspartof.setCategory1InstanceId(((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0)).getInstanceId());
-            categoryIspartof.setCategory2InstanceId(edmobj.getInstanceId());
-            categoryIspartof.setCategoryByCategory1InstanceId((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
-            categoryIspartof.setCategoryByCategory2InstanceId(edmobj);
-
-            edmobj.getCategoryIspartofsByInstanceId().add(categoryIspartof);
+            categoryIspartof.setCategory1Instance(edmobj);
+            categoryIspartof.setCategory2Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
 
             getDbaccess().updateObject(categoryIspartof);
         }
@@ -107,21 +100,17 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus);
 
-            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
-            for(CategoryIspartof item : list){
-                if(item.getCategory2InstanceId().equals(le.getInstanceId())
-                        && item.getCategory1InstanceId().equals(edmobj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
+//            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
+//            for(CategoryIspartof item : list){
+//                if(item.getCategory2InstanceId().equals(le.getInstanceId())
+//                        && item.getCategory1InstanceId().equals(edmobj.getInstanceId())){
+//                    getDbaccess().deleteObject(item);
+//                }
+//            }
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
-            categoryIspartof.setCategory1InstanceId(edmobj.getInstanceId());
-            categoryIspartof.setCategory2InstanceId(((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0)).getInstanceId());
-            categoryIspartof.setCategoryByCategory1InstanceId(edmobj);
-            categoryIspartof.setCategoryByCategory2InstanceId((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
-
-            edmobj.getCategoryIspartofsByInstanceId().add(categoryIspartof);
+            categoryIspartof.setCategory1Instance(edmobj);
+            categoryIspartof.setCategory2Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
 
             getDbaccess().updateObject(categoryIspartof);
         }
@@ -141,30 +130,24 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             o.setDescription(edmobj.getDescription());
             if (edmobj.getInScheme() != null) {
                 CategorySchemeAPI csapi = new CategorySchemeAPI(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
-                o.setInScheme(csapi.retrieveLinkedEntity(edmobj.getInScheme()));
+                o.setInScheme(csapi.retrieveLinkedEntity(edmobj.getInScheme().getInstanceId()));
             }
 
-            edmobj.getCategoryIspartofsByInstanceId_0().isEmpty();
-            edmobj.getCategoryIspartofsByInstanceId().isEmpty();
+            ArrayList<LinkedEntity> broaders = new ArrayList<>();
+            ArrayList<LinkedEntity> narrowers = new ArrayList<>();
 
-            if (edmobj.getCategoryIspartofsByInstanceId_0().size() > 0) {
-                ArrayList<LinkedEntity> broaders = new ArrayList<>();
-                for (CategoryIspartof ed : edmobj.getCategoryIspartofsByInstanceId_0()) {
-                    broaders.add(retrieveLinkedEntity(ed.getCategory1InstanceId()));
+            for(Object categoryIspartof : dbaccess.getAllFromDB(CategoryIspartof.class)){
+                CategoryIspartof item = (CategoryIspartof) categoryIspartof;
+                if(item.getCategory2Instance().getInstanceId().equals(edmobj.getInstanceId())){
+                    broaders.add(retrieveLinkedEntity(item.getCategory1Instance().getInstanceId()));
                 }
-                o.setBroader(broaders);
-            }
-
-            if (edmobj.getCategoryIspartofsByInstanceId().size() > 0) {
-                ArrayList<LinkedEntity> narrowers = new ArrayList<>();
-                for (CategoryIspartof ed : edmobj.getCategoryIspartofsByInstanceId()) {
-                    narrowers.add(retrieveLinkedEntity(ed.getCategory2InstanceId()));
+                if(item.getCategory1Instance().getInstanceId().equals(edmobj.getInstanceId())){
+                    narrowers.add(retrieveLinkedEntity(item.getCategory2Instance().getInstanceId()));
                 }
-                o.setNarrower(narrowers);
             }
-
+            o.setBroader(broaders);
+            o.setNarrower(narrowers);
             o = (org.epos.eposdatamodel.Category) VersioningStatusAPI.retrieveVersion(o);
-
             return o;
         }
         return null;

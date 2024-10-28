@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "publication_contributor", schema = "public", catalog = "cerif")
-@IdClass(PublicationContributorPK.class)
+@Table(name = "publication_contributor")
 public class PublicationContributor {
-    @Id
-    @Column(name = "person_instance_id", nullable = false, length = 100)
-    private String personInstanceId;
-    @Id
-    @Column(name = "publication_instance_id", nullable = false, length = 100)
-    private String publicationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "person_instance_id", referencedColumnName = "instance_id")
-    private Person personByPersonInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "publication_instance_id", referencedColumnName = "instance_id")
-    private Publication publicationByPublicationInstanceId;
+    @EmbeddedId
+    private PublicationContributorId id;
 
-    public String getPersonInstanceId() {
-        return personInstanceId;
+    @MapsId("publicationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "publication_instance_id", nullable = false)
+    private Publication publicationInstance;
+
+    @MapsId("personInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "person_instance_id", nullable = false)
+    private Person personInstance;
+
+    public PublicationContributorId getId() {
+        return id;
     }
 
-    public void setPersonInstanceId(String personInstanceId) {
-        this.personInstanceId = personInstanceId;
+    public void setId(PublicationContributorId id) {
+        this.id = id;
     }
 
-    public String getPublicationInstanceId() {
-        return publicationInstanceId;
+    public Publication getPublicationInstance() {
+        return publicationInstance;
     }
 
-    public void setPublicationInstanceId(String publicationInstanceId) {
-        this.publicationInstanceId = publicationInstanceId;
+    public void setPublicationInstance(Publication publicationInstance) {
+        this.publicationInstance = publicationInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        PublicationContributor that = (PublicationContributor) o;
-
-        if (personInstanceId != null ? !personInstanceId.equals(that.personInstanceId) : that.personInstanceId != null)
-            return false;
-        if (publicationInstanceId != null ? !publicationInstanceId.equals(that.publicationInstanceId) : that.publicationInstanceId != null)
-            return false;
-
-        return true;
+    public Person getPersonInstance() {
+        return personInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = personInstanceId != null ? personInstanceId.hashCode() : 0;
-        result = 31 * result + (publicationInstanceId != null ? publicationInstanceId.hashCode() : 0);
-        return result;
+    public void setPersonInstance(Person personInstance) {
+        this.personInstance = personInstance;
     }
 
-    public Person getPersonByPersonInstanceId() {
-        return personByPersonInstanceId;
-    }
-
-    public void setPersonByPersonInstanceId(Person personByPersonInstanceId) {
-        this.personByPersonInstanceId = personByPersonInstanceId;
-    }
-
-    public Publication getPublicationByPublicationInstanceId() {
-        return publicationByPublicationInstanceId;
-    }
-
-    public void setPublicationByPublicationInstanceId(Publication publicationByPublicationInstanceId) {
-        this.publicationByPublicationInstanceId = publicationByPublicationInstanceId;
-    }
 }

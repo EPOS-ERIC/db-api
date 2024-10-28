@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "dataproduct_haspart", schema = "public", catalog = "cerif")
-@IdClass(DataproductHaspartPK.class)
+@Table(name = "dataproduct_haspart")
 public class DataproductHaspart {
-    @Id
-    @Column(name = "dataproduct1_instance_id", nullable = false, length = 100)
-    private String dataproduct1InstanceId;
-    @Id
-    @Column(name = "dataproduct2_instance_id", nullable = false, length = 100)
-    private String dataproduct2InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "dataproduct1_instance_id", referencedColumnName = "instance_id")
-    private Dataproduct dataproductByDataproduct1InstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "dataproduct2_instance_id", referencedColumnName = "instance_id")
-    private Dataproduct dataproductByDataproduct2InstanceId;
+    @EmbeddedId
+    private DataproductHaspartId id;
 
-    public String getDataproduct1InstanceId() {
-        return dataproduct1InstanceId;
+    @MapsId("dataproduct1InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "dataproduct1_instance_id", nullable = false)
+    private Dataproduct dataproduct1Instance;
+
+    @MapsId("dataproduct2InstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "dataproduct2_instance_id", nullable = false)
+    private Dataproduct dataproduct2Instance;
+
+    public DataproductHaspartId getId() {
+        return id;
     }
 
-    public void setDataproduct1InstanceId(String dataproduct1InstanceId) {
-        this.dataproduct1InstanceId = dataproduct1InstanceId;
+    public void setId(DataproductHaspartId id) {
+        this.id = id;
     }
 
-    public String getDataproduct2InstanceId() {
-        return dataproduct2InstanceId;
+    public Dataproduct getDataproduct1Instance() {
+        return dataproduct1Instance;
     }
 
-    public void setDataproduct2InstanceId(String dataproduct2InstanceId) {
-        this.dataproduct2InstanceId = dataproduct2InstanceId;
+    public void setDataproduct1Instance(Dataproduct dataproduct1Instance) {
+        this.dataproduct1Instance = dataproduct1Instance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DataproductHaspart that = (DataproductHaspart) o;
-
-        if (dataproduct1InstanceId != null ? !dataproduct1InstanceId.equals(that.dataproduct1InstanceId) : that.dataproduct1InstanceId != null)
-            return false;
-        if (dataproduct2InstanceId != null ? !dataproduct2InstanceId.equals(that.dataproduct2InstanceId) : that.dataproduct2InstanceId != null)
-            return false;
-
-        return true;
+    public Dataproduct getDataproduct2Instance() {
+        return dataproduct2Instance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = dataproduct1InstanceId != null ? dataproduct1InstanceId.hashCode() : 0;
-        result = 31 * result + (dataproduct2InstanceId != null ? dataproduct2InstanceId.hashCode() : 0);
-        return result;
+    public void setDataproduct2Instance(Dataproduct dataproduct2Instance) {
+        this.dataproduct2Instance = dataproduct2Instance;
     }
 
-    public Dataproduct getDataproductByDataproduct1InstanceId() {
-        return dataproductByDataproduct1InstanceId;
-    }
-
-    public void setDataproductByDataproduct1InstanceId(Dataproduct dataproductByDataproduct1InstanceId) {
-        this.dataproductByDataproduct1InstanceId = dataproductByDataproduct1InstanceId;
-    }
-
-    public Dataproduct getDataproductByDataproduct2InstanceId() {
-        return dataproductByDataproduct2InstanceId;
-    }
-
-    public void setDataproductByDataproduct2InstanceId(Dataproduct dataproductByDataproduct2InstanceId) {
-        this.dataproductByDataproduct2InstanceId = dataproductByDataproduct2InstanceId;
-    }
 }

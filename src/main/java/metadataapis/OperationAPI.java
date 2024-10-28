@@ -30,7 +30,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Operation) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -39,7 +39,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
         Operation edmobj = new Operation();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -49,55 +49,30 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         edmobj.setMethod(obj.getMethod());
         edmobj.setTemplate(obj.getTemplate());
 
-        edmobj.setOperationMappingsByInstanceId(new ArrayList<>());
         if (obj.getMapping() != null && !obj.getMapping().isEmpty()) {
-            List<OperationMapping> operationMappingList = getDbaccess().getAllFromDB(OperationMapping.class);
-            for(OperationMapping item : operationMappingList){
-                if(item.getOperationInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
             for(LinkedEntity mapping : obj.getMapping()){
-
                 Mapping mapping1 = (Mapping) RelationChecker.checkRelation(mapping, overrideStatus, Mapping.class);
-
-                OperationMapping pi = new OperationMapping();
-                pi.setOperationByOperationInstanceId(edmobj);
-                pi.setOperationInstanceId(edmobj.getInstanceId());
-                pi.setMappingInstanceId(mapping1.getInstanceId());
-                pi.setMappingByMappingInstanceId(mapping1);
-
-                edmobj.getOperationMappingsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(mapping1!=null){
+                    OperationMapping pi = new OperationMapping();
+                    pi.setOperationInstance(edmobj);
+                    pi.setMappingInstance(mapping1);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         if (obj.getWebservice() != null && !obj.getWebservice().isEmpty()) {
-            List<OperationWebservice> operationWebserviceList = getDbaccess().getAllFromDB(OperationWebservice.class);
-            for(OperationWebservice item : operationWebserviceList){
-                if(item.getOperationInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            edmobj.setOperationWebservicesByInstanceId(new ArrayList<>());
             for(LinkedEntity webService : obj.getWebservice()){
-
                 Webservice webservice = (Webservice) RelationChecker.checkRelation(webService, overrideStatus, Webservice.class);
-
-                OperationWebservice pi = new OperationWebservice();
-                pi.setOperationByOperationInstanceId(edmobj);
-                pi.setOperationInstanceId(edmobj.getInstanceId());
-                pi.setWebserviceInstanceId(webservice.getInstanceId());
-                pi.setWebserviceByWebserviceInstanceId(webservice);
-
-                edmobj.getOperationWebservicesByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(webservice!=null){
+                    OperationWebservice pi = new OperationWebservice();
+                    pi.setOperationInstance(edmobj);
+                    pi.setWebserviceInstance(webservice);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
-        edmobj.setOperationElementsByInstanceId(new ArrayList<>());
         /** RETURNS **/
         if(obj.getReturns()!=null && !obj.getReturns().isEmpty()){
             for(String returns : obj.getReturns()) {
@@ -122,13 +97,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OperationElement ce = new OperationElement();
-        ce.setOperationByOperationInstanceId(edmobj);
-        ce.setOperationInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getOperationElementsByInstanceId().add(ce);
-
+        ce.setOperationInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -145,31 +115,31 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             o.setMethod(edmobj.getMethod());
             o.setTemplate(edmobj.getTemplate());
 
-            if (edmobj.getOperationWebservicesByInstanceId().size() > 0) {
-                WebServiceAPI api = new WebServiceAPI(EntityNames.WEBSERVICE.name(), Webservice.class);
-                for (OperationWebservice ed : edmobj.getOperationWebservicesByInstanceId()) {
-                    LinkedEntity el = api.retrieveLinkedEntity(ed.getWebserviceInstanceId());
-                    o.addWebservice(el);
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationWebservice.class)) {
+                OperationWebservice item = (OperationWebservice) object;
+                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    WebServiceAPI api = new WebServiceAPI(EntityNames.WEBSERVICE.name(), Webservice.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
+                    o.addWebservice(le);
                 }
             }
 
-            if (edmobj.getOperationMappingsByInstanceId().size() > 0) {
-                MappingAPI api = new MappingAPI(EntityNames.MAPPING.name(), Mapping.class);
-                for (OperationMapping ed : edmobj.getOperationMappingsByInstanceId()) {
-                    LinkedEntity el = api.retrieveLinkedEntity(ed.getMappingInstanceId());
-                    o.addMapping(el);
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationMapping.class)) {
+                OperationMapping item = (OperationMapping) object;
+                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    MappingAPI api = new MappingAPI(EntityNames.MAPPING.name(), Mapping.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getMappingInstance().getInstanceId());
+                    o.addMapping(le);
                 }
             }
 
-            if (edmobj.getOperationElementsByInstanceId().size() > 0) {
-                for (OperationElement ed : edmobj.getOperationElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.RETURNS)) {
-                        o.addReturns(el.getValue());
-                    }
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationElement.class)) {
+                OperationElement item = (OperationElement) object;
+                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.RETURNS.name())) o.addReturns(el.getValue());
                 }
             }
-
 
             o = (org.epos.eposdatamodel.Operation) VersioningStatusAPI.retrieveVersion(o);
 

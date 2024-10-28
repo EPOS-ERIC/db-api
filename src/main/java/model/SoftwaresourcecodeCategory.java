@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "softwaresourcecode_category", schema = "public", catalog = "cerif")
-@IdClass(SoftwaresourcecodeCategoryPK.class)
+@Table(name = "softwaresourcecode_category")
 public class SoftwaresourcecodeCategory {
-    @Id
-    @Column(name = "category_instance_id", nullable = false, length = 100)
-    private String categoryInstanceId;
-    @Id
-    @Column(name = "softwaresourcecode_instance_id", nullable = false, length = 100)
-    private String softwaresourcecodeInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "category_instance_id", referencedColumnName = "instance_id")
-    private Category categoryByCategoryInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "softwaresourcecode_instance_id", referencedColumnName = "instance_id")
-    private SoftwareSourceCode softwaresourcecodeBySoftwareSourceCodeInstanceId;
+    @EmbeddedId
+    private SoftwaresourcecodeCategoryId id;
 
-    public String getCategoryInstanceId() {
-        return categoryInstanceId;
+    @MapsId("softwaresourcecodeInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
+    private Softwaresourcecode softwaresourcecodeInstance;
+
+    @MapsId("categoryInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "category_instance_id", nullable = false)
+    private Category categoryInstance;
+
+    public SoftwaresourcecodeCategoryId getId() {
+        return id;
     }
 
-    public void setCategoryInstanceId(String categoryInstanceId) {
-        this.categoryInstanceId = categoryInstanceId;
+    public void setId(SoftwaresourcecodeCategoryId id) {
+        this.id = id;
     }
 
-    public String getSoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeInstanceId;
+    public Softwaresourcecode getSoftwaresourcecodeInstance() {
+        return softwaresourcecodeInstance;
     }
 
-    public void setSoftwaresourcecodeInstanceId(String softwaresourcecodeInstanceId) {
-        this.softwaresourcecodeInstanceId = softwaresourcecodeInstanceId;
+    public void setSoftwaresourcecodeInstance(Softwaresourcecode softwaresourcecodeInstance) {
+        this.softwaresourcecodeInstance = softwaresourcecodeInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        SoftwaresourcecodeCategory that = (SoftwaresourcecodeCategory) o;
-
-        if (categoryInstanceId != null ? !categoryInstanceId.equals(that.categoryInstanceId) : that.categoryInstanceId != null)
-            return false;
-        if (softwaresourcecodeInstanceId != null ? !softwaresourcecodeInstanceId.equals(that.softwaresourcecodeInstanceId) : that.softwaresourcecodeInstanceId != null)
-            return false;
-
-        return true;
+    public Category getCategoryInstance() {
+        return categoryInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = categoryInstanceId != null ? categoryInstanceId.hashCode() : 0;
-        result = 31 * result + (softwaresourcecodeInstanceId != null ? softwaresourcecodeInstanceId.hashCode() : 0);
-        return result;
+    public void setCategoryInstance(Category categoryInstance) {
+        this.categoryInstance = categoryInstance;
     }
 
-    public Category getCategoryByCategoryInstanceId() {
-        return categoryByCategoryInstanceId;
-    }
-
-    public void setCategoryByCategoryInstanceId(Category categoryByCategoryInstanceId) {
-        this.categoryByCategoryInstanceId = categoryByCategoryInstanceId;
-    }
-
-    public SoftwareSourceCode getSoftwaresourcecodeBySoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeBySoftwareSourceCodeInstanceId;
-    }
-
-    public void setSoftwaresourcecodeBySoftwaresourcecodeInstanceId(SoftwareSourceCode softwaresourcecodeBySoftwareSourceCodeInstanceId) {
-        this.softwaresourcecodeBySoftwareSourceCodeInstanceId = softwaresourcecodeBySoftwareSourceCodeInstanceId;
-    }
 }

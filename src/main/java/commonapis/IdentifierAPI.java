@@ -2,8 +2,6 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Address;
-import model.Element;
 import model.Identifier;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -33,7 +31,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -41,7 +39,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Identifier edmobj = new Identifier();
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
@@ -59,6 +57,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     @Override
     public org.epos.eposdatamodel.Identifier retrieve(String instanceId) {
         List<Identifier> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Identifier.class);
+        System.out.println("IDENTIFIER API "+elementList);
         if(elementList!=null && !elementList.isEmpty()) {
             Identifier edmobj = elementList.get(0);
             org.epos.eposdatamodel.Identifier o = new org.epos.eposdatamodel.Identifier();
@@ -69,7 +68,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
             o.setIdentifier(edmobj.getValue());
 
             o = (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.retrieveVersion(o);
-
+            System.out.println(o);
             return o;
         }
         return null;

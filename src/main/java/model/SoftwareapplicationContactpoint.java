@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "softwareapplication_contactpoint", schema = "public", catalog = "cerif")
-@IdClass(SoftwareapplicationContactpointPK.class)
+@Table(name = "softwareapplication_contactpoint")
 public class SoftwareapplicationContactpoint {
-    @Id
-    @Column(name = "softwareapplication_instance_id", nullable = false, length = 100)
-    private String softwareapplicationInstanceId;
-    @Id
-    @Column(name = "contactpoint_instance_id", nullable = false, length = 100)
-    private String contactpointInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "softwareapplication_instance_id", referencedColumnName = "instance_id")
-    private SoftwareApplication softwareapplicationBySoftwareApplicationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "contactpoint_instance_id", referencedColumnName = "instance_id")
-    private Contactpoint contactpointByContactpointInstanceId;
+    @EmbeddedId
+    private SoftwareapplicationContactpointId id;
 
-    public String getSoftwareapplicationInstanceId() {
-        return softwareapplicationInstanceId;
+    @MapsId("softwareapplicationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
+    private Softwareapplication softwareapplicationInstance;
+
+    @MapsId("contactpointInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "contactpoint_instance_id", nullable = false)
+    private Contactpoint contactpointInstance;
+
+    public SoftwareapplicationContactpointId getId() {
+        return id;
     }
 
-    public void setSoftwareapplicationInstanceId(String softwareapplicationInstanceId) {
-        this.softwareapplicationInstanceId = softwareapplicationInstanceId;
+    public void setId(SoftwareapplicationContactpointId id) {
+        this.id = id;
     }
 
-    public String getContactpointInstanceId() {
-        return contactpointInstanceId;
+    public Softwareapplication getSoftwareapplicationInstance() {
+        return softwareapplicationInstance;
     }
 
-    public void setContactpointInstanceId(String contactpointInstanceId) {
-        this.contactpointInstanceId = contactpointInstanceId;
+    public void setSoftwareapplicationInstance(Softwareapplication softwareapplicationInstance) {
+        this.softwareapplicationInstance = softwareapplicationInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        SoftwareapplicationContactpoint that = (SoftwareapplicationContactpoint) o;
-
-        if (softwareapplicationInstanceId != null ? !softwareapplicationInstanceId.equals(that.softwareapplicationInstanceId) : that.softwareapplicationInstanceId != null)
-            return false;
-        if (contactpointInstanceId != null ? !contactpointInstanceId.equals(that.contactpointInstanceId) : that.contactpointInstanceId != null)
-            return false;
-
-        return true;
+    public Contactpoint getContactpointInstance() {
+        return contactpointInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = softwareapplicationInstanceId != null ? softwareapplicationInstanceId.hashCode() : 0;
-        result = 31 * result + (contactpointInstanceId != null ? contactpointInstanceId.hashCode() : 0);
-        return result;
+    public void setContactpointInstance(Contactpoint contactpointInstance) {
+        this.contactpointInstance = contactpointInstance;
     }
 
-    public SoftwareApplication getSoftwareapplicationBySoftwareapplicationInstanceId() {
-        return softwareapplicationBySoftwareApplicationInstanceId;
-    }
-
-    public void setSoftwareapplicationBySoftwareapplicationInstanceId(SoftwareApplication softwareapplicationBySoftwareApplicationInstanceId) {
-        this.softwareapplicationBySoftwareApplicationInstanceId = softwareapplicationBySoftwareApplicationInstanceId;
-    }
-
-    public Contactpoint getContactpointByContactpointInstanceId() {
-        return contactpointByContactpointInstanceId;
-    }
-
-    public void setContactpointByContactpointInstanceId(Contactpoint contactpointByContactpointInstanceId) {
-        this.contactpointByContactpointInstanceId = contactpointByContactpointInstanceId;
-    }
 }

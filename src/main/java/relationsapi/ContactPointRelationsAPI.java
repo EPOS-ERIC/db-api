@@ -14,210 +14,92 @@ import java.util.Optional;
 public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
-        List<EquipmentContactpoint> equipmentContactpointList = getDbaccess().getAllFromDB(EquipmentContactpoint.class);
-        for(EquipmentContactpoint item : equipmentContactpointList){
-            if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        edmobj.setEquipmentContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    EquipmentContactpoint pi = new EquipmentContactpoint();
+                    pi.setEquipmentInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            EquipmentContactpoint pi = new EquipmentContactpoint();
-            pi.setEquipmentByEquipmentInstanceId(edmobj);
-            pi.setEquipmentInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getEquipmentContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
-        List<FacilityContactpoint> facilityContactpointList = getDbaccess().getAllFromDB(FacilityContactpoint.class);
-        for(FacilityContactpoint item : facilityContactpointList){
-            if(item.getFacilityInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        edmobj.setFacilityContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    FacilityContactpoint pi = new FacilityContactpoint();
+                    pi.setFacilityInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            FacilityContactpoint pi = new FacilityContactpoint();
-            pi.setFacilityByFacilityInstanceId(edmobj);
-            pi.setFacilityInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getFacilityContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
-        List<DataproductContactpoint> dataproductContactpointList = getDbaccess().getAllFromDB(DataproductContactpoint.class);
-        for(DataproductContactpoint item : dataproductContactpointList){
-            if(item.getDataproductInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-        edmobj.setDataproductContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    DataproductContactpoint pi = new DataproductContactpoint();
+                    pi.setDataproductInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            DataproductContactpoint pi = new DataproductContactpoint();
-            pi.setDataproductByDataproductInstanceId(edmobj);
-            pi.setDataproductInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getDataproductContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus){
-        List<WebserviceContactpoint> webserviceContactpointList = getDbaccess().getAllFromDB(WebserviceContactpoint.class);
-        for(WebserviceContactpoint item : webserviceContactpointList){
-            if(item.getWebserviceInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-        edmobj.setWebserviceContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    WebserviceContactpoint pi = new WebserviceContactpoint();
+                    pi.setWebserviceInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            WebserviceContactpoint pi = new WebserviceContactpoint();
-            pi.setWebserviceByWebserviceInstanceId(edmobj);
-            pi.setWebserviceInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getWebserviceContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 
-    public static void createRelation(SoftwareSourceCode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus){
-        List<SoftwaresourcecodeContactpoint> softwaresourcecodeContactpointList = getDbaccess().getAllFromDB(SoftwaresourcecodeContactpoint.class);
-        for(SoftwaresourcecodeContactpoint item : softwaresourcecodeContactpointList){
-            if(item.getSoftwaresourcecodeInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-        edmobj.setSoftwaresourcecodeContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+    public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    SoftwaresourcecodeContactpoint pi = new SoftwaresourcecodeContactpoint();
+                    pi.setSoftwaresourcecodeInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            SoftwaresourcecodeContactpoint pi = new SoftwaresourcecodeContactpoint();
-            pi.setSoftwaresourcecodeBySoftwaresourcecodeInstanceId(edmobj);
-            pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getSoftwaresourcecodeContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 
-    public static void createRelation(SoftwareApplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus){
-        List<SoftwareapplicationContactpoint> softwaresourcecodeContactpointList = getDbaccess().getAllFromDB(SoftwareapplicationContactpoint.class);
-        for(SoftwareapplicationContactpoint item : softwaresourcecodeContactpointList){
-            if(item.getSoftwareapplicationInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-            }
-        }
-        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-        edmobj.setSoftwareapplicationContactpointsByInstanceId(new ArrayList<>());
-        for(LinkedEntity contactPoint : obj.getContactPoint()){
-            List<Contactpoint> list = dbaccess.getOneFromDB(
-                    Optional.ofNullable(contactPoint.getInstanceId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getMetaId()).orElse(null),
-                    Optional.ofNullable(contactPoint.getUid()).orElse(null),
-                    null,
-                    Contactpoint.class);
-            Contactpoint contactPoint1 = null;
-            if(list.isEmpty()){
+    public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus){
+        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
-                contactPoint1 = (Contactpoint) dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class).get(0);
-            } else {
-                contactPoint1 = list.get(0);
+                List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
+                if(!contactpointList.isEmpty()) {
+                    SoftwareapplicationContactpoint pi = new SoftwareapplicationContactpoint();
+                    pi.setSoftwareapplicationInstance(edmobj);
+                    pi.setContactpointInstance(contactpointList.get(0));
+                    dbaccess.updateObject(pi);
+                }
             }
-            SoftwareapplicationContactpoint pi = new SoftwareapplicationContactpoint();
-            pi.setSoftwareapplicationBySoftwareapplicationInstanceId(edmobj);
-            pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-            pi.setContactpointInstanceId(contactPoint1.getInstanceId());
-            pi.setContactpointByContactpointInstanceId(contactPoint1);
-
-            edmobj.getSoftwareapplicationContactpointsByInstanceId().add(pi);
-
-            dbaccess.createObject(pi);
         }
     }
 }

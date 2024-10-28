@@ -5,7 +5,6 @@ import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import model.RequestStatusType;
 import model.RoleType;
-import net.bytebuddy.dynamic.scaffold.MethodGraph;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.Identifier;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -97,10 +96,18 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
         UserGroupManagementAPI.addUserToGroup(group.getId(),user.getAuthIdentifier(), RoleType.EDITOR, RequestStatusType.PENDING);
 
         Group retrieveGroup = UserGroupManagementAPI.retrieveGroupById(group.getId());
+
+        System.out.println("MEGATEST: "+retrieveGroup.getId()+" "+group.getId());
         User retrieveUser = UserGroupManagementAPI.retrieveUser(user);
+
+        System.out.println("MEGATEST: "+retrieveUser.getAuthIdentifier()+" "+user.getAuthIdentifier());
 
         System.out.println(retrieveGroup);
         System.out.println(retrieveUser);
+
+        System.out.println("ANOTHER TEST: "+retrieveGroup.getUsers().get(0)+" "+retrieveUser.getAuthIdentifier());
+        System.out.println("ANOTHER TEST: "+retrieveUser.getGroups().get(0).getGroupId()+" "+retrieveGroup.getId());
+        System.out.println("ANOTHER TEST: "+retrieveUser.getGroups().size());
 
         assertAll(
                 () -> assertNotNull(retrieveGroup),

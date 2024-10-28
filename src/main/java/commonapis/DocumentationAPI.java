@@ -32,7 +32,7 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Documentation) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -40,11 +40,11 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Element edmobj = new Element();
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setType(ElementType.DOCUMENTATION);
+        edmobj.setType(ElementType.DOCUMENTATION.name());
         JsonObject documentationObj = new JsonObject();
         documentationObj.addProperty("Title", obj.getTitle());
         documentationObj.addProperty("Description", obj.getDescription());

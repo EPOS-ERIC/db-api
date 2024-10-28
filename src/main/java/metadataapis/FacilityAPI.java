@@ -33,7 +33,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Facility) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -42,7 +42,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         Facility edmobj = new Facility();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -66,90 +66,43 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         /** ADDRESS **/
         if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
-            List<FacilityAddress> facilityAddressList = getDbaccess().getAllFromDB(FacilityAddress.class);
-            for(FacilityAddress item : facilityAddressList){
-                if(item.getFacilityInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            AddressAPI addressAPI = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
-            edmobj.setFacilityAddressesByInstanceId(new ArrayList<>());
             for(LinkedEntity address : obj.getAddress()){
-
                 Address address1 = (Address) RelationChecker.checkRelation(address, overrideStatus, Address.class);
-
-                FacilityAddress pi = new FacilityAddress();
-                pi.setFacilityByFacilityInstanceId(edmobj);
-                pi.setFacilityInstanceId(edmobj.getInstanceId());
-                pi.setAddressInstanceId(address1.getInstanceId());
-                pi.setAddressByAddressInstanceId(address1);
-
-                edmobj.getFacilityAddressesByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(address1 != null){
+                    FacilityAddress pi = new FacilityAddress();
+                    pi.setFacilityInstance(edmobj);
+                    pi.setAddressInstance(address1);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         /** ISPARTOF **/
         if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-            List<FacilityIspartof> facilityIspartofList = getDbaccess().getAllFromDB(FacilityIspartof.class);
-            for(FacilityIspartof item : facilityIspartofList){
-                if(item.getFacility1InstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            edmobj.setFacilityIspartofsByInstanceId(new ArrayList<>());
             for(LinkedEntity facility : obj.getIsPartOf()){
-
                 Facility facility1 = (Facility) RelationChecker.checkRelation(facility, overrideStatus, Facility.class);
-
-                FacilityIspartof pi = new FacilityIspartof();
-                pi.setFacilityByFacility1InstanceId(edmobj);
-                pi.setFacility1InstanceId(edmobj.getInstanceId());
-                pi.setFacility2InstanceId(facility1.getInstanceId());
-                pi.setFacilityByFacility2InstanceId(facility1);
-
-                edmobj.getFacilityIspartofsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(facility1 != null){
+                    FacilityIspartof pi = new FacilityIspartof();
+                    pi.setFacility1Instance(edmobj);
+                    pi.setFacility2Instance(facility1);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-            List<FacilitySpatial> facilitySpatialList = getDbaccess().getAllFromDB(FacilitySpatial.class);
-            for(FacilitySpatial item : facilitySpatialList){
-                if(item.getFacilityInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
+            for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
+                if(spatial != null){
+                    FacilitySpatial pi = new FacilitySpatial();
+                    pi.setFacilityInstance(edmobj);
+                    pi.setSpatialInstance(spatial);
+                    dbaccess.updateObject(pi);
                 }
             }
-            SpatialAPI spatialAPI = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-            edmobj.setFacilitySpatialsByInstanceId(new ArrayList<>());
-            for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
-
-                FacilitySpatial pi = new FacilitySpatial();
-                pi.setFacilityByFacilityInstanceId(edmobj);
-                pi.setFacilityInstanceId(edmobj.getInstanceId());
-                pi.setSpatialInstanceId(spatial.getInstanceId());
-                pi.setSpatialBySpatialInstanceId(spatial);
-
-                edmobj.getFacilitySpatialsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
-            }
         }
 
-        List<FacilityElement> elementslist = getDbaccess().getAllFromDB(FacilityElement.class);
-        edmobj.setFacilityElementsByInstanceId(new ArrayList<>());
-        for(FacilityElement item : elementslist){
-            if(item.getFacilityInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-                List<Element> list2 = getDbaccess().getOneFromDBByInstanceId(item.getElementInstanceId(), Element.class);
-                if(list2.size()>0) getDbaccess().deleteObject(list2.get(0));
-            }
-        }
         /* PAGEURL */
         if(obj.getPageURL()!=null && !obj.getPageURL().isEmpty()){
             for(String pageurl : obj.getPageURL()) {
@@ -174,13 +127,8 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         FacilityElement ce = new FacilityElement();
-        ce.setFacilityByFacilityInstanceId(edmobj);
-        ce.setFacilityInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getFacilityElementsByInstanceId().add(ce);
-
+        ce.setFacilityInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -200,49 +148,56 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             o.setTitle(edmobj.getTitle());
             o.setKeywords(edmobj.getKeywords());
 
-            if (edmobj.getFacilityCategoriesByInstanceId().size() > 0) {
-                for (FacilityCategory ed : edmobj.getFacilityCategoriesByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityCategory.class)) {
+                FacilityCategory item = (FacilityCategory) object;
+                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getCategoryInstanceId());
-                    o.addCategory(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
+                    o.addCategory(le);
                 }
             }
 
-            if (edmobj.getFacilityContactpointsByInstanceId().size() > 0) {
-                for (FacilityContactpoint ed : edmobj.getFacilityContactpointsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityContactpoint.class)) {
+                FacilityContactpoint item = (FacilityContactpoint) object;
+                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getContactpointInstanceId());
-                    o.addContactPoint(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    o.addContactPoint(le);
                 }
             }
 
-            if (edmobj.getFacilityAddressesByInstanceId().size() > 0) {
-                for (FacilityAddress ed : edmobj.getFacilityAddressesByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityAddress.class)) {
+                FacilityAddress item = (FacilityAddress) object;
+                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     AddressAPI api = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getAddressInstanceId());
-                    o.addAddress(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getAddressInstance().getInstanceId());
+                    o.addAddress(le);
                 }
             }
 
-            if (edmobj.getFacilityIspartofsByInstanceId().size() > 0) {
-                for (FacilityIspartof ed : edmobj.getFacilityIspartofsByInstanceId()) {
-                    LinkedEntity cp = retrieveLinkedEntity(ed.getFacility2InstanceId());
-                    o.addIsPartOf(cp);
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1_instance_id", edmobj.getInstanceId(),FacilityIspartof.class)) {
+                FacilityIspartof item = (FacilityIspartof) object;
+                if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getFacility2Instance().getInstanceId());
+                    o.addIsPartOf(le);
                 }
             }
 
-            if (edmobj.getFacilitySpatialsByInstanceId().size() > 0) {
-                for (FacilitySpatial ed : edmobj.getFacilitySpatialsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilitySpatial.class)) {
+                FacilitySpatial item = (FacilitySpatial) object;
+                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-                    org.epos.eposdatamodel.LinkedEntity cp = api.retrieveLinkedEntity(ed.getSpatialInstanceId());
-                    o.addSpatialExtentItem(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
+                    o.addIsPartOf(le);
                 }
             }
 
-            if (edmobj.getFacilityElementsByInstanceId().size() > 0) {
-                for (FacilityElement ed : edmobj.getFacilityElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.PAGEURL)) o.addPageURL(el.getValue());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityElement.class)) {
+                FacilityElement item = (FacilityElement) object;
+                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.PAGEURL.name())) o.addPageURL(el.getValue());
                 }
             }
 

@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "contactpoint_element", schema = "public", catalog = "cerif")
-@IdClass(ContactpointElementPK.class)
+@Table(name = "contactpoint_element")
 public class ContactpointElement {
-    @Id
-    @Column(name = "contactpoint_instance_id", nullable = false, length = 100)
-    private String contactpointInstanceId;
-    @Id
-    @Column(name = "element_instance_id", nullable = false, length = 100)
-    private String elementInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "contactpoint_instance_id", referencedColumnName = "instance_id")
-    private Contactpoint contactpointByContactpointInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "element_instance_id", referencedColumnName = "instance_id")
-    private Element elementByElementInstanceId;
+    @EmbeddedId
+    private ContactpointElementId id;
 
-    public String getContactpointInstanceId() {
-        return contactpointInstanceId;
+    @MapsId("contactpointInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "contactpoint_instance_id", nullable = false)
+    private Contactpoint contactpointInstance;
+
+    @MapsId("elementInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "element_instance_id", nullable = false)
+    private model.Element elementInstance;
+
+    public ContactpointElementId getId() {
+        return id;
     }
 
-    public void setContactpointInstanceId(String contactpointInstanceId) {
-        this.contactpointInstanceId = contactpointInstanceId;
+    public void setId(ContactpointElementId id) {
+        this.id = id;
     }
 
-    public String getElementInstanceId() {
-        return elementInstanceId;
+    public Contactpoint getContactpointInstance() {
+        return contactpointInstance;
     }
 
-    public void setElementInstanceId(String elementInstanceId) {
-        this.elementInstanceId = elementInstanceId;
+    public void setContactpointInstance(Contactpoint contactpointInstance) {
+        this.contactpointInstance = contactpointInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ContactpointElement that = (ContactpointElement) o;
-
-        if (contactpointInstanceId != null ? !contactpointInstanceId.equals(that.contactpointInstanceId) : that.contactpointInstanceId != null)
-            return false;
-        if (elementInstanceId != null ? !elementInstanceId.equals(that.elementInstanceId) : that.elementInstanceId != null)
-            return false;
-
-        return true;
+    public model.Element getElementInstance() {
+        return elementInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = contactpointInstanceId != null ? contactpointInstanceId.hashCode() : 0;
-        result = 31 * result + (elementInstanceId != null ? elementInstanceId.hashCode() : 0);
-        return result;
+    public void setElementInstance(model.Element elementInstance) {
+        this.elementInstance = elementInstance;
     }
 
-    public Contactpoint getContactpointByContactpointInstanceId() {
-        return contactpointByContactpointInstanceId;
-    }
-
-    public void setContactpointByContactpointInstanceId(Contactpoint contactpointByContactpointInstanceId) {
-        this.contactpointByContactpointInstanceId = contactpointByContactpointInstanceId;
-    }
-
-    public Element getElementByElementInstanceId() {
-        return elementByElementInstanceId;
-    }
-
-    public void setElementByElementInstanceId(Element elementByElementInstanceId) {
-        this.elementByElementInstanceId = elementByElementInstanceId;
-    }
 }

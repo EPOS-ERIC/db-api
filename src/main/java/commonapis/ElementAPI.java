@@ -2,8 +2,8 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Address;
 import model.Element;
+import model.ElementType;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 
@@ -32,7 +32,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Element) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -40,11 +40,11 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Element edmobj = new Element();
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setType(Optional.ofNullable(obj.getType()).orElse(null));
+        edmobj.setType(Optional.ofNullable(obj.getType().toString()).orElse(null));
         edmobj.setValue(Optional.ofNullable(obj.getValue()).orElse(null));
 
         getDbaccess().updateObject(edmobj);
@@ -66,7 +66,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setType(edmobj.getType());
+            o.setType(ElementType.valueOf(edmobj.getType()));
             o.setValue(edmobj.getValue());
 
             o = (org.epos.eposdatamodel.Element) VersioningStatusAPI.retrieveVersion(o);

@@ -1,15 +1,8 @@
 package org.epos.eposdatamodel;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Basic;
-import jakarta.persistence.Column;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import model.AuthorizationGroup;
-import model.MetadataGroupUser;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 

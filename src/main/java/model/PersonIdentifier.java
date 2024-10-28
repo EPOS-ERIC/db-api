@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "person_identifier", schema = "public", catalog = "cerif")
-@IdClass(PersonIdentifierPK.class)
+@Table(name = "person_identifier")
 public class PersonIdentifier {
-    @Id
-    @Column(name = "person_instance_id", nullable = false, length = 100)
-    private String personInstanceId;
-    @Id
-    @Column(name = "identifier_instance_id", nullable = false, length = 100)
-    private String identifierInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "person_instance_id", referencedColumnName = "instance_id")
-    private Person personByPersonInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "identifier_instance_id", referencedColumnName = "instance_id")
-    private Identifier identifierByIdentifierInstanceId;
+    @EmbeddedId
+    private PersonIdentifierId id;
 
-    public String getPersonInstanceId() {
-        return personInstanceId;
+    @MapsId("personInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "person_instance_id", nullable = false)
+    private Person personInstance;
+
+    @MapsId("identifierInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "identifier_instance_id", nullable = false)
+    private Identifier identifierInstance;
+
+    public PersonIdentifierId getId() {
+        return id;
     }
 
-    public void setPersonInstanceId(String personInstanceId) {
-        this.personInstanceId = personInstanceId;
+    public void setId(PersonIdentifierId id) {
+        this.id = id;
     }
 
-    public String getIdentifierInstanceId() {
-        return identifierInstanceId;
+    public Person getPersonInstance() {
+        return personInstance;
     }
 
-    public void setIdentifierInstanceId(String identifierInstanceId) {
-        this.identifierInstanceId = identifierInstanceId;
+    public void setPersonInstance(Person personInstance) {
+        this.personInstance = personInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        PersonIdentifier that = (PersonIdentifier) o;
-
-        if (personInstanceId != null ? !personInstanceId.equals(that.personInstanceId) : that.personInstanceId != null)
-            return false;
-        if (identifierInstanceId != null ? !identifierInstanceId.equals(that.identifierInstanceId) : that.identifierInstanceId != null)
-            return false;
-
-        return true;
+    public Identifier getIdentifierInstance() {
+        return identifierInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = personInstanceId != null ? personInstanceId.hashCode() : 0;
-        result = 31 * result + (identifierInstanceId != null ? identifierInstanceId.hashCode() : 0);
-        return result;
+    public void setIdentifierInstance(Identifier identifierInstance) {
+        this.identifierInstance = identifierInstance;
     }
 
-    public Person getPersonByPersonInstanceId() {
-        return personByPersonInstanceId;
-    }
-
-    public void setPersonByPersonInstanceId(Person personByPersonInstanceId) {
-        this.personByPersonInstanceId = personByPersonInstanceId;
-    }
-
-    public Identifier getIdentifierByIdentifierInstanceId() {
-        return identifierByIdentifierInstanceId;
-    }
-
-    public void setIdentifierByIdentifierInstanceId(Identifier identifierByIdentifierInstanceId) {
-        this.identifierByIdentifierInstanceId = identifierByIdentifierInstanceId;
-    }
 }

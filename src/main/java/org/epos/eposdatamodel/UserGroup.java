@@ -3,7 +3,6 @@ package org.epos.eposdatamodel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import model.RoleType;
 
-import java.util.List;
 import java.util.Objects;
 
 public class UserGroup {

@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "operation_webservice", schema = "public", catalog = "cerif")
-@IdClass(OperationWebservicePK.class)
+@Table(name = "operation_webservice")
 public class OperationWebservice {
-    @Id
-    @Column(name = "operation_instance_id", nullable = false, length = 100)
-    private String operationInstanceId;
-    @Id
-    @Column(name = "webservice_instance_id", nullable = false, length = 100)
-    private String webserviceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "operation_instance_id", referencedColumnName = "instance_id")
-    private Operation operationByOperationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "webservice_instance_id", referencedColumnName = "instance_id")
-    private Webservice webserviceByWebserviceInstanceId;
+    @EmbeddedId
+    private OperationWebserviceId id;
 
-    public String getOperationInstanceId() {
-        return operationInstanceId;
+    @MapsId("webserviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "webservice_instance_id", nullable = false)
+    private model.Webservice webserviceInstance;
+
+    @MapsId("operationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "operation_instance_id", nullable = false)
+    private Operation operationInstance;
+
+    public OperationWebserviceId getId() {
+        return id;
     }
 
-    public void setOperationInstanceId(String operationInstanceId) {
-        this.operationInstanceId = operationInstanceId;
+    public void setId(OperationWebserviceId id) {
+        this.id = id;
     }
 
-    public String getWebserviceInstanceId() {
-        return webserviceInstanceId;
+    public model.Webservice getWebserviceInstance() {
+        return webserviceInstance;
     }
 
-    public void setWebserviceInstanceId(String webserviceInstanceId) {
-        this.webserviceInstanceId = webserviceInstanceId;
+    public void setWebserviceInstance(model.Webservice webserviceInstance) {
+        this.webserviceInstance = webserviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        OperationWebservice that = (OperationWebservice) o;
-
-        if (operationInstanceId != null ? !operationInstanceId.equals(that.operationInstanceId) : that.operationInstanceId != null)
-            return false;
-        if (webserviceInstanceId != null ? !webserviceInstanceId.equals(that.webserviceInstanceId) : that.webserviceInstanceId != null)
-            return false;
-
-        return true;
+    public Operation getOperationInstance() {
+        return operationInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = operationInstanceId != null ? operationInstanceId.hashCode() : 0;
-        result = 31 * result + (webserviceInstanceId != null ? webserviceInstanceId.hashCode() : 0);
-        return result;
+    public void setOperationInstance(Operation operationInstance) {
+        this.operationInstance = operationInstance;
     }
 
-    public Operation getOperationByOperationInstanceId() {
-        return operationByOperationInstanceId;
-    }
-
-    public void setOperationByOperationInstanceId(Operation operationByOperationInstanceId) {
-        this.operationByOperationInstanceId = operationByOperationInstanceId;
-    }
-
-    public Webservice getWebserviceByWebserviceInstanceId() {
-        return webserviceByWebserviceInstanceId;
-    }
-
-    public void setWebserviceByWebserviceInstanceId(Webservice webserviceByWebserviceInstanceId) {
-        this.webserviceByWebserviceInstanceId = webserviceByWebserviceInstanceId;
-    }
 }

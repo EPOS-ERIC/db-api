@@ -80,12 +80,12 @@ public class LinkedEntityAPI {
                 entity = new org.epos.eposdatamodel.CategoryScheme();
                 break;
             case SOFTWARESOURCECODE:
-                edmClass = SoftwareSourceCode.class;
+                edmClass = Softwaresourcecode.class;
                 api = new SoftwareSourceCodeAPI(obj.getEntityType(), edmClass);
                 entity = new org.epos.eposdatamodel.SoftwareSourceCode();
                 break;
             case SOFTWAREAPPLICATION:
-                edmClass = SoftwareApplication.class;
+                edmClass = Softwareapplication.class;
                 api = new SoftwareApplicationAPI(obj.getEntityType(), edmClass);
                 entity = new org.epos.eposdatamodel.SoftwareApplication();
                 break;
@@ -115,7 +115,7 @@ public class LinkedEntityAPI {
                 entity = new org.epos.eposdatamodel.Identifier();
                 break;
             case QUANTITATIVEVALUE:
-                edmClass = QuantitativeValue.class;
+                edmClass = Quantitativevalue.class;
                 api = new QuantitativeValueAPI(obj.getEntityType(), edmClass);
                 entity = new org.epos.eposdatamodel.QuantitativeValue();
                 break;
@@ -125,7 +125,7 @@ public class LinkedEntityAPI {
                 entity = new org.epos.eposdatamodel.Documentation();
                 break;
             case PARAMETER:
-                edmClass = SoftwareapplicationParameters.class;
+                edmClass = SoftwareapplicationParameter.class;
                 api = new ParameterAPI(obj.getEntityType(), edmClass);
                 entity = new org.epos.eposdatamodel.Parameter();
                 break;
@@ -218,11 +218,11 @@ public class LinkedEntityAPI {
                 api = new CategorySchemeAPI(obj.getEntityType(), edmClass);
                 break;
             case SOFTWARESOURCECODE:
-                edmClass = SoftwareSourceCode.class;
+                edmClass = Softwaresourcecode.class;
                 api = new SoftwareSourceCodeAPI(obj.getEntityType(), edmClass);
                 break;
             case SOFTWAREAPPLICATION:
-                edmClass = SoftwareApplication.class;
+                edmClass = Softwareapplication.class;
                 api = new SoftwareApplicationAPI(obj.getEntityType(), edmClass);
                 break;
             case ADDRESS:
@@ -246,7 +246,7 @@ public class LinkedEntityAPI {
                 api = new IdentifierAPI(obj.getEntityType(), edmClass);
                 break;
             case QUANTITATIVEVALUE:
-                edmClass = QuantitativeValue.class;
+                edmClass = Quantitativevalue.class;
                 api = new QuantitativeValueAPI(obj.getEntityType(), edmClass);
                 break;
             case DOCUMENTATION:
@@ -254,7 +254,7 @@ public class LinkedEntityAPI {
                 api = new DocumentationAPI(obj.getEntityType(), edmClass);
                 break;
             case PARAMETER:
-                edmClass = SoftwareapplicationParameters.class;
+                edmClass = SoftwareapplicationParameter.class;
                 api = new ParameterAPI(obj.getEntityType(), edmClass);
                 break;
             case RELATION:

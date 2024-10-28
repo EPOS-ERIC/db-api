@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "softwareapplication_identifier", schema = "public", catalog = "cerif")
-@IdClass(SoftwareapplicationIdentifierPK.class)
+@Table(name = "softwareapplication_identifier")
 public class SoftwareapplicationIdentifier {
-    @Id
-    @Column(name = "softwareapplication_instance_id", nullable = false, length = 100)
-    private String softwareapplicationInstanceId;
-    @Id
-    @Column(name = "identifier_instance_id", nullable = false, length = 100)
-    private String identifierInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "softwareapplication_instance_id", referencedColumnName = "instance_id")
-    private SoftwareApplication softwareapplicationBySoftwareApplicationInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "identifier_instance_id", referencedColumnName = "instance_id")
-    private Identifier identifierByIdentifierInstanceId;
+    @EmbeddedId
+    private SoftwareapplicationIdentifierId id;
 
-    public String getSoftwareapplicationInstanceId() {
-        return softwareapplicationInstanceId;
+    @MapsId("softwareapplicationInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
+    private Softwareapplication softwareapplicationInstance;
+
+    @MapsId("identifierInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "identifier_instance_id", nullable = false)
+    private Identifier identifierInstance;
+
+    public SoftwareapplicationIdentifierId getId() {
+        return id;
     }
 
-    public void setSoftwareapplicationInstanceId(String softwareapplicationInstanceId) {
-        this.softwareapplicationInstanceId = softwareapplicationInstanceId;
+    public void setId(SoftwareapplicationIdentifierId id) {
+        this.id = id;
     }
 
-    public String getIdentifierInstanceId() {
-        return identifierInstanceId;
+    public Softwareapplication getSoftwareapplicationInstance() {
+        return softwareapplicationInstance;
     }
 
-    public void setIdentifierInstanceId(String identifierInstanceId) {
-        this.identifierInstanceId = identifierInstanceId;
+    public void setSoftwareapplicationInstance(Softwareapplication softwareapplicationInstance) {
+        this.softwareapplicationInstance = softwareapplicationInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        SoftwareapplicationIdentifier that = (SoftwareapplicationIdentifier) o;
-
-        if (softwareapplicationInstanceId != null ? !softwareapplicationInstanceId.equals(that.softwareapplicationInstanceId) : that.softwareapplicationInstanceId != null)
-            return false;
-        if (identifierInstanceId != null ? !identifierInstanceId.equals(that.identifierInstanceId) : that.identifierInstanceId != null)
-            return false;
-
-        return true;
+    public Identifier getIdentifierInstance() {
+        return identifierInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = softwareapplicationInstanceId != null ? softwareapplicationInstanceId.hashCode() : 0;
-        result = 31 * result + (identifierInstanceId != null ? identifierInstanceId.hashCode() : 0);
-        return result;
+    public void setIdentifierInstance(Identifier identifierInstance) {
+        this.identifierInstance = identifierInstance;
     }
 
-    public SoftwareApplication getSoftwareapplicationBySoftwareapplicationInstanceId() {
-        return softwareapplicationBySoftwareApplicationInstanceId;
-    }
-
-    public void setSoftwareapplicationBySoftwareapplicationInstanceId(SoftwareApplication softwareapplicationBySoftwareApplicationInstanceId) {
-        this.softwareapplicationBySoftwareApplicationInstanceId = softwareapplicationBySoftwareApplicationInstanceId;
-    }
-
-    public Identifier getIdentifierByIdentifierInstanceId() {
-        return identifierByIdentifierInstanceId;
-    }
-
-    public void setIdentifierByIdentifierInstanceId(Identifier identifierByIdentifierInstanceId) {
-        this.identifierByIdentifierInstanceId = identifierByIdentifierInstanceId;
-    }
 }

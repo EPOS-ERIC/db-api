@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "service_contactpoint", schema = "public", catalog = "cerif")
-@IdClass(ServiceContactpointPK.class)
+@Table(name = "service_contactpoint")
 public class ServiceContactpoint {
-    @Id
-    @Column(name = "service_instance_id", nullable = false, length = 100)
-    private String serviceInstanceId;
-    @Id
-    @Column(name = "contactpoint_instance_id", nullable = false, length = 100)
-    private String contactpointInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "service_instance_id", referencedColumnName = "instance_id")
-    private Service serviceByServiceInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "contactpoint_instance_id", referencedColumnName = "instance_id")
-    private Contactpoint contactpointByContactpointInstanceId;
+    @EmbeddedId
+    private ServiceContactpointId id;
 
-    public String getServiceInstanceId() {
-        return serviceInstanceId;
+    @MapsId("serviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "service_instance_id", nullable = false)
+    private Service serviceInstance;
+
+    @MapsId("contactpointInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "contactpoint_instance_id", nullable = false)
+    private Contactpoint contactpointInstance;
+
+    public ServiceContactpointId getId() {
+        return id;
     }
 
-    public void setServiceInstanceId(String serviceInstanceId) {
-        this.serviceInstanceId = serviceInstanceId;
+    public void setId(ServiceContactpointId id) {
+        this.id = id;
     }
 
-    public String getContactpointInstanceId() {
-        return contactpointInstanceId;
+    public Service getServiceInstance() {
+        return serviceInstance;
     }
 
-    public void setContactpointInstanceId(String contactpointInstanceId) {
-        this.contactpointInstanceId = contactpointInstanceId;
+    public void setServiceInstance(Service serviceInstance) {
+        this.serviceInstance = serviceInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ServiceContactpoint that = (ServiceContactpoint) o;
-
-        if (serviceInstanceId != null ? !serviceInstanceId.equals(that.serviceInstanceId) : that.serviceInstanceId != null)
-            return false;
-        if (contactpointInstanceId != null ? !contactpointInstanceId.equals(that.contactpointInstanceId) : that.contactpointInstanceId != null)
-            return false;
-
-        return true;
+    public Contactpoint getContactpointInstance() {
+        return contactpointInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = serviceInstanceId != null ? serviceInstanceId.hashCode() : 0;
-        result = 31 * result + (contactpointInstanceId != null ? contactpointInstanceId.hashCode() : 0);
-        return result;
+    public void setContactpointInstance(Contactpoint contactpointInstance) {
+        this.contactpointInstance = contactpointInstance;
     }
 
-    public Service getServiceByServiceInstanceId() {
-        return serviceByServiceInstanceId;
-    }
-
-    public void setServiceByServiceInstanceId(Service serviceByServiceInstanceId) {
-        this.serviceByServiceInstanceId = serviceByServiceInstanceId;
-    }
-
-    public Contactpoint getContactpointByContactpointInstanceId() {
-        return contactpointByContactpointInstanceId;
-    }
-
-    public void setContactpointByContactpointInstanceId(Contactpoint contactpointByContactpointInstanceId) {
-        this.contactpointByContactpointInstanceId = contactpointByContactpointInstanceId;
-    }
 }

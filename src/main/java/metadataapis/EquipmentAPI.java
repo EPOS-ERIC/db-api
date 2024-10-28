@@ -34,7 +34,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Equipment) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -43,7 +43,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         Equipment edmobj = new Equipment();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -87,11 +87,10 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
                 if(equipment1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
-                    pi.setEquipmentByEquipmentInstanceId(edmobj);
+                    pi.setEquipment(edmobj);
                     pi.setEquipmentInstanceId(edmobj.getInstanceId());
                     pi.setEntityInstanceId(equipment1.getInstanceId());
                     pi.setResourceEntity(EntityNames.EQUIPMENT.name());
-                    edmobj.setEquipmentIspartofByInstanceId(pi);
                     dbaccess.updateObject(pi);
                 }
             }
@@ -112,11 +111,10 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
                 if(facility1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
-                    pi.setEquipmentByEquipmentInstanceId(edmobj);
+                    pi.setEquipment(edmobj);
                     pi.setEquipmentInstanceId(edmobj.getInstanceId());
                     pi.setEntityInstanceId(facility1.getInstanceId());
                     pi.setResourceEntity(EntityNames.FACILITY.name());
-                    edmobj.setEquipmentIspartofByInstanceId(pi);
                     dbaccess.updateObject(pi);
                 }
             }
@@ -124,64 +122,30 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-            List<EquipmentSpatial> equipmentSpatialList = getDbaccess().getAllFromDB(EquipmentSpatial.class);
-            for(EquipmentSpatial item : equipmentSpatialList){
-                if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            SpatialAPI spatialAPI = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-            edmobj.setEquipmentSpatialsByInstanceId(new ArrayList<>());
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-
                 Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
-
-                EquipmentSpatial pi = new EquipmentSpatial();
-                pi.setEquipmentByEquipmentInstanceId(edmobj);
-                pi.setEquipmentInstanceId(edmobj.getInstanceId());
-                pi.setSpatialInstanceId(spatial.getInstanceId());
-                pi.setSpatialBySpatialInstanceId(spatial);
-
-                edmobj.getEquipmentSpatialsByInstanceId().add(pi);
-                dbaccess.updateObject(pi);
+                if(spatial!=null){
+                    EquipmentSpatial pi = new EquipmentSpatial();
+                    pi.setEquipmentInstance(edmobj);
+                    pi.setSpatialInstance(spatial);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         /** TEMPORAL **/
         if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
-            List<EquipmentTemporal> equipmentTemporalList = getDbaccess().getAllFromDB(EquipmentTemporal.class);
-            for(EquipmentTemporal item : equipmentTemporalList){
-                if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
+            for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(periodOfTime, overrideStatus, Temporal.class);
+                if(temporal!=null){
+                    EquipmentTemporal pi = new EquipmentTemporal();
+                    pi.setEquipmentInstance(edmobj);
+                    pi.setTemporalInstance(temporal);
+                    dbaccess.updateObject(pi);
                 }
             }
-            TemporalAPI temporalAPI = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
-            edmobj.setEquipmentTemporalsByInstanceId(new ArrayList<>());
-            for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(periodOfTime, overrideStatus, Temporal.class);
-
-                EquipmentTemporal pi = new EquipmentTemporal();
-                pi.setEquipmentByEquipmentInstanceId(edmobj);
-                pi.setEquipmentInstanceId(edmobj.getInstanceId());
-                pi.setTemporalInstanceId(temporal.getInstanceId());
-                pi.setTemporalByTemporalInstanceId(temporal);
-
-                edmobj.getEquipmentTemporalsByInstanceId().add(pi);
-                dbaccess.updateObject(pi);
-            }
         }
 
-        List<EquipmentElement> elementslist = getDbaccess().getAllFromDB(EquipmentElement.class);
-        edmobj.setEquipmentElementsByInstanceId(new ArrayList<>());
-
-        for(EquipmentElement item : elementslist){
-            if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-                List<Element> list2 = getDbaccess().getOneFromDBByInstanceId(item.getElementInstanceId(), Element.class);
-                if(list2.size()>0) getDbaccess().deleteObject(list2.get(0));
-            }
-        }
         /* PAGEURL */
         if(obj.getPageURL()!=null && !obj.getPageURL().isEmpty()){
             createInnerElement(ElementType.PAGEURL, obj.getPageURL(), edmobj, overrideStatus);
@@ -204,13 +168,8 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         EquipmentElement ce = new EquipmentElement();
-        ce.setEquipmentByEquipmentInstanceId(edmobj);
-        ce.setEquipmentInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getEquipmentElementsByInstanceId().add(ce);
-
+        ce.setEquipmentInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -237,56 +196,61 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             o.setSerialNumber(edmobj.getSerialnumber());
             o.addKeywords(edmobj.getKeywords());
 
-            if (edmobj.getEquipmentCategoriesByInstanceId().size() > 0) {
-                for (EquipmentCategory ed : edmobj.getEquipmentCategoriesByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentCategory.class)) {
+                EquipmentCategory item = (EquipmentCategory) object;
+                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getCategoryInstanceId());
-                    o.addCategory(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
+                    o.addCategory(le);
                 }
             }
 
-            if (edmobj.getEquipmentContactpointsByInstanceId().size() > 0) {
-                for (EquipmentContactpoint ed : edmobj.getEquipmentContactpointsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
+                EquipmentContactpoint item = (EquipmentContactpoint) object;
+                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getContactpointInstanceId());
-                    o.addContactPoint(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    o.addCategory(le);
                 }
             }
 
-            List<EquipmentIspartof> equipmentIspartofList = dbaccess.getOneFromDBByInstanceId(edmobj.getInstanceId(), EquipmentIspartof.class);
-            if (equipmentIspartofList.size() > 0) {
-                for (EquipmentIspartof ed : equipmentIspartofList) {
-                    if (ed.getResourceEntity().equals(EntityNames.FACILITY.name())) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentIspartof.class)) {
+                EquipmentIspartof item = (EquipmentIspartof) object;
+                if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
+                    if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
                         FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
-                        o.addIsPartOf(api.retrieveLinkedEntity(ed.getEntityInstanceId()));
+                        o.addIsPartOf(api.retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
-                    if (ed.getResourceEntity().equals(EntityNames.EQUIPMENT.name())) {
+                    if(item.getResourceEntity().equals(EntityNames.EQUIPMENT.name())){
                         EquipmentAPI api = new EquipmentAPI(EntityNames.EQUIPMENT.name(), Equipment.class);
-                        o.addIsPartOf(api.retrieveLinkedEntity(ed.getEntityInstanceId()));
+                        o.addIsPartOf(api.retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                 }
             }
 
-            if (edmobj.getEquipmentSpatialsByInstanceId().size() > 0) {
-                for (EquipmentSpatial ed : edmobj.getEquipmentSpatialsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentSpatial.class)) {
+                EquipmentSpatial item = (EquipmentSpatial) object;
+                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-                    org.epos.eposdatamodel.LinkedEntity cp = api.retrieveLinkedEntity(ed.getSpatialInstanceId());
-                    o.addSpatialExtentItem(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
+                    o.addSpatialExtentItem(le);
                 }
             }
 
-            if (edmobj.getEquipmentTemporalsByInstanceId().size() > 0) {
-                for (EquipmentTemporal ed : edmobj.getEquipmentTemporalsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentTemporal.class)) {
+                EquipmentTemporal item = (EquipmentTemporal) object;
+                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     TemporalAPI api = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
-                    org.epos.eposdatamodel.LinkedEntity cp = api.retrieveLinkedEntity(ed.getTemporalInstanceId());
-                    o.addTemporalExtent(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
+                    o.addTemporalExtent(le);
                 }
             }
 
-            if (edmobj.getEquipmentElementsByInstanceId().size() > 0) {
-                for (EquipmentElement ed : edmobj.getEquipmentElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.PAGEURL)) o.setPageURL(el.getValue());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentElement.class)) {
+                EquipmentElement item = (EquipmentElement) object;
+                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.PAGEURL.name())) o.setPageURL(el.getValue());
                 }
             }
 

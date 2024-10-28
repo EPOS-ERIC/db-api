@@ -30,7 +30,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Person) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -39,7 +39,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         Person edmobj = new Person();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -53,42 +53,18 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         /** ADDRESS **/
         if (obj.getAddress() != null) {
-            List<Address> addressList = getDbaccess().getAllFromDB(Address.class);
-            for(Address item : addressList){
-                if(item.getInstanceId().equals(obj.getAddress().getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus);
-            addressList = getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(),Address.class);
-            edmobj.setAddressId(addressList.get(0).getInstanceId());
-            edmobj.setAddressByAddressId(addressList.get(0));
+            edmobj.setAddress((Address) dbaccess.getOneFromDBByLinkedEntity(obj.getAddress(), Address.class));
         }
 
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
-            List<PersonIdentifier> identifierList = getDbaccess().getAllFromDB(PersonIdentifier.class);
-            for(PersonIdentifier item : identifierList){
-                if(item.getPersonByPersonInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                    List<Identifier> list2 = getDbaccess().getOneFromDBByInstanceId(item.getIdentifierInstanceId(), Identifier.class);
-                    if(list2.size()>0) getDbaccess().deleteObject(list2.get(0));
-                }
-            }
-            IdentifierAPI identifierAPI = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
-            edmobj.setPersonIdentifiersByInstanceId(new ArrayList<>());
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
-                List<Identifier> identifierList1 = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
-                if(!identifierList1.isEmpty()) {
+                List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
+                if(!identifierList.isEmpty()) {
                     PersonIdentifier pi = new PersonIdentifier();
-                    pi.setPersonByPersonInstanceId(edmobj);
-                    pi.setPersonInstanceId(edmobj.getInstanceId());
-                    pi.setIdentifierInstanceId(le.getInstanceId());
-                    pi.setIdentifierByIdentifierInstanceId(identifierList1.get(0));
-
-                    edmobj.getPersonIdentifiersByInstanceId().add(pi);
-
+                    pi.setPersonInstance(edmobj);
+                    pi.setIdentifierInstance(identifierList.get(0));
                     dbaccess.updateObject(pi);
                 }
             }
@@ -96,52 +72,30 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         /** AFFILIATION **/
         if (obj.getAffiliation() != null && !obj.getAffiliation().isEmpty()) {
-            OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-            edmobj.setOrganizationAffiliationsByInstanceId(new ArrayList<>());
             for(LinkedEntity organization : obj.getAffiliation()){
-
                 Organization organization1 = (Organization) RelationChecker.checkRelation(organization, overrideStatus, Organization.class);
-
-                OrganizationAffiliation pi = new OrganizationAffiliation();
-                pi.setPersonByPersonInstanceId(edmobj);
-                pi.setPersonInstanceId(edmobj.getInstanceId());
-                pi.setOrganizationInstanceId(organization1.getInstanceId());
-                pi.setOrganizationByOrganizationInstanceId(organization1);
-
-                edmobj.getOrganizationAffiliationsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(organization1!=null) {
+                    OrganizationAffiliation pi = new OrganizationAffiliation();
+                    pi.setPersonInstance(edmobj);
+                    pi.setOrganizationInstance(organization1);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         /** CONTACTPOINT **/
         if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-            edmobj.setPersonContactpointsByInstanceId(new ArrayList<>());
             for(LinkedEntity contactpoint : obj.getContactPoint()){
-
                 Contactpoint contactpoint1 = (Contactpoint) RelationChecker.checkRelation(contactpoint, overrideStatus, Contactpoint.class);
-
-                PersonContactpoint pi = new PersonContactpoint();
-                pi.setPersonByPersonInstanceId(edmobj);
-                pi.setPersonInstanceId(edmobj.getInstanceId());
-                pi.setContactpointInstanceId(contactpoint1.getInstanceId());
-                pi.setContactpointByContactpointInstanceId(contactpoint1);
-
-                edmobj.getPersonContactpointsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(contactpoint1!=null) {
+                    PersonContactpoint pi = new PersonContactpoint();
+                    pi.setPersonInstance(edmobj);
+                    pi.setContactpointInstance(contactpoint1);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
-        List<PersonElement> elementslist = getDbaccess().getAllFromDB(PersonElement.class);
-        edmobj.setPersonElementsByInstanceId(new ArrayList<>());
-        for(PersonElement item : elementslist){
-            if(item.getPersonInstanceId().equals(obj.getInstanceId())){
-                getDbaccess().deleteObject(item);
-                List<Element> list2 = getDbaccess().getOneFromDBByInstanceId(item.getElementInstanceId(), Element.class);
-                if(list2.size()>0) getDbaccess().deleteObject(list2.get(0));
-            }
-        }
         /* TELEPHONE */
         if(obj.getTelephone()!=null && !obj.getTelephone().isEmpty()){
             for(String tel : obj.getTelephone()) {
@@ -173,13 +127,8 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         PersonElement ce = new PersonElement();
-        ce.setPersonByPersonInstanceId(edmobj);
-        ce.setPersonInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getPersonElementsByInstanceId().add(ce);
-
+        ce.setPersonInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -194,11 +143,12 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
 
-            if (edmobj.getPersonIdentifiersByInstanceId().size() > 0) {
-                IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
-                for (PersonIdentifier ed : edmobj.getPersonIdentifiersByInstanceId()) {
-                    Identifier el = ed.getIdentifierByIdentifierInstanceId();
-                    o.addIdentifier(api.retrieveLinkedEntity(el.getInstanceId()));
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonIdentifier.class)) {
+                PersonIdentifier item = (PersonIdentifier) object;
+                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
+                    o.addIdentifier(le);
                 }
             }
 
@@ -206,17 +156,17 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             o.setGivenName(edmobj.getGivenname());
 
 
-            if (edmobj.getAddressByAddressId() != null) {
+            if (edmobj.getAddress() != null) {
                 AddressAPI api = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
-                o.setAddress(api.retrieveLinkedEntity(edmobj.getAddressByAddressId().getInstanceId()));
+                o.setAddress(api.retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
             }
 
-
-            if (edmobj.getPersonElementsByInstanceId().size() > 0) {
-                for (PersonElement ed : edmobj.getPersonElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.TELEPHONE)) o.addTelephone(el.getValue());
-                    if (el.getType().equals(ElementType.EMAIL)) o.addEmail(el.getValue());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonElement.class)) {
+                PersonElement item = (PersonElement) object;
+                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.TELEPHONE.name())) o.addTelephone(el.getValue());
+                    if (el.getType().equals(ElementType.EMAIL.name())) o.addEmail(el.getValue());
                 }
             }
 
@@ -226,21 +176,24 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
             o.setCVURL(edmobj.getCvurl());
 
-            if (edmobj.getOrganizationAffiliationsByInstanceId() != null) {
-                o.setAffiliation(new LinkedList<>());
-                for (OrganizationAffiliation organizationAffiliation : edmobj.getOrganizationAffiliationsByInstanceId()) {
-                    OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-                    o.addAffiliation(organizationAPI.retrieveLinkedEntity(organizationAffiliation.getOrganizationInstanceId()));
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),OrganizationAffiliation.class)) {
+                OrganizationAffiliation item = (OrganizationAffiliation) object;
+                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId());
+                    o.addAffiliation(le);
                 }
             }
 
-            if (edmobj.getPersonContactpointsByInstanceId() != null) {
-                o.setContactPoint(new LinkedList<>());
-                for (PersonContactpoint personContactpoint : edmobj.getPersonContactpointsByInstanceId()) {
-                    ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    o.addContactPoint(contactPointAPI.retrieveLinkedEntity(personContactpoint.getContactpointInstanceId()));
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonContactpoint.class)) {
+                PersonContactpoint item = (PersonContactpoint) object;
+                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    o.addContactPoint(le);
                 }
             }
+
 
             o = (org.epos.eposdatamodel.Person) VersioningStatusAPI.retrieveVersion(o);
 

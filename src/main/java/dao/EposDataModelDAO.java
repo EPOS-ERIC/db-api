@@ -1,8 +1,10 @@
 package dao;
 
-import model.Versioningstatus;
-
+import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import jakarta.persistence.Table;
+import model.Versioningstatus;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 
@@ -37,13 +39,13 @@ public class EposDataModelDAO<T> {
     public List<T> getOneFromDBBySpecificKey(String key, String value, Class<T> obj){
         EntityManager em = EntityManagerService.getInstance().createEntityManager();
         em.getTransaction().begin();
-
         List resultList = em.createQuery(
-                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c."+key+ " LIKE :value")
-                .setParameter("value", value)
+                        "SELECT c FROM "+obj.getSimpleName()+" c")
                 .getResultList();
+
         em.getTransaction().commit();
         em.close();
+
         return resultList;
     }
 
@@ -51,7 +53,7 @@ public class EposDataModelDAO<T> {
         EntityManager em = EntityManagerService.getInstance().createEntityManager();
         em.getTransaction().begin();
         List resultList = em.createQuery(
-                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c.instanceId LIKE :instanceId")
+                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c.instanceId=:instanceId")
                 .setParameter("instanceId", instanceId)
                 .getResultList();
         em.getTransaction().commit();
@@ -177,6 +179,7 @@ public class EposDataModelDAO<T> {
             LOG.info(Boolean.toString(em.contains(obj)));
             if (!em.contains(obj)) {
                 em.getTransaction().begin();
+                em.detach(obj);
                 T target = em.merge(obj);
                 LOG.info(target.toString());
                 em.remove(target);

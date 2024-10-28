@@ -3,20 +3,27 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "dataproduct_relation", schema = "public", catalog = "cerif")
+@Table(name = "dataproduct_relation")
 public class DataproductRelation {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "dataproduct_instance_id", nullable = false, length = 100)
     private String dataproductInstanceId;
-    @Basic
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "dataproduct_instance_id", nullable = false)
+    private Dataproduct dataproduct;
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @jakarta.validation.constraints.NotNull
     @Column(name = "entity_instance_id", nullable = false, length = 100)
     private String entityInstanceId;
-    @Basic
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @jakarta.validation.constraints.NotNull
     @Column(name = "resource_entity", nullable = false, length = 100)
     private String resourceEntity;
-    @OneToOne
-    @PrimaryKeyJoinColumn(name = "dataproduct_instance_id", referencedColumnName = "instance_id")
-    private Dataproduct dataproductByDataproductInstanceId;
 
     public String getDataproductInstanceId() {
         return dataproductInstanceId;
@@ -24,6 +31,14 @@ public class DataproductRelation {
 
     public void setDataproductInstanceId(String dataproductInstanceId) {
         this.dataproductInstanceId = dataproductInstanceId;
+    }
+
+    public Dataproduct getDataproduct() {
+        return dataproduct;
+    }
+
+    public void setDataproduct(Dataproduct dataproduct) {
+        this.dataproduct = dataproduct;
     }
 
     public String getEntityInstanceId() {
@@ -42,36 +57,4 @@ public class DataproductRelation {
         this.resourceEntity = resourceEntity;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        DataproductRelation that = (DataproductRelation) o;
-
-        if (dataproductInstanceId != null ? !dataproductInstanceId.equals(that.dataproductInstanceId) : that.dataproductInstanceId != null)
-            return false;
-        if (entityInstanceId != null ? !entityInstanceId.equals(that.entityInstanceId) : that.entityInstanceId != null)
-            return false;
-        if (resourceEntity != null ? !resourceEntity.equals(that.resourceEntity) : that.resourceEntity != null)
-            return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = dataproductInstanceId != null ? dataproductInstanceId.hashCode() : 0;
-        result = 31 * result + (entityInstanceId != null ? entityInstanceId.hashCode() : 0);
-        result = 31 * result + (resourceEntity != null ? resourceEntity.hashCode() : 0);
-        return result;
-    }
-
-    public Dataproduct getDataproductByDataproductInstanceId() {
-        return dataproductByDataproductInstanceId;
-    }
-
-    public void setDataproductByDataproductInstanceId(Dataproduct dataproductByDataproductInstanceId) {
-        this.dataproductByDataproductInstanceId = dataproductByDataproductInstanceId;
-    }
 }

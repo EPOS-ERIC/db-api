@@ -3,73 +3,43 @@ package model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "equipment_element", schema = "public", catalog = "cerif")
-@IdClass(EquipmentElementPK.class)
+@Table(name = "equipment_element")
 public class EquipmentElement {
-    @Id
-    @Column(name = "equipment_instance_id", nullable = false, length = 100)
-    private String equipmentInstanceId;
-    @Id
-    @Column(name = "element_instance_id", nullable = false, length = 100)
-    private String elementInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "equipment_instance_id", referencedColumnName = "instance_id")
-    private Equipment equipmentByEquipmentInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "element_instance_id", referencedColumnName = "instance_id")
-    private Element elementByElementInstanceId;
+    @EmbeddedId
+    private EquipmentElementId id;
 
-    public String getEquipmentInstanceId() {
-        return equipmentInstanceId;
+    @MapsId("equipmentInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "equipment_instance_id", nullable = false)
+    private Equipment equipmentInstance;
+
+    @MapsId("elementInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @JoinColumn(name = "element_instance_id", nullable = false)
+    private Element elementInstance;
+
+    public EquipmentElementId getId() {
+        return id;
     }
 
-    public void setEquipmentInstanceId(String equipmentInstanceId) {
-        this.equipmentInstanceId = equipmentInstanceId;
+    public void setId(EquipmentElementId id) {
+        this.id = id;
     }
 
-    public String getElementInstanceId() {
-        return elementInstanceId;
+    public Equipment getEquipmentInstance() {
+        return equipmentInstance;
     }
 
-    public void setElementInstanceId(String elementInstanceId) {
-        this.elementInstanceId = elementInstanceId;
+    public void setEquipmentInstance(Equipment equipmentInstance) {
+        this.equipmentInstance = equipmentInstance;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        EquipmentElement that = (EquipmentElement) o;
-
-        if (equipmentInstanceId != null ? !equipmentInstanceId.equals(that.equipmentInstanceId) : that.equipmentInstanceId != null)
-            return false;
-        if (elementInstanceId != null ? !elementInstanceId.equals(that.elementInstanceId) : that.elementInstanceId != null)
-            return false;
-
-        return true;
+    public Element getElementInstance() {
+        return elementInstance;
     }
 
-    @Override
-    public int hashCode() {
-        int result = equipmentInstanceId != null ? equipmentInstanceId.hashCode() : 0;
-        result = 31 * result + (elementInstanceId != null ? elementInstanceId.hashCode() : 0);
-        return result;
+    public void setElementInstance(Element elementInstance) {
+        this.elementInstance = elementInstance;
     }
 
-    public Equipment getEquipmentByEquipmentInstanceId() {
-        return equipmentByEquipmentInstanceId;
-    }
-
-    public void setEquipmentByEquipmentInstanceId(Equipment equipmentByEquipmentInstanceId) {
-        this.equipmentByEquipmentInstanceId = equipmentByEquipmentInstanceId;
-    }
-
-    public Element getElementByElementInstanceId() {
-        return elementByElementInstanceId;
-    }
-
-    public void setElementByElementInstanceId(Element elementByElementInstanceId) {
-        this.elementByElementInstanceId = elementByElementInstanceId;
-    }
 }

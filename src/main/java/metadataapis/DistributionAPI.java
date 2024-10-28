@@ -8,6 +8,9 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +36,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -42,7 +45,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         Distribution edmobj = new Distribution();
 
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
@@ -55,58 +58,36 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         edmobj.setDatapolicy(obj.getDataPolicy());
 
         if (obj.getModified() != null)
-            edmobj.setModified(Timestamp.valueOf(obj.getModified()));
+            edmobj.setModified(obj.getModified());
         if (obj.getIssued() != null)
-            edmobj.setIssued(Timestamp.valueOf(obj.getIssued()));
+            edmobj.setIssued(obj.getIssued());
 
         /** TITLE **/
         if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
-            List<DistributionTitle> distributionTitleList = getDbaccess().getAllFromDB(DistributionTitle.class);
-            for(DistributionTitle item : distributionTitleList){
-                if(item.getDistributionInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            edmobj.setDistributionTitlesByInstanceId(new ArrayList<>());
             for(String title : obj.getTitle()){
                 DistributionTitle pi = new DistributionTitle();
                 pi.setInstanceId(UUID.randomUUID().toString());
                 pi.setMetaId(UUID.randomUUID().toString());
                 pi.setUid("Title/"+UUID.randomUUID().toString());
-                pi.setVersionId(null);
+                pi.setVersion(null);
                 pi.setTitle(title);
-                pi.setDistributionByDistributionInstanceId(edmobj);
-                pi.setDistributionInstanceId(edmobj.getInstanceId());
+                pi.setDistributionInstance(edmobj);
                 pi.setLang(null);
-
-                edmobj.getDistributionTitlesByInstanceId().add(pi);
-
                 dbaccess.updateObject(pi);
             }
         }
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
-            List<DistributionDescription> distributionDescriptionList = getDbaccess().getAllFromDB(DistributionDescription.class);
-            for(DistributionDescription item : distributionDescriptionList){
-                if(item.getDistributionInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-            edmobj.setDistributionDescriptionsByInstanceId(new ArrayList<>());
             for(String description : obj.getDescription()){
                 DistributionDescription pi = new DistributionDescription();
                 pi.setInstanceId(UUID.randomUUID().toString());
                 pi.setMetaId(UUID.randomUUID().toString());
                 pi.setUid("Description/"+UUID.randomUUID().toString());
-                pi.setVersionId(null);
+                pi.setVersion(null);
                 pi.setDescription(description);
-                pi.setDistributionByDistributionInstanceId(edmobj);
-                pi.setDistributionInstanceId(edmobj.getInstanceId());
+                pi.setDistributionInstance(edmobj);
                 pi.setLang(null);
-
-                edmobj.getDistributionDescriptionsByInstanceId().add(pi);
-
                 dbaccess.updateObject(pi);
             }
         }
@@ -114,73 +95,40 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         /** DATAPRODUCT **/
         if (obj.getDataProduct() != null && !obj.getDataProduct().isEmpty()) {
-            List<DistributionDataproduct> distributionDataproductList = getDbaccess().getAllFromDB(DistributionDataproduct.class);
-            for(DistributionDataproduct item : distributionDataproductList){
-                if(item.getDistributionInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
-
-            edmobj.setDistributionDataproductsByInstanceId(new ArrayList<>());
             for(LinkedEntity dataProduct : obj.getDataProduct()){
-
                 Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(dataProduct, overrideStatus, Dataproduct.class);
-
-                DistributionDataproduct pi = new DistributionDataproduct();
-                pi.setDistributionByDistributionInstanceId(edmobj);
-                pi.setDistributionInstanceId(edmobj.getInstanceId());
-                pi.setDataproductInstanceId(dataproduct.getInstanceId());
-                pi.setDataproductByDataproductInstanceId(dataproduct);
-
-                edmobj.getDistributionDataproductsByInstanceId().add(pi);
-
-                dbaccess.updateObject(pi);
+                if(dataproduct!=null){
+                    DistributionDataproduct pi = new DistributionDataproduct();
+                    pi.setDistributionInstance(edmobj);
+                    pi.setDataproductInstance(dataproduct);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         if (obj.getAccessService() != null ) {
-            List<WebserviceDistribution> webserviceDistributions = getDbaccess().getAllFromDB(WebserviceDistribution.class);
-            for(WebserviceDistribution item : webserviceDistributions){
-                if(item.getDistributionInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
-            }
             for(LinkedEntity accessService : obj.getAccessService()) {
-
                 Webservice webservice = (Webservice) RelationChecker.checkRelation(accessService, overrideStatus, Webservice.class);
-
-                WebserviceDistribution pi = new WebserviceDistribution();
-                pi.setDistributionByDistributionInstanceId(edmobj);
-                pi.setDistributionInstanceId(edmobj.getInstanceId());
-                pi.setWebserviceInstanceId(webservice.getInstanceId());
-                pi.setWebserviceByWebserviceInstanceId(webservice);
-
-                dbaccess.updateObject(pi);
+                if(webservice!=null){
+                    WebserviceDistribution pi = new WebserviceDistribution();
+                    pi.setDistributionInstance(edmobj);
+                    pi.setWebserviceInstance(webservice);
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
         if (obj.getSupportedOperation() != null ) {
-            List<OperationDistribution> operationDistributions = getDbaccess().getAllFromDB(OperationDistribution.class);
-            for(OperationDistribution item : operationDistributions){
-                if(item.getDistributionInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
+            for(LinkedEntity supportedOperation : obj.getSupportedOperation()) {
+                Operation operation = (Operation) RelationChecker.checkRelation(supportedOperation, overrideStatus, Operation.class);
+                if(operation!=null){
+                    OperationDistribution pi = new OperationDistribution();
+                    pi.setDistributionInstance(edmobj);
+                    pi.setOperationInstance(operation);
+                    dbaccess.updateObject(pi);
                 }
             }
-            for(LinkedEntity supportedOperation : obj.getSupportedOperation()) {
-
-                Operation operation = (Operation) RelationChecker.checkRelation(supportedOperation, overrideStatus, Operation.class);
-
-                OperationDistribution pi = new OperationDistribution();
-                pi.setDistributionByDistributionInstanceId(edmobj);
-                pi.setDistributionInstanceId(edmobj.getInstanceId());
-                pi.setOperationInstanceId(operation.getInstanceId());
-                pi.setOperationByOperationInstanceId(operation);
-
-                dbaccess.updateObject(pi);
-            }
         }
-
-        edmobj.setDistributionElementsByInstanceId(new ArrayList<>());
 
         if(obj.getAccessURL()!=null && !obj.getAccessURL().isEmpty()){
             for(String accessurl : obj.getAccessURL()) {
@@ -211,13 +159,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         LinkedEntity le = api.create(element, overrideStatus);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         DistributionElement ce = new DistributionElement();
-        ce.setDistributionByDistributionInstanceId(edmobj);
-        ce.setDistributionInstanceId(edmobj.getInstanceId());
-        ce.setElementByElementInstanceId(el.get(0));
-        ce.setElementInstanceId(el.get(0).getInstanceId());
-
-        edmobj.getDistributionElementsByInstanceId().add(ce);
-
+        ce.setDistributionInstance(edmobj);
+        ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
     }
 
@@ -236,59 +179,60 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             o.setLicence(edmobj.getLicense());
             o.setDataPolicy(edmobj.getDatapolicy());
             o.setIssued(
-                    edmobj.getIssued() != null ? edmobj.getIssued().toLocalDateTime() : null
+                    edmobj.getIssued()
             );
             o.setModified(
-                    edmobj.getModified() != null ? edmobj.getModified().toLocalDateTime() : null
+                    edmobj.getModified()
             );
             o.setType(edmobj.getType());
 
-            if (edmobj.getDistributionTitlesByInstanceId().size() > 0) {
-                for (DistributionTitle ed : edmobj.getDistributionTitlesByInstanceId()) {
-                    o.addTitle(ed.getTitle());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionDescription.class)) {
+                DistributionDescription item = (DistributionDescription) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    o.addDescription(item.getDescription());
                 }
             }
 
-            if (edmobj.getDistributionDescriptionsByInstanceId().size() > 0) {
-                for (DistributionDescription ed : edmobj.getDistributionDescriptionsByInstanceId()) {
-                    o.addDescription(ed.getDescription());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionTitle.class)) {
+                DistributionTitle item = (DistributionTitle) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    o.addTitle(item.getTitle());
                 }
             }
 
-            if (edmobj.getDistributionDataproductsByInstanceId().size() > 0) {
-                for (DistributionDataproduct ed : edmobj.getDistributionDataproductsByInstanceId()) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionDataproduct.class)) {
+                DistributionDataproduct item = (DistributionDataproduct) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     DataProductAPI api = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
-                    LinkedEntity cp = api.retrieveLinkedEntity(ed.getDataproductInstanceId());
-                    o.addDataproduct(cp);
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getDataproductInstance().getInstanceId());
+                    o.addDataproduct(le);
                 }
             }
 
-            List<WebserviceDistribution> webserviceDistributions = getDbaccess().getAllFromDB(WebserviceDistribution.class);
-            if (!webserviceDistributions.isEmpty()) {
-                for (WebserviceDistribution ed : webserviceDistributions) {
-                    if(ed.getDistributionInstanceId().equals(o.getInstanceId())) {
-                        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
-                        o.addAccessService(api.retrieveLinkedEntity(ed.getWebserviceInstanceId()));
-                    }
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),WebserviceDistribution.class)) {
+                WebserviceDistribution item = (WebserviceDistribution) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
+                    o.addAccessService(le);
                 }
             }
 
-            List<OperationDistribution> operationDistributions = getDbaccess().getAllFromDB(OperationDistribution.class);
-            if (!operationDistributions.isEmpty()) {
-                for (OperationDistribution ed : operationDistributions) {
-                    if(ed.getDistributionInstanceId().equals(o.getInstanceId())) {
-                        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
-                        o.addSupportedOperation(api.retrieveLinkedEntity(ed.getOperationInstanceId()));
-                    }
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),OperationDistribution.class)) {
+                OperationDistribution item = (OperationDistribution) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
+                    LinkedEntity le = api.retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
+                    o.addSupportedOperation(le);
                 }
             }
 
-
-            if (edmobj.getDistributionElementsByInstanceId().size() > 0) {
-                for (DistributionElement ed : edmobj.getDistributionElementsByInstanceId()) {
-                    Element el = ed.getElementByElementInstanceId();
-                    if (el.getType().equals(ElementType.ACCESSURL)) o.addAccessURL(el.getValue());
-                    if (el.getType().equals(ElementType.DOWNLOADURL)) o.addDownloadURL(el.getValue());
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionElement.class)) {
+                DistributionElement item = (DistributionElement) object;
+                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    Element el = item.getElementInstance();
+                    if (el.getType().equals(ElementType.ACCESSURL.name())) o.addAccessURL(el.getValue());
+                    if (el.getType().equals(ElementType.DOWNLOADURL.name())) o.addDownloadURL(el.getValue());
                 }
             }
 

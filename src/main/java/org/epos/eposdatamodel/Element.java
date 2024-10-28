@@ -3,8 +3,6 @@ package org.epos.eposdatamodel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import model.ElementType;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**

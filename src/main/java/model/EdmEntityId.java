@@ -1,19 +1,21 @@
 package model;
 
-import jakarta.persistence.*;
-import java.util.Collection;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "edm_entity_id", schema = "public", catalog = "cerif")
+@Table(name = "edm_entity_id")
 public class EdmEntityId {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "meta_id", nullable = false, length = 100)
     private String metaId;
-    @Basic
-    @Column(name = "table_name", nullable = true, length = 1024)
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "table_name", length = 1024)
     private String tableName;
-    @OneToMany(mappedBy = "edmEntityIdByMetaId")
-    private Collection<AuthorizationGroup> authorizationGroupsByMetaId;
 
     public String getMetaId() {
         return metaId;
@@ -31,31 +33,4 @@ public class EdmEntityId {
         this.tableName = tableName;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        EdmEntityId that = (EdmEntityId) o;
-
-        if (metaId != null ? !metaId.equals(that.metaId) : that.metaId != null) return false;
-        if (tableName != null ? !tableName.equals(that.tableName) : that.tableName != null) return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = metaId != null ? metaId.hashCode() : 0;
-        result = 31 * result + (tableName != null ? tableName.hashCode() : 0);
-        return result;
-    }
-
-    public Collection<AuthorizationGroup> getAuthorizationGroupsByMetaId() {
-        return authorizationGroupsByMetaId;
-    }
-
-    public void setAuthorizationGroupsByMetaId(Collection<AuthorizationGroup> authorizationGroupsByMetaId) {
-        this.authorizationGroupsByMetaId = authorizationGroupsByMetaId;
-    }
 }

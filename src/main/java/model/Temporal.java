@@ -1,40 +1,35 @@
 package model;
 
 import jakarta.persistence.*;
-import java.sql.Timestamp;
-import java.util.Collection;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "temporal")
 public class Temporal {
     @Id
+    @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "instance_id", nullable = false, length = 100)
     private String instanceId;
-    @Basic
-    @Column(name = "meta_id", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "meta_id", length = 100)
     private String metaId;
-    @Basic
-    @Column(name = "uid", nullable = true, length = 100)
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "uid", length = 1024)
     private String uid;
-    @Basic
-    @Column(name = "version_id", nullable = true, length = 100)
-    private String versionId;
-    @Basic
-    @Column(name = "startdate", nullable = true)
-    private Timestamp startdate;
-    @Basic
-    @Column(name = "enddate", nullable = true)
-    private Timestamp enddate;
-    @OneToMany(mappedBy = "temporalByTemporalInstanceId")
-    private Collection<DataproductTemporal> dataproductTemporalsByInstanceId;
-    @OneToMany(mappedBy = "temporalByTemporalInstanceId")
-    private Collection<EquipmentTemporal> equipmentTemporalsByInstanceId;
-    @OneToMany(mappedBy = "temporalByTemporalInstanceId")
-    private Collection<ServiceTemporal> serviceTemporalsByInstanceId;
-    @ManyToOne
-    @PrimaryKeyJoinColumn(name = "version_id", referencedColumnName = "version_id")
-    private Versioningstatus versioningstatusByVersionId;
-    @OneToMany(mappedBy = "temporalByTemporalInstanceId")
-    private Collection<WebserviceTemporal> webserviceTemporalsByInstanceId;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "version_id")
+    private model.Versioningstatus version;
+
+    @Column(name = "startdate")
+    private LocalDateTime startdate;
+
+    @Column(name = "enddate")
+    private LocalDateTime enddate;
 
     public String getInstanceId() {
         return instanceId;
@@ -60,95 +55,28 @@ public class Temporal {
         this.uid = uid;
     }
 
-    public String getVersionId() {
-        return versionId;
+    public model.Versioningstatus getVersion() {
+        return version;
     }
 
-    public void setVersionId(String versionId) {
-        this.versionId = versionId;
+    public void setVersion(model.Versioningstatus version) {
+        this.version = version;
     }
 
-    public Timestamp getStartdate() {
+    public LocalDateTime getStartdate() {
         return startdate;
     }
 
-    public void setStartdate(Timestamp startdate) {
+    public void setStartdate(LocalDateTime startdate) {
         this.startdate = startdate;
     }
 
-    public Timestamp getEnddate() {
+    public LocalDateTime getEnddate() {
         return enddate;
     }
 
-    public void setEnddate(Timestamp enddate) {
+    public void setEnddate(LocalDateTime enddate) {
         this.enddate = enddate;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Temporal temporal = (Temporal) o;
-
-        if (instanceId != null ? !instanceId.equals(temporal.instanceId) : temporal.instanceId != null) return false;
-        if (metaId != null ? !metaId.equals(temporal.metaId) : temporal.metaId != null) return false;
-        if (uid != null ? !uid.equals(temporal.uid) : temporal.uid != null) return false;
-        if (versionId != null ? !versionId.equals(temporal.versionId) : temporal.versionId != null) return false;
-        if (startdate != null ? !startdate.equals(temporal.startdate) : temporal.startdate != null) return false;
-        if (enddate != null ? !enddate.equals(temporal.enddate) : temporal.enddate != null) return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = instanceId != null ? instanceId.hashCode() : 0;
-        result = 31 * result + (metaId != null ? metaId.hashCode() : 0);
-        result = 31 * result + (uid != null ? uid.hashCode() : 0);
-        result = 31 * result + (versionId != null ? versionId.hashCode() : 0);
-        result = 31 * result + (startdate != null ? startdate.hashCode() : 0);
-        result = 31 * result + (enddate != null ? enddate.hashCode() : 0);
-        return result;
-    }
-
-    public Collection<DataproductTemporal> getDataproductTemporalsByInstanceId() {
-        return dataproductTemporalsByInstanceId;
-    }
-
-    public void setDataproductTemporalsByInstanceId(Collection<DataproductTemporal> dataproductTemporalsByInstanceId) {
-        this.dataproductTemporalsByInstanceId = dataproductTemporalsByInstanceId;
-    }
-
-    public Collection<EquipmentTemporal> getEquipmentTemporalsByInstanceId() {
-        return equipmentTemporalsByInstanceId;
-    }
-
-    public void setEquipmentTemporalsByInstanceId(Collection<EquipmentTemporal> equipmentTemporalsByInstanceId) {
-        this.equipmentTemporalsByInstanceId = equipmentTemporalsByInstanceId;
-    }
-
-    public Collection<ServiceTemporal> getServiceTemporalsByInstanceId() {
-        return serviceTemporalsByInstanceId;
-    }
-
-    public void setServiceTemporalsByInstanceId(Collection<ServiceTemporal> serviceTemporalsByInstanceId) {
-        this.serviceTemporalsByInstanceId = serviceTemporalsByInstanceId;
-    }
-
-    public Versioningstatus getVersioningstatusByVersionId() {
-        return versioningstatusByVersionId;
-    }
-
-    public void setVersioningstatusByVersionId(Versioningstatus versioningstatusByVersionId) {
-        this.versioningstatusByVersionId = versioningstatusByVersionId;
-    }
-
-    public Collection<WebserviceTemporal> getWebserviceTemporalsByInstanceId() {
-        return webserviceTemporalsByInstanceId;
-    }
-
-    public void setWebserviceTemporalsByInstanceId(Collection<WebserviceTemporal> webserviceTemporalsByInstanceId) {
-        this.webserviceTemporalsByInstanceId = webserviceTemporalsByInstanceId;
-    }
 }

@@ -31,23 +31,27 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
-        obj = (org.epos.eposdatamodel.Address) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+        VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        System.out.println(obj.getVersionId()+" "+obj.getStatus());
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
+        System.out.println(VersioningStatusAPI.retrieveVersioningStatus(obj).getVersionId()+" "+VersioningStatusAPI.retrieveVersioningStatus(obj).getStatus());
+
         Address edmobj = new Address();
-        edmobj.setVersionId(obj.getVersionId());
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setCountry(Optional.ofNullable(obj.getCountry()).orElse(null));
-        edmobj.setCountrycode(Optional.ofNullable(obj.getCountryCode()).orElse(null));
-        edmobj.setStreet(Optional.ofNullable(obj.getStreet()).orElse(null));
-        edmobj.setPostalCode(Optional.ofNullable(obj.getPostalCode()).orElse(null));
-        edmobj.setLocality(Optional.ofNullable(obj.getLocality()).orElse(null));
+        edmobj.setCountry(obj.getCountry());
+        edmobj.setCountrycode(obj.getCountryCode());
+        edmobj.setStreet(obj.getStreet());
+        edmobj.setPostalCode(obj.getPostalCode());
+        edmobj.setLocality(obj.getLocality());
 
         getDbaccess().updateObject(edmobj);
 

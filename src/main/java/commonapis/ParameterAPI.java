@@ -20,7 +20,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Parameter obj, StatusType overrideStatus) {
 
-        List<SoftwareapplicationParameters> returnList = getDbaccess().getOneFromDB(
+        List<SoftwareapplicationParameter> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
                 obj.getUid(),
@@ -38,7 +38,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        SoftwareapplicationParameters edmobj = new SoftwareapplicationParameters();
+        SoftwareapplicationParameter edmobj = new SoftwareapplicationParameter();
         edmobj.setVersionId(obj.getVersionId());
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
@@ -57,9 +57,9 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
 
     @Override
     public org.epos.eposdatamodel.Parameter retrieve(String instanceId) {
-        List<SoftwareapplicationParameters> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameters.class);
+        List<SoftwareapplicationParameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameter.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareapplicationParameters edmobj = elementList.get(0);
+            SoftwareapplicationParameter edmobj = elementList.get(0);
             org.epos.eposdatamodel.Parameter o = new org.epos.eposdatamodel.Parameter();
 
             o.setInstanceId(edmobj.getInstanceId());
@@ -78,7 +78,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
 
     @Override
     public List<org.epos.eposdatamodel.Parameter> retrieveAll() {
-        List<SoftwareapplicationParameters> list = getDbaccess().getAllFromDB(SoftwareapplicationParameters.class);
+        List<SoftwareapplicationParameter> list = getDbaccess().getAllFromDB(SoftwareapplicationParameter.class);
         List<org.epos.eposdatamodel.Parameter> returnList = new ArrayList<>();
         list.parallelStream().forEach(item -> {
             returnList.add(retrieve(item.getInstanceId()));
@@ -88,9 +88,9 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
-        List<SoftwareapplicationParameters> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameters.class);
+        List<SoftwareapplicationParameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameter.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareapplicationParameters edmobj = elementList.get(0);
+            SoftwareapplicationParameter edmobj = elementList.get(0);
             LinkedEntity o = new LinkedEntity();
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());

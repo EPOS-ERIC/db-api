@@ -3,7 +3,6 @@ package integrationtests.unittests;
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
-import model.Webservice;
 import org.epos.eposdatamodel.*;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
