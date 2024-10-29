@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.Documentation;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Documentation obj, StatusType overrideStatus) {
+    public LinkedEntity create(Documentation obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -80,6 +81,11 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
             return o;
         }
         return null;
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

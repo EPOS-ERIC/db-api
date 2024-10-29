@@ -9,12 +9,12 @@ public class DataproductTemporal {
     private DataproductTemporalId id;
 
     @MapsId("dataproductInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproductInstance;
 
     @MapsId("temporalInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "temporal_instance_id", nullable = false)
     private model.Temporal temporalInstance;
 

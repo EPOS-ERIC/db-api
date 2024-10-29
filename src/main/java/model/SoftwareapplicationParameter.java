@@ -35,7 +35,7 @@ public class SoftwareapplicationParameter {
     private String action;
 
     @jakarta.validation.constraints.NotNull
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplicationInstance;
 

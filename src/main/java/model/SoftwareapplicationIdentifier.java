@@ -9,12 +9,12 @@ public class SoftwareapplicationIdentifier {
     private SoftwareapplicationIdentifierId id;
 
     @MapsId("softwareapplicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplicationInstance;
 
     @MapsId("identifierInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "identifier_instance_id", nullable = false)
     private Identifier identifierInstance;
 

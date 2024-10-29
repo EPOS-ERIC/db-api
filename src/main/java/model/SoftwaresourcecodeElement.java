@@ -9,12 +9,12 @@ public class SoftwaresourcecodeElement {
     private SoftwaresourcecodeElementId id;
 
     @MapsId("softwaresourcecodeInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
     private Softwaresourcecode softwaresourcecodeInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private Element elementInstance;
 

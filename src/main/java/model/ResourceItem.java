@@ -12,7 +12,7 @@ public class ResourceItem {
     @Column(name = "id", nullable = false, length = 1024)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "processing_unit_id")
     private ProcessingUnit processingUnit;
 

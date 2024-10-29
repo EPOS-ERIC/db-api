@@ -3,7 +3,6 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.ElementAPI;
 import commonapis.EposDataModelEntityIDAPI;
-import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
 import org.epos.eposdatamodel.ContactPoint;
@@ -18,7 +17,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.ContactPoint obj, StatusType overrideStatus) {
+    public LinkedEntity create(ContactPoint obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Contactpoint> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -85,13 +84,86 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         ContactpointElement ce = new ContactpointElement();
         ce.setContactpointInstance(edmobj);
         ce.setElementInstance(el.get(0));
 
         dbaccess.updateObject(ce);
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
+            ContactpointElement item = (ContactpointElement) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceContactpoint.class)){
+            WebserviceContactpoint item = (WebserviceContactpoint) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductContactpoint.class)){
+            DataproductContactpoint item = (DataproductContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentContactpoint.class)){
+            EquipmentContactpoint item = (EquipmentContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityContactpoint.class)){
+            FacilityContactpoint item = (FacilityContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeContactpoint.class)){
+            SoftwaresourcecodeContactpoint item = (SoftwaresourcecodeContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationContactpoint.class)){
+            SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(ServiceContactpoint.class)){
+            ServiceContactpoint item = (ServiceContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(PersonContactpoint.class)){
+            PersonContactpoint item = (PersonContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
+            OrganizationContactpoint item = (OrganizationContactpoint) object;
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
+        for(Contactpoint object : elementList){
+            dbaccess.deleteObject(object);
+        }
+        return true;
     }
 
 

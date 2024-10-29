@@ -18,7 +18,7 @@ public class Person {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "version_id")
     private model.Versioningstatus version;
 
@@ -38,7 +38,7 @@ public class Person {
     @Column(name = "cvurl", length = 1024)
     private String cvurl;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id")
     private Address address;
 

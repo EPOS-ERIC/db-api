@@ -3,14 +3,13 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.DataProduct;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +22,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
+    public LinkedEntity create(DataProduct obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Dataproduct> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -112,8 +113,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** HASPART **/
         if (obj.getHasPart() != null && !obj.getHasPart().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getHasPart().contains(relationFromUpdate)){
+                obj.getHasPart().remove(relationFromUpdate);
+                obj.getHasPart().add(relationToUpdate);
+            }
             for(LinkedEntity dataProduct : obj.getHasPart()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
                 if(dataproduct!=null) {
                     DataproductHaspart pi = new DataproductHaspart();
                     pi.setDataproduct1Instance(edmobj);
@@ -125,8 +130,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** ISPARTOF **/
         if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
+                obj.getIsPartOf().remove(relationFromUpdate);
+                obj.getIsPartOf().add(relationToUpdate);
+            }
             for(LinkedEntity dataProduct : obj.getIsPartOf()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
                 if(dataproduct!=null) {
                     DataproductIspartof pi = new DataproductIspartof();
                     pi.setDataproduct1Instance(edmobj);
@@ -165,8 +174,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** PUBLISHER **/
         if (obj.getPublisher() != null && !obj.getPublisher().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getPublisher().contains(relationFromUpdate)){
+                obj.getPublisher().remove(relationFromUpdate);
+                obj.getPublisher().add(relationToUpdate);
+            }
             for(LinkedEntity organization : obj.getPublisher()){
-                Organization organization1 = (Organization) RelationChecker.checkRelation(organization, overrideStatus, Organization.class);
+                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class);
                 if(organization1!=null) {
                     DataproductPublisher pi = new DataproductPublisher();
                     pi.setDataproductInstance(edmobj);
@@ -178,8 +191,14 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** DISTRIBUTION **/
         if (obj.getDistribution() != null && !obj.getDistribution().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getDistribution().contains(relationFromUpdate)){
+                obj.getDistribution().remove(relationFromUpdate);
+                obj.getDistribution().add(relationToUpdate);
+            }
             for(LinkedEntity distribution : obj.getDistribution()){
-                Distribution distribution1 = (Distribution) RelationChecker.checkRelation(distribution, overrideStatus, Distribution.class);
+                System.out.println("I'M CHECKING "+distribution.getInstanceId());
+                Distribution distribution1 = (Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, Distribution.class);
+                System.out.println("I'VE CHECKED "+distribution1.getInstanceId());
                 if(distribution1!=null) {
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDataproductInstance(edmobj);
@@ -191,8 +210,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
+                obj.getSpatialExtent().remove(relationFromUpdate);
+                obj.getSpatialExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
                 if(spatial!=null){
                     DataproductSpatial pi = new DataproductSpatial();
                     pi.setDataproductInstance(edmobj);
@@ -203,8 +226,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** TEMPORAL **/
         if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
+                obj.getTemporalExtent().remove(relationFromUpdate);
+                obj.getTemporalExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
                 if(temporal!=null){
                     DataproductTemporal pi = new DataproductTemporal();
                     pi.setDataproductInstance(edmobj);
@@ -220,6 +247,94 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     .metaId(edmobj.getMetaId())
                     .uid(edmobj.getUid());
 
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(DataproductContactpoint.class)){
+            DataproductContactpoint item = (DataproductContactpoint) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
+            DataproductCategory item = (DataproductCategory) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductIspartof.class)){
+            DataproductIspartof item = (DataproductIspartof) object;
+            if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
+            DataproductIdentifier item = (DataproductIdentifier) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductTitle.class)){
+            DataproductTitle item = (DataproductTitle) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductTemporal.class)){
+            DataproductTemporal item = (DataproductTemporal) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductSpatial.class)){
+            DataproductSpatial item = (DataproductSpatial) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductRelation.class)){
+            DataproductRelation item = (DataproductRelation) object;
+            if(item.getDataproduct().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductPublisher.class)){
+            DataproductPublisher item = (DataproductPublisher) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductProvenance.class)){
+            DataproductProvenance item = (DataproductProvenance) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductHaspart.class)){
+            DataproductHaspart item = (DataproductHaspart) object;
+            if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductDescription.class)){
+            DataproductDescription item = (DataproductDescription) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+
+        List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
+        for(Dataproduct object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
     }
 
     @Override

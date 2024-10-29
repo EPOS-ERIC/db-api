@@ -5,8 +5,8 @@ import metadataapis.EntityNames;
 import model.StatusType;
 import model.Temporal;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.PeriodOfTime;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +20,7 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.PeriodOfTime obj, StatusType overrideStatus) {
+    public LinkedEntity create(PeriodOfTime obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Temporal> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -54,6 +54,11 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

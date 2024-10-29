@@ -9,12 +9,12 @@ public class WebserviceDistribution {
     private WebserviceDistributionId id;
 
     @MapsId("webserviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
     private Webservice webserviceInstance;
 
     @MapsId("distributionInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "distribution_instance_id", nullable = false)
     private Distribution distributionInstance;
 

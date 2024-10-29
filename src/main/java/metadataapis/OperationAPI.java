@@ -2,10 +2,9 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
-import io.swagger.v3.core.jackson.mixin.OperationMixin;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
-import org.epos.eposdatamodel.WebService;
 import relationsapi.RelationChecker;
 
 import java.util.*;
@@ -17,7 +16,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Operation obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Operation obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Operation> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -50,8 +51,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         edmobj.setTemplate(obj.getTemplate());
 
         if (obj.getMapping() != null && !obj.getMapping().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getMapping().contains(relationFromUpdate)){
+                obj.getMapping().remove(relationFromUpdate);
+                obj.getMapping().add(relationToUpdate);
+            }
             for(LinkedEntity mapping : obj.getMapping()){
-                Mapping mapping1 = (Mapping) RelationChecker.checkRelation(mapping, overrideStatus, Mapping.class);
+                Mapping mapping1 = (Mapping) RelationChecker.checkRelation(obj, previousObj, null, mapping, overrideStatus, Mapping.class);
                 if(mapping1!=null){
                     OperationMapping pi = new OperationMapping();
                     pi.setOperationInstance(edmobj);
@@ -62,8 +67,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         if (obj.getWebservice() != null && !obj.getWebservice().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getWebservice().contains(relationFromUpdate)){
+                obj.getWebservice().remove(relationFromUpdate);
+                obj.getWebservice().add(relationToUpdate);
+            }
             for(LinkedEntity webService : obj.getWebservice()){
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(webService, overrideStatus, Webservice.class);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, webService, overrideStatus, Webservice.class);
                 if(webservice!=null){
                     OperationWebservice pi = new OperationWebservice();
                     pi.setOperationInstance(edmobj);
@@ -94,12 +103,46 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OperationElement ce = new OperationElement();
         ce.setOperationInstance(edmobj);
         ce.setElementInstance(el.get(0));
         dbaccess.updateObject(ce);
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
+            OperationElement item = (OperationElement) object;
+            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationMapping.class)){
+            OperationMapping item = (OperationMapping) object;
+            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationDistribution.class)){
+            OperationDistribution item = (OperationDistribution) object;
+            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationWebservice.class)){
+            OperationWebservice item = (OperationWebservice) object;
+            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
+        for(Operation object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
     }
 
 
@@ -147,6 +190,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
         return null;
     }
+
 
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAll() {

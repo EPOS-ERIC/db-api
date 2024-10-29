@@ -9,12 +9,12 @@ public class OrganizationAffiliation {
     private OrganizationAffiliationId id;
 
     @MapsId("personInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "person_instance_id", nullable = false)
     private model.Person personInstance;
 
     @MapsId("organizationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_instance_id", nullable = false)
     private Organization organizationInstance;
 

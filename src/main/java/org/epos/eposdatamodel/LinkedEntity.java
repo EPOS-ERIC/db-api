@@ -5,6 +5,7 @@ import metadataapis.EntityNames;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -37,29 +38,6 @@ public class LinkedEntity {
     @Schema(name = "metaId", description = "The metaId of the related instance", example = "12414324252352", required = false)
     private String metaId;
 
-
-    @Override
-    public String toString() {
-        return "LinkedEntity{" +
-                "instanceId='" + instanceId + '\'' +
-                ", uid='" + uid + '\'' +
-                ", EntityType='" + entityType + '\'' +
-                ", metaId='" + metaId + '\'' +
-                '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        LinkedEntity that = (LinkedEntity) o;
-        return Objects.equals(getInstanceId(), that.getInstanceId()) && Objects.equals(getUid(), that.getUid()) && Objects.equals(getEntityType(), that.getEntityType()) && Objects.equals(getMetaId(), that.getMetaId());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(getInstanceId(), getUid(), getEntityType(), getMetaId());
-    }
 
     public LinkedEntity instanceId(String instanceId) {
         this.instanceId = instanceId;
@@ -111,5 +89,39 @@ public class LinkedEntity {
 
     public void setMetaId(String metaId) {
         this.metaId = metaId;
+    }
+
+    public static Boolean contains(List<LinkedEntity> list, LinkedEntity linkedEntity){
+        for(LinkedEntity linkedEntity1 : list){
+            System.out.println(linkedEntity1.toString());
+            System.out.println(linkedEntity.toString());
+            if(linkedEntity1.equals(linkedEntity)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LinkedEntity that = (LinkedEntity) o;
+        return Objects.equals(instanceId, that.instanceId) && Objects.equals(uid, that.uid) && Objects.equals(entityType, that.entityType) && Objects.equals(metaId, that.metaId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(instanceId, uid, entityType, metaId);
+    }
+
+    @Override
+    public String toString() {
+        return "LinkedEntity{" +
+                "instanceId='" + instanceId + '\'' +
+                ", uid='" + uid + '\'' +
+                ", entityType='" + entityType + '\'' +
+                ", metaId='" + metaId + '\'' +
+                '}';
     }
 }

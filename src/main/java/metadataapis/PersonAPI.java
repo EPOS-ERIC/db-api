@@ -3,7 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.ContactPoint;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 
@@ -17,7 +17,9 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Person obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Person obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = obj;
 
         List<Person> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -72,8 +74,12 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         /** AFFILIATION **/
         if (obj.getAffiliation() != null && !obj.getAffiliation().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getAffiliation().contains(relationFromUpdate)){
+                obj.getAffiliation().remove(relationFromUpdate);
+                obj.getAffiliation().add(relationToUpdate);
+            }
             for(LinkedEntity organization : obj.getAffiliation()){
-                Organization organization1 = (Organization) RelationChecker.checkRelation(organization, overrideStatus, Organization.class);
+                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class);
                 if(organization1!=null) {
                     OrganizationAffiliation pi = new OrganizationAffiliation();
                     pi.setPersonInstance(edmobj);
@@ -85,8 +91,12 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         /** CONTACTPOINT **/
         if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getContactPoint().contains(relationFromUpdate)){
+                obj.getContactPoint().remove(relationFromUpdate);
+                obj.getContactPoint().add(relationToUpdate);
+            }
             for(LinkedEntity contactpoint : obj.getContactPoint()){
-                Contactpoint contactpoint1 = (Contactpoint) RelationChecker.checkRelation(contactpoint, overrideStatus, Contactpoint.class);
+                Contactpoint contactpoint1 = (Contactpoint) RelationChecker.checkRelation(obj, previousObj, null, contactpoint, overrideStatus, Contactpoint.class);
                 if(contactpoint1!=null) {
                     PersonContactpoint pi = new PersonContactpoint();
                     pi.setPersonInstance(edmobj);
@@ -124,7 +134,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         PersonElement ce = new PersonElement();
         ce.setPersonInstance(edmobj);
@@ -132,6 +142,33 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(PersonContactpoint.class)){
+            PersonContactpoint item = (PersonContactpoint) object;
+            if(item.getPersonInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
+            PersonIdentifier item = (PersonIdentifier) object;
+            if(item.getPersonInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
+            PersonElement item = (PersonElement) object;
+            if(item.getPersonInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Person> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Person.class);
+        for(Person object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.Person retrieve(String instanceId) {

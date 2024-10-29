@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
@@ -20,7 +21,9 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Facility> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -66,8 +69,12 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         /** ADDRESS **/
         if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getAddress().contains(relationFromUpdate)){
+                obj.getAddress().remove(relationFromUpdate);
+                obj.getAddress().add(relationToUpdate);
+            }
             for(LinkedEntity address : obj.getAddress()){
-                Address address1 = (Address) RelationChecker.checkRelation(address, overrideStatus, Address.class);
+                Address address1 = (Address) RelationChecker.checkRelation(obj, previousObj, null, address, overrideStatus, Address.class);
                 if(address1 != null){
                     FacilityAddress pi = new FacilityAddress();
                     pi.setFacilityInstance(edmobj);
@@ -79,8 +86,12 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         /** ISPARTOF **/
         if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
+                obj.getIsPartOf().remove(relationFromUpdate);
+                obj.getIsPartOf().add(relationToUpdate);
+            }
             for(LinkedEntity facility : obj.getIsPartOf()){
-                Facility facility1 = (Facility) RelationChecker.checkRelation(facility, overrideStatus, Facility.class);
+                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class);
                 if(facility1 != null){
                     FacilityIspartof pi = new FacilityIspartof();
                     pi.setFacility1Instance(edmobj);
@@ -92,8 +103,12 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
+                obj.getSpatialExtent().remove(relationFromUpdate);
+                obj.getSpatialExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
                 if(spatial != null){
                     FacilitySpatial pi = new FacilitySpatial();
                     pi.setFacilityInstance(edmobj);
@@ -124,7 +139,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         FacilityElement ce = new FacilityElement();
         ce.setFacilityInstance(edmobj);
@@ -132,6 +147,51 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(FacilityContactpoint.class)){
+            FacilityContactpoint item = (FacilityContactpoint) object;
+            if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityIspartof.class)){
+            FacilityIspartof item = (FacilityIspartof) object;
+            if(item.getFacility1Instance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
+            FacilityElement item = (FacilityElement) object;
+            if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilitySpatial.class)){
+            FacilitySpatial item = (FacilitySpatial) object;
+            if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityCategory.class)){
+            FacilityCategory item = (FacilityCategory) object;
+            if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityAddress.class)){
+            FacilityAddress item = (FacilityAddress) object;
+            if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
+        for(Facility object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.Facility retrieve(String instanceId) {

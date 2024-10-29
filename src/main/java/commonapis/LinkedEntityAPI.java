@@ -152,7 +152,7 @@ public class LinkedEntityAPI {
                 entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
                 entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
                 if(overrideStatus!=null) entity.setStatus(overrideStatus);
-                return api.create(entity, overrideStatus);
+                return api.create(entity, overrideStatus, null, null);
             } else {
                 Versioningstatus versioningstatus = returnList.get(0);
                 obj.setInstanceId(versioningstatus.getInstanceId());

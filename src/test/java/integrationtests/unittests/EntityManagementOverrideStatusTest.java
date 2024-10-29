@@ -35,7 +35,7 @@ public class EntityManagementOverrideStatusTest extends TestcontainersLifecycle 
         address.setLocality("Rome");
         address.setStatus(StatusType.DRAFT);
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
         Address retrievedAddress = (Address) api.retrieve(address.getInstanceId());
 
@@ -50,7 +50,7 @@ public class EntityManagementOverrideStatusTest extends TestcontainersLifecycle 
     public void testUpdateAddress() {
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.ADDRESS.name());
 
-        LinkedEntity le = api.create(address, StatusType.PUBLISHED);
+        LinkedEntity le = api.create(address, StatusType.PUBLISHED, null, null);
 
         List<Address> retrievedAddress = api.retrieveAll();
 

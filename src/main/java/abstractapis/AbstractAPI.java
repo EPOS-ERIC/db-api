@@ -4,10 +4,8 @@ import commonapis.*;
 import dao.EposDataModelDAO;
 import metadataapis.*;
 import model.*;
-import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 
-import javax.sound.sampled.Line;
 import java.util.List;
 
 public abstract class AbstractAPI<T> {
@@ -42,9 +40,11 @@ public abstract class AbstractAPI<T> {
         return entityName;
     }
 
-    public abstract LinkedEntity create(T obj, StatusType overrideStatus);
+    public abstract LinkedEntity create(T obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate);
 
     public abstract T retrieve(String instanceId);
+
+    public abstract Boolean delete(String instanceId);
 
     public abstract List<T> retrieveAll();
 

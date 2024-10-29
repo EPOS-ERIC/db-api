@@ -5,6 +5,7 @@ import metadataapis.EntityNames;
 import model.Quantitativevalue;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.QuantitativeValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.QuantitativeValue obj, StatusType overrideStatus) {
+    public LinkedEntity create(QuantitativeValue obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Quantitativevalue> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -52,6 +53,11 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

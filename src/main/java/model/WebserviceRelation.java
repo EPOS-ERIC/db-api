@@ -11,7 +11,7 @@ public class WebserviceRelation {
     private String webserviceInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
     private Webservice webservice;
 

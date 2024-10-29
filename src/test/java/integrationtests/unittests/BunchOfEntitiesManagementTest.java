@@ -38,7 +38,7 @@ public class BunchOfEntitiesManagementTest extends TestcontainersLifecycle {
 
             dataProduct.setDistribution(List.of(linkedEntity));
 
-            api.create(dataProduct, StatusType.PUBLISHED);
+            api.create(dataProduct, StatusType.PUBLISHED, null, null);
         }
 
 

@@ -11,11 +11,11 @@ public class MetadataGroupUser {
     private String id;
 
     @jakarta.validation.constraints.NotNull
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "auth_identifier", nullable = false)
     private model.MetadataUser authIdentifier;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private MetadataGroup group;
 

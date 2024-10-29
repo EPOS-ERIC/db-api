@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
@@ -21,7 +22,9 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Equipment> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -74,16 +77,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         /** ISPARTOF EQUIPMENT **/
         if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-            List<EquipmentIspartof> equipmentIspartofList = getDbaccess().getAllFromDB(EquipmentIspartof.class);
-            equipmentIspartofList = equipmentIspartofList.stream().filter(item -> item.getResourceEntity().equals(EntityNames.EQUIPMENT.name())).collect(Collectors.toList());
-            for(EquipmentIspartof item : equipmentIspartofList){
-                if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
+            if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
+                obj.getIsPartOf().remove(relationFromUpdate);
+                obj.getIsPartOf().add(relationToUpdate);
             }
+
             for(LinkedEntity equipment : obj.getIsPartOf()){
 
-                Equipment equipment1 = (Equipment) RelationChecker.checkRelation(equipment, overrideStatus, Equipment.class);
+                Equipment equipment1 = (Equipment) RelationChecker.checkRelation(obj, previousObj, null, equipment, overrideStatus, Equipment.class);
 
                 if(equipment1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
@@ -98,16 +99,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         /** ISPARTOF FACILITY **/
         if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-            List<EquipmentIspartof> equipmentIspartofList = getDbaccess().getAllFromDB(EquipmentIspartof.class);
-            equipmentIspartofList = equipmentIspartofList.stream().filter(item -> item.getResourceEntity().equals(EntityNames.FACILITY.name())).collect(Collectors.toList());
-            for(EquipmentIspartof item : equipmentIspartofList){
-                if(item.getEquipmentInstanceId().equals(obj.getInstanceId())){
-                    getDbaccess().deleteObject(item);
-                }
+            if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
+                obj.getIsPartOf().remove(relationFromUpdate);
+                obj.getIsPartOf().add(relationToUpdate);
             }
+
             for(LinkedEntity facility : obj.getIsPartOf()){
 
-                Facility facility1 = (Facility) RelationChecker.checkRelation(facility, overrideStatus, Facility.class);
+                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class);
 
                 if(facility1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
@@ -122,8 +121,13 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
+                obj.getSpatialExtent().remove(relationFromUpdate);
+                obj.getSpatialExtent().add(relationToUpdate);
+            }
+
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
                 if(spatial!=null){
                     EquipmentSpatial pi = new EquipmentSpatial();
                     pi.setEquipmentInstance(edmobj);
@@ -135,8 +139,12 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         /** TEMPORAL **/
         if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
+                obj.getTemporalExtent().remove(relationFromUpdate);
+                obj.getTemporalExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
                 if(temporal!=null){
                     EquipmentTemporal pi = new EquipmentTemporal();
                     pi.setEquipmentInstance(edmobj);
@@ -165,7 +173,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         EquipmentElement ce = new EquipmentElement();
         ce.setEquipmentInstance(edmobj);
@@ -259,6 +267,58 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             return o;
         }
         return null;
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(EquipmentContactpoint.class)){
+            EquipmentContactpoint item = (EquipmentContactpoint) object;
+            if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentTemporal.class)){
+            EquipmentTemporal item = (EquipmentTemporal) object;
+            if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentSpatial.class)){
+            EquipmentSpatial item = (EquipmentSpatial) object;
+            if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentRelation.class)){
+            EquipmentRelation item = (EquipmentRelation) object;
+            if(item.getEquipment().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentIspartof.class)){
+            EquipmentIspartof item = (EquipmentIspartof) object;
+            if(item.getEquipment().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
+            EquipmentElement item = (EquipmentElement) object;
+            if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentCategory.class)){
+            EquipmentCategory item = (EquipmentCategory) object;
+            if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Equipment> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Equipment.class);
+        for(Equipment object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
     }
 
     @Override

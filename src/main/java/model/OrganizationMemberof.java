@@ -9,12 +9,12 @@ public class OrganizationMemberof {
     private OrganizationMemberofId id;
 
     @MapsId("organization1InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization1_instance_id", nullable = false)
     private Organization organization1Instance;
 
     @MapsId("organization2InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization2_instance_id", nullable = false)
     private Organization organization2Instance;
 

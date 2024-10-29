@@ -2,9 +2,7 @@ package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
-import io.swagger.v3.oas.models.info.Contact;
 import metadataapis.EntityNames;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.ContactPoint;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.Person;
@@ -42,7 +40,7 @@ public class EntityManagementPersonTest extends TestcontainersLifecycle {
 
         LOG.info("CREATED:\n"+person.toString());
 
-        api.create(person, null);
+        api.create(person, null, null, null);
 
         Person retrievedPerson = (Person) api.retrieve(person.getInstanceId());
 

@@ -1,7 +1,6 @@
 package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
-import dao.EposDataModelDAO;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import org.epos.eposdatamodel.Address;
@@ -35,7 +34,7 @@ public class EntityManagementTest extends TestcontainersLifecycle {
 
         LOG.info("CREATED:\n"+address.toString());
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
         Address retrievedAddress = (Address) api.retrieve(address.getInstanceId());
 
@@ -61,13 +60,13 @@ public class EntityManagementTest extends TestcontainersLifecycle {
         address.setPostalCode("75002");
         address.setLocality("Paris");
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
         address.setCountry("Spain");
         address.setPostalCode("28001");
         address.setLocality("Madrid");
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
         Address retrievedAddress = (Address) api.retrieve(address.getInstanceId());
 
@@ -90,7 +89,7 @@ public class EntityManagementTest extends TestcontainersLifecycle {
         address.setPostalCode("10117");
         address.setLocality("Berlin");
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
        List<model.Address> addressList = api.getDbaccess().getOneFromDBByInstanceId(address.getInstanceId(),model.Address.class);
 

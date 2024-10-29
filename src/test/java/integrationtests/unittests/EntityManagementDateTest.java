@@ -3,13 +3,10 @@ package integrationtests.unittests;
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.DataProduct;
-import org.epos.eposdatamodel.Distribution;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +27,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11T09:35:25.018Z");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
         DataProduct dataProduct1 = (DataProduct) api.retrieve(dataProduct.getInstanceId());
 
@@ -51,7 +48,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11T09:35:25Z");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 
@@ -68,7 +65,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11T09:35:25");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 
@@ -85,7 +82,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 
@@ -102,7 +99,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11T");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 
@@ -119,7 +116,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024-07-11T01:00");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 
@@ -136,7 +133,7 @@ public class EntityManagementDateTest extends TestcontainersLifecycle {
         dataProduct.setCreated("2024");
 
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
     }
 

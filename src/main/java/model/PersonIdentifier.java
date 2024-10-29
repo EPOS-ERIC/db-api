@@ -9,12 +9,12 @@ public class PersonIdentifier {
     private PersonIdentifierId id;
 
     @MapsId("personInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "person_instance_id", nullable = false)
     private Person personInstance;
 
     @MapsId("identifierInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "identifier_instance_id", nullable = false)
     private Identifier identifierInstance;
 

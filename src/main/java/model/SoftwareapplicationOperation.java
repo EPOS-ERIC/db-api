@@ -9,12 +9,12 @@ public class SoftwareapplicationOperation {
     private SoftwareapplicationOperationId id;
 
     @MapsId("softwareapplicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplicationInstance;
 
     @MapsId("operationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "operation_instance_id", nullable = false)
     private Operation operationInstance;
 

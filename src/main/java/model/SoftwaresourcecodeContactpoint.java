@@ -9,12 +9,12 @@ public class SoftwaresourcecodeContactpoint {
     private SoftwaresourcecodeContactpointId id;
 
     @MapsId("softwaresourcecodeInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
     private Softwaresourcecode softwaresourcecodeInstance;
 
     @MapsId("contactpointInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contactpoint_instance_id", nullable = false)
     private Contactpoint contactpointInstance;
 

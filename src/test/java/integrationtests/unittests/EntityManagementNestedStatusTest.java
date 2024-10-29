@@ -32,7 +32,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
         dataProduct.setUid(UUID.randomUUID().toString());
         dataProduct.setStatus(StatusType.PUBLISHED);
 
-        api.create(dataProduct, StatusType.PUBLISHED);
+        api.create(dataProduct, null, null, null);
 
         DataProduct retrieved = (DataProduct) api.retrieve(dataProduct.getInstanceId());
 
@@ -43,7 +43,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
 
     @Test
     @Order(2)
-    public void testCreateAndGetDIstributiom() {
+    public void testCreateAndGetDIstribution() {
 
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
 
@@ -53,7 +53,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
         distribution.setUid(UUID.randomUUID().toString());
         distribution.setStatus(StatusType.PUBLISHED);
 
-        LinkedEntity le = api.create(distribution, StatusType.PUBLISHED);
+        LinkedEntity le = api.create(distribution, null, null, null);
 
         dataProduct.addDistribution(le);
 
@@ -69,7 +69,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
 
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name());
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
         DataProduct retrieved = (DataProduct) api.retrieve(dataProduct.getInstanceId());
 
@@ -86,7 +86,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
 
         dataProduct.setStatus(StatusType.DRAFT);
 
-        LinkedEntity le = api.create(dataProduct, StatusType.DRAFT);
+        LinkedEntity le = api.create(dataProduct, null, null, null);
 
         DataProduct retrievedDataProduct1 = (DataProduct) api.retrieve(le.getInstanceId());
 
@@ -99,7 +99,7 @@ public class EntityManagementNestedStatusTest extends TestcontainersLifecycle {
         System.out.println(distributionList);
 
         assertEquals(StatusType.DRAFT, retrievedDataProduct1.getStatus());
-        assertEquals(1, distributionList.size());
+        assertEquals(2, distributionList.size());
     }
 
 }

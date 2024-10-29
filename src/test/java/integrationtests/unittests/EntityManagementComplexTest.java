@@ -6,7 +6,6 @@ import metadataapis.EntityNames;
 import model.WebserviceIdentifier;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.WebService;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.Identifier;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ public class EntityManagementComplexTest extends TestcontainersLifecycle {
         identifier.setType("TYPE");
         identifier.setIdentifier("012345678900");
 
-        LinkedEntity le = identifierAPI.create(identifier, null);
+        LinkedEntity le = identifierAPI.create(identifier, null, null, null);
 
         LOG.info("CREATED:\n"+identifier.toString());
         LOG.info("CREATED:\n"+le.toString());
@@ -45,7 +44,7 @@ public class EntityManagementComplexTest extends TestcontainersLifecycle {
         webservice.setName("Test name");
         webservice.setIdentifier(List.of(le));
 
-        LinkedEntity newLe = webserviceAPI.create(webservice, null);
+        LinkedEntity newLe = webserviceAPI.create(webservice, null, null, null);
 
         LOG.info("CREATED:\n"+webservice.toString());
         LOG.info("CREATED:\n"+newLe.toString());

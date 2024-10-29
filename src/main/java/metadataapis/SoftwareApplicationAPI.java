@@ -3,11 +3,10 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import model.Element;
+import model.Person;
 import org.epos.eposdatamodel.*;
 import org.epos.eposdatamodel.Category;
 import org.epos.eposdatamodel.Identifier;
-import org.epos.eposdatamodel.Operation;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 
@@ -23,7 +22,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus) {
+    public LinkedEntity create(SoftwareApplication obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Softwareapplication> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -121,7 +120,46 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationContactpoint.class)){
+            SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
+            if(item.getSoftwareapplicationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationIdentifier.class)){
+            SoftwareapplicationIdentifier item = (SoftwareapplicationIdentifier) object;
+            if(item.getSoftwareapplicationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationOperation.class)){
+            SoftwareapplicationOperation item = (SoftwareapplicationOperation) object;
+            if(item.getSoftwareapplicationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationParameter.class)){
+            SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
+            if(item.getSoftwareapplicationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationCategory.class)){
+            SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
+            if(item.getSoftwareapplicationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
 
+        List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
+        for(Softwareapplication object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.SoftwareApplication retrieve(String instanceId) {

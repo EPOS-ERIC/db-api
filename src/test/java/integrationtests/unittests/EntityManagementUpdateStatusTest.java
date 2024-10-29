@@ -35,7 +35,7 @@ public class EntityManagementUpdateStatusTest extends TestcontainersLifecycle {
         address.setLocality("Rome");
         address.setStatus(StatusType.DRAFT);
 
-        api.create(address, null);
+        api.create(address, null, null, null);
 
         Address retrievedAddress = (Address) api.retrieve(address.getInstanceId());
 
@@ -51,7 +51,7 @@ public class EntityManagementUpdateStatusTest extends TestcontainersLifecycle {
 
         address.setStatus(StatusType.SUBMITTED);
 
-        LinkedEntity le = api.create(address, null);
+        LinkedEntity le = api.create(address, null, null, null);
 
         List<Address> retrievedAddress = api.retrieveAll();
 

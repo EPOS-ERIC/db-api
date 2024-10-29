@@ -19,7 +19,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Mapping obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Mapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Mapping> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -82,7 +82,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         MappingElement ce = new MappingElement();
         ce.setMappingInstance(edmobj);
@@ -90,6 +90,27 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
+            MappingElement item = (MappingElement) object;
+            if(item.getMappingInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationMapping.class)){
+            OperationMapping item = (OperationMapping) object;
+            if(item.getMappingInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);
+        for(Mapping object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.Mapping retrieve(String instanceId) {

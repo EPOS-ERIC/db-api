@@ -11,7 +11,7 @@ public class ServiceProvider {
     private String serviceInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "service_instance_id", nullable = false)
     private Service service;
 

@@ -9,12 +9,12 @@ public class DataproductHaspart {
     private DataproductHaspartId id;
 
     @MapsId("dataproduct1InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "dataproduct1_instance_id", nullable = false)
     private Dataproduct dataproduct1Instance;
 
     @MapsId("dataproduct2InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "dataproduct2_instance_id", nullable = false)
     private Dataproduct dataproduct2Instance;
 

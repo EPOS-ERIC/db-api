@@ -3,8 +3,8 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.ContactPoint;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.SoftwareSourceCode;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 
@@ -20,7 +20,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus) {
+    public LinkedEntity create(SoftwareSourceCode obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Softwaresourcecode> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -103,7 +103,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         SoftwaresourcecodeElement ce = new SoftwaresourcecodeElement();
         ce.setSoftwaresourcecodeInstance(edmobj);
@@ -112,6 +112,39 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeContactpoint.class)){
+            SoftwaresourcecodeContactpoint item = (SoftwaresourcecodeContactpoint) object;
+            if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeIdentifier.class)){
+            SoftwaresourcecodeIdentifier item = (SoftwaresourcecodeIdentifier) object;
+            if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeCategory.class)){
+            SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
+            if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
+            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
+            if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Softwaresourcecode> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwaresourcecode.class);
+        for(Softwaresourcecode object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.SoftwareSourceCode retrieve(String instanceId) {

@@ -6,7 +6,6 @@ import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organization> {
 
@@ -15,7 +14,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Organization> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -140,7 +139,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OrganizationElement ce = new OrganizationElement();
         ce.setOrganizationInstance(edmobj);
@@ -148,6 +147,61 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        List<Object> items = new ArrayList<>();
+        for(Object object : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
+            OrganizationContactpoint item = (OrganizationContactpoint) object;
+            if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationOwn.class)){
+            OrganizationOwn item = (OrganizationOwn) object;
+            if(item.getOrganization().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DataproductPublisher.class)){
+            DataproductPublisher item = (DataproductPublisher) object;
+            if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
+                items.add(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationMemberof.class)){
+            OrganizationMemberof item = (OrganizationMemberof) object;
+            if(item.getOrganization1Instance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
+            OrganizationIdentifier item = (OrganizationIdentifier) object;
+            if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
+            OrganizationElement item = (OrganizationElement) object;
+            if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationAffiliation.class)){
+            OrganizationAffiliation item = (OrganizationAffiliation) object;
+            if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        if(!items.isEmpty()) dbaccess.deleteListOfObjects(items);
+
+        List<Organization> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Organization.class);
+        for(Organization object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.Organization retrieve(String instanceId) {

@@ -9,12 +9,12 @@ public class DistributionElement {
     private DistributionElementId id;
 
     @MapsId("distributionInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "distribution_instance_id", nullable = false)
     private Distribution distributionInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private model.Element elementInstance;
 

@@ -1,19 +1,16 @@
 package metadataapis;
 
 import abstractapis.AbstractAPI;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import commonapis.*;
 import model.*;
 import org.epos.eposdatamodel.Documentation;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.WebService;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.*;
 
 public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService> {
@@ -23,7 +20,9 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.WebService obj, StatusType overrideStatus) {
+    public LinkedEntity create(WebService obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Webservice> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -67,8 +66,11 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
         /** PUBLISHER **/
         if (obj.getProvider() != null) {
+            if(relationFromUpdate!=null && obj.getProvider().equals(relationFromUpdate)){
+                obj.setProvider(relationToUpdate);
+            }
 
-            Organization organization1 = (Organization) RelationChecker.checkRelation(obj.getProvider(), overrideStatus, Organization.class);
+            Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class);
 
             edmobj.setProvider(organization1.getInstanceId());
         }
@@ -83,8 +85,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
         /** DOCUMENTATION **/
         if (obj.getDocumentation() != null && !obj.getDocumentation().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getDocumentation().contains(relationFromUpdate)){
+                obj.getDocumentation().remove(relationFromUpdate);
+                obj.getDocumentation().add(relationToUpdate);
+            }
             for(LinkedEntity documentation : obj.getDocumentation()){
-                Documentation documentation1 = (Documentation) RelationChecker.checkRelation(documentation, overrideStatus, Documentation.class);
+                Documentation documentation1 = (Documentation) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Documentation.class);
                 if(documentation1!=null) {
                     List<Element> el = dbaccess.getOneFromDBByInstanceId(documentation1.getInstanceId(), Element.class);
                     WebserviceElement pi = new WebserviceElement();
@@ -96,8 +102,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getIdentifier().contains(relationFromUpdate)){
+                obj.getIdentifier().remove(relationFromUpdate);
+                obj.getIdentifier().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                Identifier identifier1 = (Identifier) RelationChecker.checkRelation(identifier, overrideStatus, Identifier.class);
+                Identifier identifier1 = (Identifier) RelationChecker.checkRelation(obj, previousObj, null, identifier, overrideStatus, Identifier.class);
                 if(identifier1!=null) {
                     WebserviceIdentifier pi = new WebserviceIdentifier();
                     pi.setWebserviceInstance(edmobj);
@@ -109,8 +119,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
         /** SPATIAL **/
         if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
+                obj.getSpatialExtent().remove(relationFromUpdate);
+                obj.getSpatialExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
                 if(spatial!=null){
                     WebserviceSpatial pi = new WebserviceSpatial();
                     pi.setWebserviceInstance(edmobj);
@@ -121,8 +135,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
         /** TEMPORAL **/
         if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
+                obj.getTemporalExtent().remove(relationFromUpdate);
+                obj.getTemporalExtent().add(relationToUpdate);
+            }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
                 if(temporal!=null){
                     WebserviceTemporal pi = new WebserviceTemporal();
                     pi.setWebserviceInstance(edmobj);
@@ -132,8 +150,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         if (obj.getSupportedOperation() != null && !obj.getSupportedOperation().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getSupportedOperation().contains(relationFromUpdate)){
+                obj.getSupportedOperation().remove(relationFromUpdate);
+                obj.getSupportedOperation().add(relationToUpdate);
+            }
             for(LinkedEntity operation : obj.getSupportedOperation()){
-                Operation operation1 = (Operation) RelationChecker.checkRelation(operation, overrideStatus, Operation.class);
+                Operation operation1 = (Operation) RelationChecker.checkRelation(obj, previousObj, null, operation, overrideStatus, Operation.class);
                 if(operation1!=null) {
                     OperationWebservice pi = new OperationWebservice();
                     pi.setWebserviceInstance(edmobj);
@@ -161,6 +183,65 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     .metaId(edmobj.getMetaId())
                     .uid(edmobj.getUid());
 
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
+            WebserviceIdentifier item = (WebserviceIdentifier) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceTemporal.class)){
+            WebserviceTemporal item = (WebserviceTemporal) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
+            WebserviceElement item = (WebserviceElement) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceSpatial.class)){
+            WebserviceSpatial item = (WebserviceSpatial) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceContactpoint.class)){
+            WebserviceContactpoint item = (WebserviceContactpoint) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceRelation.class)){
+            WebserviceRelation item = (WebserviceRelation) object;
+            if(item.getWebservice().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceDistribution.class)){
+            WebserviceDistribution item = (WebserviceDistribution) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceCategory.class)){
+            WebserviceCategory item = (WebserviceCategory) object;
+            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        List<Webservice> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Webservice.class);
+        for(Webservice object : elementList){
+            dbaccess.deleteObject(object);
+        }
+        return true;
     }
 
     @Override

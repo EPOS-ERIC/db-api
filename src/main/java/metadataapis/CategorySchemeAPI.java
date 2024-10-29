@@ -3,8 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
-import model.CategoryScheme;
-import model.StatusType;
+import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.ArrayList;
@@ -19,7 +18,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.CategoryScheme obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.CategoryScheme obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<CategoryScheme> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -61,6 +60,15 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
+        for(CategoryScheme object : elementList){
+            dbaccess.deleteObject(object);
+        }
+        return true;
     }
 
     @Override

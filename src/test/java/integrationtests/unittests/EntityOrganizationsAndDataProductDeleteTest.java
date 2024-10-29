@@ -4,7 +4,10 @@ import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import model.StatusType;
-import org.epos.eposdatamodel.*;
+import org.epos.eposdatamodel.Category;
+import org.epos.eposdatamodel.DataProduct;
+import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.Organization;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +16,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EntityOrganizationsAndDataProductTest extends TestcontainersLifecycle {
+public class EntityOrganizationsAndDataProductDeleteTest extends TestcontainersLifecycle {
 
     static LinkedEntity organizationLE = null;
     static LinkedEntity categoryLe = null;
@@ -108,6 +111,55 @@ public class EntityOrganizationsAndDataProductTest extends TestcontainersLifecyc
         LOG.info("RECEIVED:\n"+retrievedOrganization.toString());
 
         assertNotNull(retrievedOrganization);
+
+        api = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name());
+
+        DataProduct retrievedDataproduct = (DataProduct) api.retrieve(dataProduct.getInstanceId());
+
+        LOG.info("RECEIVED:\n"+retrievedDataproduct.toString());
+
+        assertNotNull(retrievedDataproduct);
+    }
+
+    @Test
+    @Order(4)
+    public void testCreateAndDeleteDatasetWithProvider() {
+
+        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name());
+
+        DataProduct dataProduct = new DataProduct();
+        dataProduct.setInstanceId(UUID.randomUUID().toString());
+        dataProduct.setMetaId(UUID.randomUUID().toString());
+        dataProduct.setUid(UUID.randomUUID().toString());
+        dataProduct.setPublisher(List.of(organizationLE));
+        dataProduct.addKeywords("Test");
+        dataProduct.addKeywords("Test 2");
+        dataProduct.addKeywords("Test 3");
+        dataProduct.addKeywords("Test 4");
+        LinkedEntity ispartof = new LinkedEntity();
+        ispartof.setInstanceId(UUID.randomUUID().toString());
+        ispartof.setMetaId(UUID.randomUUID().toString());
+        ispartof.setUid(UUID.randomUUID().toString());
+        ispartof.setEntityType(EntityNames.DATAPRODUCT.name());
+        dataProduct.addIsPartOf(ispartof);
+        dataProduct.setDocumentation("Test Documentation");
+        dataProduct.addCategory(categoryLe);
+
+        api.create(dataProduct, null, null, null);
+
+        api = AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name());
+
+        Organization retrievedOrganization = (Organization) api.retrieve(organizationLE.getInstanceId());
+
+        LOG.info("RECEIVED:\n"+retrievedOrganization.toString());
+
+        assertNotNull(retrievedOrganization);
+
+        assertEquals(Boolean.TRUE,api.delete(organizationLE.getInstanceId()));
+
+        retrievedOrganization = (Organization) api.retrieve(organizationLE.getInstanceId());
+
+        assertNull(retrievedOrganization);
 
         api = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name());
 

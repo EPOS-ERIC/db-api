@@ -36,9 +36,9 @@ public class EntityManagementStressTest extends TestcontainersLifecycle {
                 mapping.setUid(UUID.randomUUID().toString());
                 mapping.setLabel("Label-"+j);
                 mapping.setVariable("Variable-"+j);
-                operation.addMapping(mappingAPI.create(mapping, null));
+                operation.addMapping(mappingAPI.create(mapping, null, null, null));
             }
-            operationAPI.create(operation, null);
+            operationAPI.create(operation, null, null, null);
         }
 
         System.out.println("POPULATION DONE");

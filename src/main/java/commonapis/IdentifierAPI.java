@@ -18,7 +18,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Identifier obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Identifier obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Identifier> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -52,6 +52,11 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

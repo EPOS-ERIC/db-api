@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.Location;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Location obj, StatusType overrideStatus) {
+    public LinkedEntity create(Location obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Spatial> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -50,6 +51,11 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

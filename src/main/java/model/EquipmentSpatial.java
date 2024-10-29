@@ -9,12 +9,12 @@ public class EquipmentSpatial {
     private EquipmentSpatialId id;
 
     @MapsId("equipmentInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "equipment_instance_id", nullable = false)
     private Equipment equipmentInstance;
 
     @MapsId("spatialInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "spatial_instance_id", nullable = false)
     private model.Spatial spatialInstance;
 

@@ -18,7 +18,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Parameter obj, StatusType overrideStatus) {
+    public LinkedEntity create(Parameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<SoftwareapplicationParameter> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -74,6 +74,11 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
             return o;
         }
         return null;
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

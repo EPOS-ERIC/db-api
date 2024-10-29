@@ -27,7 +27,7 @@ public class EntityManagementWebserviceTest extends TestcontainersLifecycle {
         category.setName("Test");
         category.setDescription("Test category");
 
-        LinkedEntity categoryCreated = api.create(category, null);
+        LinkedEntity categoryCreated = api.create(category, null, null, null);
         System.out.println(categoryCreated);
 
         api = AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name());
@@ -38,7 +38,7 @@ public class EntityManagementWebserviceTest extends TestcontainersLifecycle {
         organization.setUid(UUID.randomUUID().toString());
         organization.setLegalName(List.of("Test"));
 
-        LinkedEntity organizationCreated = api.create(organization, null);
+        LinkedEntity organizationCreated = api.create(organization, null, null, null);
         System.out.println(organizationCreated);
 
 
@@ -69,7 +69,7 @@ public class EntityManagementWebserviceTest extends TestcontainersLifecycle {
         webService.addKeywords("Test 3");
         webService.addKeywords("Test 4");
 
-        LinkedEntity webserviceCreated = api.create(webService, null);
+        LinkedEntity webserviceCreated = api.create(webService, null, null, null);
         System.out.println(webserviceCreated);
 
         api = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
@@ -81,7 +81,7 @@ public class EntityManagementWebserviceTest extends TestcontainersLifecycle {
         mapping.setLabel("label");
         mapping.setVariable("variable");
 
-        LinkedEntity mappingCreated = api.create(mapping, null);
+        LinkedEntity mappingCreated = api.create(mapping, null, null, null);
         System.out.println(mappingCreated);
 
 
@@ -93,7 +93,7 @@ public class EntityManagementWebserviceTest extends TestcontainersLifecycle {
         operation.setTemplate("Template");
         operation.setMapping(List.of(mappingCreated));
 
-        LinkedEntity operationCreated = api.create(operation, null);
+        LinkedEntity operationCreated = api.create(operation, null, null, null);
         System.out.println(operationCreated);
 
 

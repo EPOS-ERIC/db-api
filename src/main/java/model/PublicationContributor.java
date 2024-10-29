@@ -9,12 +9,12 @@ public class PublicationContributor {
     private PublicationContributorId id;
 
     @MapsId("publicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "publication_instance_id", nullable = false)
     private Publication publicationInstance;
 
     @MapsId("personInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "person_instance_id", nullable = false)
     private Person personInstance;
 

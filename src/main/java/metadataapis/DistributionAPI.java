@@ -3,14 +3,10 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.ContactPoint;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +19,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Distribution obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Distribution obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
 
         List<Distribution> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -95,8 +93,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         /** DATAPRODUCT **/
         if (obj.getDataProduct() != null && !obj.getDataProduct().isEmpty()) {
+            if(relationFromUpdate!=null && obj.getDataProduct().contains(relationFromUpdate)){
+                obj.getDataProduct().remove(relationFromUpdate);
+                obj.getDataProduct().add(relationToUpdate);
+            }
             for(LinkedEntity dataProduct : obj.getDataProduct()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
                 if(dataproduct!=null){
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDistributionInstance(edmobj);
@@ -107,8 +109,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
 
         if (obj.getAccessService() != null ) {
+            if(relationFromUpdate!=null && obj.getAccessService().contains(relationFromUpdate)){
+                obj.getAccessService().remove(relationFromUpdate);
+                obj.getAccessService().add(relationToUpdate);
+            }
             for(LinkedEntity accessService : obj.getAccessService()) {
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(accessService, overrideStatus, Webservice.class);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class);
                 if(webservice!=null){
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setDistributionInstance(edmobj);
@@ -119,8 +125,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
 
         if (obj.getSupportedOperation() != null ) {
+            if(relationFromUpdate!=null && obj.getSupportedOperation().contains(relationFromUpdate)){
+                obj.getSupportedOperation().remove(relationFromUpdate);
+                obj.getSupportedOperation().add(relationToUpdate);
+            }
             for(LinkedEntity supportedOperation : obj.getSupportedOperation()) {
-                Operation operation = (Operation) RelationChecker.checkRelation(supportedOperation, overrideStatus, Operation.class);
+                Operation operation = (Operation) RelationChecker.checkRelation(obj, previousObj, null, supportedOperation, overrideStatus, Operation.class);
                 if(operation!=null){
                     OperationDistribution pi = new OperationDistribution();
                     pi.setDistributionInstance(edmobj);
@@ -156,7 +166,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         element.setType(elementType);
         element.setValue(value);
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus);
+        LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         DistributionElement ce = new DistributionElement();
         ce.setDistributionInstance(edmobj);
@@ -164,6 +174,45 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         dbaccess.updateObject(ce);
     }
 
+    @Override
+    public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(DistributionTitle.class)){
+            DistributionTitle item = (DistributionTitle) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DistributionDescription.class)){
+            DistributionDescription item = (DistributionDescription) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DistributionDataproduct.class)){
+            DistributionDataproduct item = (DistributionDataproduct) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationDistribution.class)){
+            OperationDistribution item = (OperationDistribution) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
+        for(Distribution object : elementList){
+            dbaccess.deleteObject(object);
+        }
+
+        return true;
+    }
 
     @Override
     public org.epos.eposdatamodel.Distribution retrieve(String instanceId) {

@@ -3,14 +3,11 @@ package integrationtests.unittests;
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
-import org.eclipse.persistence.internal.jpa.rs.metadata.model.Link;
-import org.epos.eposdatamodel.Address;
 import org.epos.eposdatamodel.Distribution;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,7 +36,7 @@ public class EntityManagementDistributionTest extends TestcontainersLifecycle {
         distribution.addAccessService(le);
         distribution.addSupportedOperation(le2);
 
-        api.create(distribution, null);
+        api.create(distribution, null, null, null);
 
         Distribution retrievedDistribution = (Distribution) api.retrieve(distribution.getInstanceId());
 

@@ -33,7 +33,7 @@ public class EntityManagementDataProductTest extends TestcontainersLifecycle {
         dataProduct.addDistribution(le);
         dataProduct.setCreated("");
 
-        api.create(dataProduct, null);
+        api.create(dataProduct, null, null, null);
 
         DataProduct retrievedDataProduct = (DataProduct) api.retrieve(dataProduct.getInstanceId());
         System.out.println(retrievedDataProduct.getDistribution());

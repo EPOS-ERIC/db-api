@@ -29,7 +29,7 @@ public class EntityManagementOperationMappingTest extends TestcontainersLifecycl
 
 
         AbstractAPI apiOperation = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
-        LinkedEntity operationLinkedEntity = apiOperation.create(operation, null);
+        LinkedEntity operationLinkedEntity = apiOperation.create(operation, null, null, null);
 
         operation.setInstanceId(operationLinkedEntity.getInstanceId());
         operation.setMetaId(operationLinkedEntity.getMetaId());
@@ -41,7 +41,7 @@ public class EntityManagementOperationMappingTest extends TestcontainersLifecycl
         mapping1.setStatus(StatusType.DRAFT);
 
         AbstractAPI apiMapping = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
-        LinkedEntity mapping1LinkedEntity = apiMapping.create(mapping1, null);
+        LinkedEntity mapping1LinkedEntity = apiMapping.create(mapping1, null, null, null);
 
         mapping1.setInstanceId(operationLinkedEntity.getInstanceId());
         mapping1.setMetaId(operationLinkedEntity.getMetaId());
@@ -51,7 +51,7 @@ public class EntityManagementOperationMappingTest extends TestcontainersLifecycl
 
         System.out.println(operation.getMapping());
 
-        operationLinkedEntity = apiOperation.create(operation, null);
+        operationLinkedEntity = apiOperation.create(operation, null, null, null);
 
         assertEquals(1, ((Operation) LinkedEntityAPI.retrieveFromLinkedEntity(operationLinkedEntity)).getMapping().size());
     }

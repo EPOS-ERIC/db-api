@@ -19,7 +19,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Element obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Element obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -74,6 +74,11 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
             return o;
         }
         return null;
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+        return true;
     }
 
     @Override

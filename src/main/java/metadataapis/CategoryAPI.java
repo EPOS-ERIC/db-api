@@ -5,7 +5,6 @@ import commonapis.EposDataModelEntityIDAPI;
 import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
-import org.eclipse.persistence.internal.jpa.rs.metadata.model.Link;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.*;
@@ -17,7 +16,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
 
     @Override
-    public LinkedEntity create(org.epos.eposdatamodel.Category obj, StatusType overrideStatus) {
+    public LinkedEntity create(org.epos.eposdatamodel.Category obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         List<Category> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -68,7 +67,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         childObj.setInstanceId(inscheme.getInstanceId());
         childObj.setMetaId(inscheme.getMetaId());
         childObj.setUid(inscheme.getUid());
-        LinkedEntity le = api.create(childObj, overrideStatus);
+        LinkedEntity le = api.create(childObj, overrideStatus, null, null);
         edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
 
     }
@@ -114,6 +113,28 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
             getDbaccess().updateObject(categoryIspartof);
         }
+    }
+
+    @Override
+    public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(CategoryHastopconcept.class)){
+            CategoryHastopconcept item = (CategoryHastopconcept) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(CategoryIspartof.class)){
+            CategoryIspartof item = (CategoryIspartof) object;
+            if(item.getCategory1Instance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
+        for(Category object : elementList){
+            dbaccess.deleteObject(object);
+        }
+        return true;
     }
 
     @Override

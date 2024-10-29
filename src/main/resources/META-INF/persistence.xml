@@ -167,5 +167,5 @@
 		<class>model.WebserviceSpatialId</class>
 		<class>model.WebserviceTemporal</class>
 		<class>model.WebserviceTemporalId</class>
-    </persistence-unit>
+	</persistence-unit>
 </persistence>

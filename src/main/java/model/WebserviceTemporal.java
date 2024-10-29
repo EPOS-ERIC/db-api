@@ -9,12 +9,12 @@ public class WebserviceTemporal {
     private WebserviceTemporalId id;
 
     @MapsId("webserviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
     private Webservice webserviceInstance;
 
     @MapsId("temporalInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "temporal_instance_id", nullable = false)
     private Temporal temporalInstance;
 
