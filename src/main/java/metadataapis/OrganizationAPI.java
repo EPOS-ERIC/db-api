@@ -149,7 +149,6 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Object> items = new ArrayList<>();
         for(Object object : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
             OrganizationContactpoint item = (OrganizationContactpoint) object;
             if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
@@ -165,7 +164,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         for(Object object : getDbaccess().getAllFromDB(DataproductPublisher.class)){
             DataproductPublisher item = (DataproductPublisher) object;
             if(item.getOrganizationInstance().getInstanceId().equals(instanceId)){
-                items.add(item);
+                dbaccess.deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OrganizationMemberof.class)){
@@ -192,8 +191,6 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 dbaccess.deleteObject(item);
             }
         }
-
-        if(!items.isEmpty()) dbaccess.deleteListOfObjects(items);
 
         List<Organization> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Organization.class);
         for(Organization object : elementList){
