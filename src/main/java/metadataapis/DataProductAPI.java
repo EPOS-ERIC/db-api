@@ -377,9 +377,11 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproduct_instance_id", edmobj.getInstanceId(),DataproductContactpoint.class)) {
                 DataproductContactpoint item = (DataproductContactpoint) object;
+                System.out.println("RETRIEVE CONTACT POINT: "+item);
                 if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
                     LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    System.out.println("RETRIEVE CONTACT POINT: "+le);
                     o.addContactPoint(le);
                 }
             }

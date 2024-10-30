@@ -14,8 +14,8 @@ import java.util.Optional;
 public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
@@ -29,8 +29,8 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
     }
 
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
@@ -44,8 +44,8 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
     }
 
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
@@ -59,8 +59,8 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
     }
 
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus){
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
@@ -74,8 +74,8 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
     }
 
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus){
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
@@ -89,8 +89,8 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
     }
 
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus){
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getCategory()){
+        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+            for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus);
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
