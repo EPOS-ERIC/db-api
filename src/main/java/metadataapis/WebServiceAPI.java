@@ -90,7 +90,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getDocumentation().add(relationToUpdate);
             }
             for(LinkedEntity documentation : obj.getDocumentation()){
-                Documentation documentation1 = (Documentation) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Documentation.class);
+                Element documentation1 = (Element) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Element.class);
                 if(documentation1!=null) {
                     List<Element> el = dbaccess.getOneFromDBByInstanceId(documentation1.getInstanceId(), Element.class);
                     WebserviceElement pi = new WebserviceElement();
