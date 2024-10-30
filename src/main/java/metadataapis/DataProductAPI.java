@@ -218,6 +218,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductSpatial pi = new DataproductSpatial();
                     pi.setDataproductInstance(edmobj);
                     pi.setSpatialInstance(spatial);
+                    dbaccess.updateObject(pi);
                 }
             }
         }
@@ -234,6 +235,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductTemporal pi = new DataproductTemporal();
                     pi.setDataproductInstance(edmobj);
                     pi.setTemporalInstance(temporal);
+                    dbaccess.updateObject(pi);
                 }
             }
         }

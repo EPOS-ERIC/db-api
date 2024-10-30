@@ -129,6 +129,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceSpatial pi = new WebserviceSpatial();
                     pi.setWebserviceInstance(edmobj);
                     pi.setSpatialInstance(spatial);
+                    dbaccess.updateObject(pi);
                 }
             }
         }
@@ -145,6 +146,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceTemporal pi = new WebserviceTemporal();
                     pi.setWebserviceInstance(edmobj);
                     pi.setTemporalInstance(temporal);
+                    dbaccess.updateObject(pi);
                 }
             }
         }

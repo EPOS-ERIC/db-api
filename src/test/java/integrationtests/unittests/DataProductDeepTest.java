@@ -91,6 +91,7 @@ public class DataProductDeepTest extends TestcontainersLifecycle {
         linkedEntity5.setEntityType(EntityNames.ADDRESS.name());
         dataprovider1.setAddress(linkedEntity5);
 
+
         dataprovider1.setLogo("http://www.test2.it/logo.png");
         dataprovider1.setURL("http://www.test2.it");
         dataprovider1.setEmail(List.of("test2_institute@email.it"));
@@ -110,6 +111,14 @@ public class DataProductDeepTest extends TestcontainersLifecycle {
 
         dataProduct.addContactPoint(linkedEntity6);
         dataProduct.addPublisher(linkedEntity7);
+        Location location1 = new Location();
+        classes.add(location1);
+        location1.setUid("Location/1");
+        location1.setLocation("POLYGON()");
+        LinkedEntity linkedEntity8 = new LinkedEntity();
+        linkedEntity8.setUid("Location/1");
+        linkedEntity8.setEntityType(EntityNames.LOCATION.name());
+        dataProduct.addSpatialExtentItem(linkedEntity8);
 
         for(EPOSDataModelEntity entity : classes) {
             AbstractAPI.retrieveAPI(EntityNames.valueOf(entity.getClass().getSimpleName().toUpperCase(Locale.ROOT)).name()).create(entity, null, null, null);
