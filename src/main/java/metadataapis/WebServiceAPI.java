@@ -325,7 +325,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     TemporalAPI api = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
                     LinkedEntity le = api.retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
-                    o.addSpatialExtentItem(le);
+                    o.addTemporalExtent(le);
                 }
             }
 
