@@ -188,7 +188,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 }
             }
 
-            for(Object organizationContactpoint : getDbaccess().getAllFromDB(ContactpointElement.class)){
+            for(Object organizationContactpoint : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
                 OrganizationContactpoint item = (OrganizationContactpoint) organizationContactpoint;
                 if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);

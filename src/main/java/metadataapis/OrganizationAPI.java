@@ -53,7 +53,10 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         /** ADDRESS **/
         if (obj.getAddress() != null) {
-            edmobj.setAddress((Address) dbaccess.getOneFromDBByLinkedEntity(obj.getAddress(), Address.class));
+            List<Address> addressList = dbaccess.getOneFromDBByLinkedEntity(obj.getAddress(), Address.class);
+            if(!addressList.isEmpty()) {
+                edmobj.setAddress(addressList.get(0));
+            }
         }
 
         /** CONTACTPOINT **/
