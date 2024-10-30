@@ -18,7 +18,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Operation obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         List<Operation> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),

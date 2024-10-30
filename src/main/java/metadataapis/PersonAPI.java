@@ -19,7 +19,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Person obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         List<Person> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),

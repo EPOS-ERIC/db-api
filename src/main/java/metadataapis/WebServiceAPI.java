@@ -22,7 +22,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     @Override
     public LinkedEntity create(WebService obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         List<Webservice> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),

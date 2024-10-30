@@ -34,7 +34,10 @@ public class VersioningStatusAPI {
 
             Versioningstatus edmobj = returnList.get(0);
 
-            if(overrideStatus!=null) edmobj.setStatus(overrideStatus.toString());
+            if(overrideStatus!=null) {
+                edmobj.setStatus(overrideStatus.toString());
+                obj.setStatus(overrideStatus);
+            }
             else {
 
                 if (obj.getStatus() == null) obj.setStatus(DRAFT);
@@ -111,10 +114,14 @@ public class VersioningStatusAPI {
                 }
             }
 
+            System.out.println(obj.getStatus());
             getDbaccess().updateObject(edmobj);
 
             return obj;
         } else {
+            if(overrideStatus!=null) {
+                obj.setStatus(overrideStatus);
+            }
             /**
              *
              * CREATING A NEW VERSIONING STATUS ENTITY
@@ -191,10 +198,10 @@ public class VersioningStatusAPI {
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
 
         List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                Optional.ofNullable(obj.getInstanceId()).orElse(null),
-                Optional.ofNullable(obj.getMetaId()).orElse(null),
-                Optional.ofNullable(obj.getUid()).orElse(null),
-                Optional.ofNullable(obj.getVersionId()).orElse(null),
+                obj.getInstanceId(),
+                obj.getMetaId(),
+                obj.getUid(),
+                obj.getVersionId(),
                 Versioningstatus.class
         );
 

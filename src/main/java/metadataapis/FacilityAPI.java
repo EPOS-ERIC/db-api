@@ -23,7 +23,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         List<Facility> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),

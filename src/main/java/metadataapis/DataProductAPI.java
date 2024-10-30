@@ -24,7 +24,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     @Override
     public LinkedEntity create(DataProduct obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):obj;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         List<Dataproduct> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -196,9 +196,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getDistribution().add(relationToUpdate);
             }
             for(LinkedEntity distribution : obj.getDistribution()){
-                System.out.println("I'M CHECKING "+distribution.getInstanceId());
                 Distribution distribution1 = (Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, Distribution.class);
-                System.out.println("I'VE CHECKED "+distribution1.getInstanceId());
                 if(distribution1!=null) {
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDataproductInstance(edmobj);
