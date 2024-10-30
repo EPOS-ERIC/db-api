@@ -71,8 +71,8 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setStartDate(LocalDateTime.from(edmobj.getStartdate() != null ? edmobj.getStartdate() : null));
-            o.setEndDate(LocalDateTime.from(edmobj.getEnddate() != null ? edmobj.getEnddate() : null));
+            o.setStartDate(edmobj.getStartdate());
+            o.setEndDate(edmobj.getEnddate());
 
             o = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
 
