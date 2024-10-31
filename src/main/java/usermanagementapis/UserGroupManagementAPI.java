@@ -129,33 +129,13 @@ public class UserGroupManagementAPI {
         return getDbaccess().updateObject(group1);
     }
 
-    public static Group retrieveGroup(Group group){
-        List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
-        if(metadataGroupList.isEmpty()) return null;
-        for(MetadataGroup retrievedGroup : metadataGroupList){
-            if(retrievedGroup.getId().equals(group.getId())){
-                org.epos.eposdatamodel.Group group1 = new org.epos.eposdatamodel.Group(
-                        retrievedGroup.getId(),
-                        retrievedGroup.getName(),
-                        retrievedGroup.getDescription()
-                );
-                List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-                for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-                    group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
-                }
-                List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-                for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                    group1.getUsers().add(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
-                }
-                return group1;
-            }
-        }
-        return null;
-    }
-
     public static Group retrieveGroupById(String groupId){
         List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
+
         if(metadataGroupList.isEmpty()) return null;
+
         for(MetadataGroup metadataGroup : metadataGroupList){
             if(metadataGroup.getId().equals(groupId)){
                 org.epos.eposdatamodel.Group group1 = new org.epos.eposdatamodel.Group(
@@ -163,18 +143,25 @@ public class UserGroupManagementAPI {
                         metadataGroup.getName(),
                         metadataGroup.getDescription()
                 );
-                List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
                 for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-                    group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
+                    if(authorizationGroup.getGroup().getId().equals(groupId)){
+                        group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
+                    }
                 }
-                List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
                 for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                    group1.getUsers().add(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+                    if(metadataGroupUser.getGroup().getId().equals(groupId)){
+                        group1.getUsers().add(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+                    }
                 }
                 return group1;
             }
         }
         return null;
+    }
+
+    public static Group retrieveGroup(Group group){
+        if(group==null) return null;
+        return retrieveGroupById(group.getId());
     }
 
     public static List<Group> retrieveAllGroups(){
@@ -183,27 +170,8 @@ public class UserGroupManagementAPI {
 
         List<Group> returnList = new ArrayList<>();
         for(MetadataGroup group : metadataGroupList){
-            org.epos.eposdatamodel.Group group1 = new org.epos.eposdatamodel.Group(
-                    group.getId(),
-                    group.getName(),
-                    group.getDescription()
-            );
-
-            List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-
-            for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-                group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
-            }
-
-            List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-
-            for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                group1.getUsers().add(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
-            }
-
-            returnList.add(group1);
+            returnList.add(retrieveGroupById(group.getId()));
         }
-
 
         return returnList;
     }
@@ -248,18 +216,23 @@ public class UserGroupManagementAPI {
         }
 
         if(selectedGroup != null && selectedUser != null){
-            MetadataGroupUser metadataGroupUser = new MetadataGroupUser();
-            metadataGroupUser.setId(UUID.randomUUID().toString());
+            MetadataGroupUser metadataGroupUser = null;
             for(MetadataGroupUser metadataGroupUser1 : metadataGroupUserList){
                 if(metadataGroupUser1.getGroup().getId().equals(selectedGroup.getId())
                         && metadataGroupUser1.getAuthIdentifier().getAuthIdentifier().equals(selectedUser.getAuthIdentifier())){
                     metadataGroupUser = metadataGroupUser1;
+                    metadataGroupUser.setRequestStatus(requestStatusType.name());
+                    metadataGroupUser.setRole(role.name());
                 }
             }
-            metadataGroupUser.setGroup(selectedGroup);
-            metadataGroupUser.setAuthIdentifier(selectedUser);
-            metadataGroupUser.setRequestStatus(requestStatusType.name());
-            metadataGroupUser.setRole(role.name());
+            if(metadataGroupUser == null){
+                metadataGroupUser = new MetadataGroupUser();
+                metadataGroupUser.setId(UUID.randomUUID().toString());
+                metadataGroupUser.setGroup(selectedGroup);
+                metadataGroupUser.setAuthIdentifier(selectedUser);
+                metadataGroupUser.setRequestStatus(requestStatusType.name());
+                metadataGroupUser.setRole(role.name());
+            }
 
             return getDbaccess().updateObject(metadataGroupUser);
         }
