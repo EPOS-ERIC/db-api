@@ -8,6 +8,7 @@ import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,115 +19,116 @@ public class LinkedEntityAPI {
         AbstractAPI api = null;
         Class<?> edmClass = null;
         EPOSDataModelEntity entity = null;
-        switch(EntityNames.valueOf(obj.getEntityType())){
+        String entityType = obj.getEntityType().toUpperCase();
+        switch(EntityNames.valueOf(entityType)){
             case PERSON:
                 edmClass = Person.class;
-                api = new PersonAPI(obj.getEntityType(), edmClass);
+                api = new PersonAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Person();
                 break;
             case MAPPING:
                 edmClass = Mapping.class;
-                api = new MappingAPI(obj.getEntityType(), edmClass);
+                api = new MappingAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Mapping();
                 break;
             case CATEGORY:
                 edmClass = Category.class;
-                api = new CategoryAPI(obj.getEntityType(), edmClass);
+                api = new CategoryAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Category();
                 break;
             case FACILITY:
                 edmClass = Facility.class;
-                api = new FacilityAPI(obj.getEntityType(), edmClass);
+                api = new FacilityAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Facility();
                 break;
             case EQUIPMENT:
                 edmClass = Equipment.class;
-                api = new EquipmentAPI(obj.getEntityType(), edmClass);
+                api = new EquipmentAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Equipment();
                 break;
             case OPERATION:
                 edmClass = Operation.class;
-                api = new OperationAPI(obj.getEntityType(), edmClass);
+                api = new OperationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Operation();
                 break;
             case WEBSERVICE:
                 edmClass = Webservice.class;
-                api = new WebServiceAPI(obj.getEntityType(), edmClass);
+                api = new WebServiceAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.WebService();
                 break;
             case DATAPRODUCT:
                 edmClass = Dataproduct.class;
-                api = new DataProductAPI(obj.getEntityType(), edmClass);
+                api = new DataProductAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.DataProduct();
                 break;
             case CONTACTPOINT:
                 edmClass = Contactpoint.class;
-                api = new ContactPointAPI(obj.getEntityType(), edmClass);
+                api = new ContactPointAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.ContactPoint();
                 break;
             case DISTRIBUTION:
                 edmClass = Distribution.class;
-                api = new DistributionAPI(obj.getEntityType(), edmClass);
+                api = new DistributionAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Distribution();
                 break;
             case ORGANIZATION:
                 edmClass = Organization.class;
-                api = new OrganizationAPI(obj.getEntityType(), edmClass);
+                api = new OrganizationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Organization();
                 break;
             case CATEGORYSCHEME:
                 edmClass = CategoryScheme.class;
-                api = new CategorySchemeAPI(obj.getEntityType(), edmClass);
+                api = new CategorySchemeAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.CategoryScheme();
                 break;
             case SOFTWARESOURCECODE:
                 edmClass = Softwaresourcecode.class;
-                api = new SoftwareSourceCodeAPI(obj.getEntityType(), edmClass);
+                api = new SoftwareSourceCodeAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.SoftwareSourceCode();
                 break;
             case SOFTWAREAPPLICATION:
                 edmClass = Softwareapplication.class;
-                api = new SoftwareApplicationAPI(obj.getEntityType(), edmClass);
+                api = new SoftwareApplicationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.SoftwareApplication();
                 break;
             case ADDRESS:
                 edmClass = Address.class;
-                api = new AddressAPI(obj.getEntityType(), edmClass);
+                api = new AddressAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Address();
                 break;
             case ELEMENT:
                 edmClass = Element.class;
-                api = new ElementAPI(obj.getEntityType(), edmClass);
+                api = new ElementAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Element();
                 break;
             case LOCATION:
                 edmClass = Spatial.class;
-                api = new SpatialAPI(obj.getEntityType(), edmClass);
+                api = new SpatialAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Location();
                 break;
             case PERIODOFTIME:
                 edmClass = Temporal.class;
-                api = new TemporalAPI(obj.getEntityType(), edmClass);
+                api = new TemporalAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.PeriodOfTime();
                 break;
             case IDENTIFIER:
                 edmClass = Identifier.class;
-                api = new IdentifierAPI(obj.getEntityType(), edmClass);
+                api = new IdentifierAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Identifier();
                 break;
             case QUANTITATIVEVALUE:
                 edmClass = Quantitativevalue.class;
-                api = new QuantitativeValueAPI(obj.getEntityType(), edmClass);
+                api = new QuantitativeValueAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.QuantitativeValue();
                 break;
             case DOCUMENTATION:
                 edmClass = Element.class;
-                api = new DocumentationAPI(obj.getEntityType(), edmClass);
+                api = new DocumentationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Documentation();
                 break;
             case PARAMETER:
                 edmClass = SoftwareapplicationParameter.class;
-                api = new ParameterAPI(obj.getEntityType(), edmClass);
+                api = new ParameterAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Parameter();
                 break;
             case RELATION:
@@ -168,94 +170,96 @@ public class LinkedEntityAPI {
 
         AbstractAPI api = null;
         Class<?> edmClass = null;
-        switch(EntityNames.valueOf(obj.getEntityType())){
+        String entityType = obj.getEntityType().toUpperCase();
+
+        switch(EntityNames.valueOf(entityType)){
             case PERSON:
                 edmClass = Person.class;
-                api = new PersonAPI(obj.getEntityType(), edmClass);
+                api = new PersonAPI(entityType, edmClass);
                 break;
             case MAPPING:
                 edmClass = Mapping.class;
-                api = new MappingAPI(obj.getEntityType(), edmClass);
+                api = new MappingAPI(entityType, edmClass);
                 break;
             case CATEGORY:
                 edmClass = Category.class;
-                api = new CategoryAPI(obj.getEntityType(), edmClass);
+                api = new CategoryAPI(entityType, edmClass);
                 break;
             case FACILITY:
                 edmClass = Facility.class;
-                api = new FacilityAPI(obj.getEntityType(), edmClass);
+                api = new FacilityAPI(entityType, edmClass);
                 break;
             case EQUIPMENT:
                 edmClass = Equipment.class;
-                api = new EquipmentAPI(obj.getEntityType(), edmClass);
+                api = new EquipmentAPI(entityType, edmClass);
                 break;
             case OPERATION:
                 edmClass = Operation.class;
-                api = new OperationAPI(obj.getEntityType(), edmClass);
+                api = new OperationAPI(entityType, edmClass);
                 break;
             case WEBSERVICE:
                 edmClass = Webservice.class;
-                api = new WebServiceAPI(obj.getEntityType(), edmClass);
+                api = new WebServiceAPI(entityType, edmClass);
                 break;
             case DATAPRODUCT:
                 edmClass = Dataproduct.class;
-                api = new DataProductAPI(obj.getEntityType(), edmClass);
+                api = new DataProductAPI(entityType, edmClass);
                 break;
             case CONTACTPOINT:
                 edmClass = Contactpoint.class;
-                api = new ContactPointAPI(obj.getEntityType(), edmClass);
+                api = new ContactPointAPI(entityType, edmClass);
                 break;
             case DISTRIBUTION:
                 edmClass = Distribution.class;
-                api = new DistributionAPI(obj.getEntityType(), edmClass);
+                api = new DistributionAPI(entityType, edmClass);
                 break;
             case ORGANIZATION:
                 edmClass = Organization.class;
-                api = new OrganizationAPI(obj.getEntityType(), edmClass);
+                api = new OrganizationAPI(entityType, edmClass);
                 break;
             case CATEGORYSCHEME:
                 edmClass = CategoryScheme.class;
-                api = new CategorySchemeAPI(obj.getEntityType(), edmClass);
+                api = new CategorySchemeAPI(entityType, edmClass);
                 break;
             case SOFTWARESOURCECODE:
                 edmClass = Softwaresourcecode.class;
-                api = new SoftwareSourceCodeAPI(obj.getEntityType(), edmClass);
+                api = new SoftwareSourceCodeAPI(entityType, edmClass);
                 break;
             case SOFTWAREAPPLICATION:
                 edmClass = Softwareapplication.class;
-                api = new SoftwareApplicationAPI(obj.getEntityType(), edmClass);
+                api = new SoftwareApplicationAPI(entityType, edmClass);
                 break;
             case ADDRESS:
                 edmClass = Address.class;
-                api = new AddressAPI(obj.getEntityType(), edmClass);
+                api = new AddressAPI(entityType, edmClass);
                 break;
             case ELEMENT:
                 edmClass = Element.class;
-                api = new ElementAPI(obj.getEntityType(), edmClass);
+                api = new ElementAPI(entityType, edmClass);
                 break;
             case LOCATION:
                 edmClass = Spatial.class;
-                api = new SpatialAPI(obj.getEntityType(), edmClass);
+                api = new SpatialAPI(entityType, edmClass);
                 break;
             case PERIODOFTIME:
                 edmClass = Temporal.class;
-                api = new TemporalAPI(obj.getEntityType(), edmClass);
+                api = new TemporalAPI(entityType, edmClass);
                 break;
             case IDENTIFIER:
                 edmClass = Identifier.class;
-                api = new IdentifierAPI(obj.getEntityType(), edmClass);
+                api = new IdentifierAPI(entityType, edmClass);
                 break;
             case QUANTITATIVEVALUE:
                 edmClass = Quantitativevalue.class;
-                api = new QuantitativeValueAPI(obj.getEntityType(), edmClass);
+                api = new QuantitativeValueAPI(entityType, edmClass);
                 break;
             case DOCUMENTATION:
                 edmClass = Element.class;
-                api = new DocumentationAPI(obj.getEntityType(), edmClass);
+                api = new DocumentationAPI(entityType, edmClass);
                 break;
             case PARAMETER:
                 edmClass = SoftwareapplicationParameter.class;
-                api = new ParameterAPI(obj.getEntityType(), edmClass);
+                api = new ParameterAPI(entityType, edmClass);
                 break;
             case RELATION:
                 System.out.println("Relation empty case");
