@@ -133,7 +133,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             o.setProperty(edmobj.getProperty());
             o.setVariable(edmobj.getVariable());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("mapping_instance_id", edmobj.getInstanceId(),MappingElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(),MappingElement.class)) {
                 MappingElement item = (MappingElement) object;
                 if(item.getMappingInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

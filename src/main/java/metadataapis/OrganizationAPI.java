@@ -219,7 +219,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             o.setType(edmobj.getType());
             o.setMaturity(edmobj.getMaturity());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization_instance_id", edmobj.getInstanceId(),OrganizationIdentifier.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(),OrganizationIdentifier.class)) {
                 OrganizationIdentifier item = (OrganizationIdentifier) object;
                 if(item.getOrganizationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
@@ -233,7 +233,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 o.setAddress(api.retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization_instance_id", edmobj.getInstanceId(),OrganizationContactpoint.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(),OrganizationContactpoint.class)) {
                 OrganizationContactpoint item = (OrganizationContactpoint) object;
                 if(item.getOrganizationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
@@ -242,7 +242,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization_instance_id", edmobj.getInstanceId(),OrganizationElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(),OrganizationElement.class)) {
                 OrganizationElement item = (OrganizationElement) object;
                 if(item.getOrganizationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
@@ -256,7 +256,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                     o.addLegalName(item);
 
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization_instance_id", edmobj.getInstanceId(),OrganizationOwn.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization", edmobj.getInstanceId(),OrganizationOwn.class)) {
                 OrganizationOwn item = (OrganizationOwn) object;
                 if(item.getOrganization().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
@@ -270,7 +270,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization1_instance_id", edmobj.getInstanceId(),OrganizationMemberof.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("organization1Instance", edmobj.getInstanceId(),OrganizationMemberof.class)) {
                 OrganizationMemberof item = (OrganizationMemberof) object;
                 if(item.getOrganization1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                     OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);

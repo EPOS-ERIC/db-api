@@ -208,7 +208,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             o.setTitle(edmobj.getTitle());
             o.setKeywords(edmobj.getKeywords());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityCategory.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
                 FacilityCategory item = (FacilityCategory) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
@@ -217,7 +217,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityContactpoint.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
                 FacilityContactpoint item = (FacilityContactpoint) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
@@ -226,7 +226,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityAddress.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
                 FacilityAddress item = (FacilityAddress) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     AddressAPI api = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
@@ -235,7 +235,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1_instance_id", edmobj.getInstanceId(),FacilityIspartof.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
                 FacilityIspartof item = (FacilityIspartof) object;
                 if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                     FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
@@ -244,7 +244,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilitySpatial.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
                 FacilitySpatial item = (FacilitySpatial) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
@@ -253,7 +253,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility_instance_id", edmobj.getInstanceId(),FacilityElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityElement.class)) {
                 FacilityElement item = (FacilityElement) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

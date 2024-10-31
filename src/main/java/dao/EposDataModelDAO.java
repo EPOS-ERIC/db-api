@@ -40,8 +40,10 @@ public class EposDataModelDAO<T> {
         em.setFlushMode(FlushModeType.AUTO);
         em.clear();
         em.getTransaction().begin();
+
         List resultList = em.createQuery(
-                        "SELECT c FROM "+obj.getSimpleName()+" c")
+                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c."+key+".instanceId=:value")
+                .setParameter("value", value)
                 .getResultList();
 
         em.getTransaction().commit();

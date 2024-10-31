@@ -178,7 +178,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             o.setUid(edmobj.getUid());
             o.setRole(edmobj.getRole());
 
-            for(Object contactpointElement : getDbaccess().getAllFromDB(ContactpointElement.class)){
+            for(Object contactpointElement : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),ContactpointElement.class)){
                 ContactpointElement ce = (ContactpointElement) contactpointElement;
                 if(ce.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     Element el = ce.getElementInstance();
@@ -188,7 +188,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 }
             }
 
-            for(Object organizationContactpoint : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
+            for(Object organizationContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),OrganizationContactpoint.class)){
                 OrganizationContactpoint item = (OrganizationContactpoint) organizationContactpoint;
                 if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
@@ -196,7 +196,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 }
             }
 
-            for(Object personContactpoint : getDbaccess().getAllFromDB(PersonContactpoint.class)){
+            for(Object personContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),PersonContactpoint.class)){
                 PersonContactpoint item = (PersonContactpoint) personContactpoint;
                 if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     PersonAPI personAPI = new PersonAPI(EntityNames.PERSON.name(), Person.class);

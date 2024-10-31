@@ -180,7 +180,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonIdentifier.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonIdentifier.class)) {
                 PersonIdentifier item = (PersonIdentifier) object;
                 if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
@@ -198,7 +198,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 o.setAddress(api.retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonElement.class)) {
                 PersonElement item = (PersonElement) object;
                 if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
@@ -213,7 +213,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
             o.setCVURL(edmobj.getCvurl());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),OrganizationAffiliation.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),OrganizationAffiliation.class)) {
                 OrganizationAffiliation item = (OrganizationAffiliation) object;
                 if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
@@ -222,7 +222,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("person_instance_id", edmobj.getInstanceId(),PersonContactpoint.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonContactpoint.class)) {
                 PersonContactpoint item = (PersonContactpoint) object;
                 if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);

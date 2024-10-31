@@ -182,7 +182,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             o.setSoftwareVersion(edmobj.getSoftwareVersion());
 
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplication_instance_id", edmobj.getInstanceId(),SoftwareapplicationCategory.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationCategory.class)) {
                 SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
@@ -191,7 +191,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplication_instance_id", edmobj.getInstanceId(),SoftwareapplicationContactpoint.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationContactpoint.class)) {
                 SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
@@ -200,7 +200,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplication_instance_id", edmobj.getInstanceId(),SoftwareapplicationIdentifier.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationIdentifier.class)) {
                 SoftwareapplicationIdentifier item = (SoftwareapplicationIdentifier) object;
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
@@ -209,7 +209,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplication_instance_id", edmobj.getInstanceId(),SoftwareapplicationParameter.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationParameter.class)) {
                 SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
                 ParameterAPI api = new ParameterAPI(EntityNames.PARAMETER.name(), SoftwareapplicationParameter.class);
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
@@ -217,7 +217,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplication_instance_id", edmobj.getInstanceId(),SoftwareapplicationOperation.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationOperation.class)) {
                 SoftwareapplicationOperation item = (SoftwareapplicationOperation) object;
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     OperationAPI api = new OperationAPI(EntityNames.OPERATION.name(), model.Operation.class);

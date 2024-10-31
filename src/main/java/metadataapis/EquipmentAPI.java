@@ -204,7 +204,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             o.setSerialNumber(edmobj.getSerialnumber());
             o.addKeywords(edmobj.getKeywords());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentCategory.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
                 EquipmentCategory item = (EquipmentCategory) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
@@ -213,7 +213,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
@@ -222,7 +222,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentIspartof.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment", edmobj.getInstanceId(),EquipmentIspartof.class)) {
                 EquipmentIspartof item = (EquipmentIspartof) object;
                 if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
@@ -236,7 +236,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentSpatial.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentSpatial.class)) {
                 EquipmentSpatial item = (EquipmentSpatial) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
@@ -245,7 +245,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentTemporal.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentTemporal.class)) {
                 EquipmentTemporal item = (EquipmentTemporal) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     TemporalAPI api = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
@@ -254,7 +254,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment_instance_id", edmobj.getInstanceId(),EquipmentElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentElement.class)) {
                 EquipmentElement item = (EquipmentElement) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

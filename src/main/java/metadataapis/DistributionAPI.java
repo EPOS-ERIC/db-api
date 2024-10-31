@@ -253,21 +253,21 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             );
             o.setType(edmobj.getType());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionDescription.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDescription.class)) {
                 DistributionDescription item = (DistributionDescription) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     o.addDescription(item.getDescription());
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionTitle.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionTitle.class)) {
                 DistributionTitle item = (DistributionTitle) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     o.addTitle(item.getTitle());
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionDataproduct.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
                 DistributionDataproduct item = (DistributionDataproduct) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     DataProductAPI api = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
@@ -276,7 +276,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),WebserviceDistribution.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),WebserviceDistribution.class)) {
                 WebserviceDistribution item = (WebserviceDistribution) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
@@ -285,7 +285,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),OperationDistribution.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
                 OperationDistribution item = (OperationDistribution) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
@@ -294,7 +294,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distribution_instance_id", edmobj.getInstanceId(),DistributionElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionElement.class)) {
                 DistributionElement item = (DistributionElement) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

@@ -158,7 +158,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             o.setMethod(edmobj.getMethod());
             o.setTemplate(edmobj.getTemplate());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationWebservice.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
                 if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     WebServiceAPI api = new WebServiceAPI(EntityNames.WEBSERVICE.name(), Webservice.class);
@@ -167,7 +167,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationMapping.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationMapping.class)) {
                 OperationMapping item = (OperationMapping) object;
                 if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     MappingAPI api = new MappingAPI(EntityNames.MAPPING.name(), Mapping.class);
@@ -176,7 +176,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operation_instance_id", edmobj.getInstanceId(),OperationElement.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationElement.class)) {
                 OperationElement item = (OperationElement) object;
                 if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
