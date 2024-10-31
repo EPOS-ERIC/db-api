@@ -67,6 +67,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         childObj.setInstanceId(inscheme.getInstanceId());
         childObj.setMetaId(inscheme.getMetaId());
         childObj.setUid(inscheme.getUid());
+        childObj.setStatus(StatusType.valueOf(edmobj.getVersion().getStatus()));
         LinkedEntity le = api.create(childObj, overrideStatus, null, null);
         edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
 

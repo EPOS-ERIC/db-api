@@ -230,6 +230,12 @@ public class EntityManagementConceptsTest extends TestcontainersLifecycle {
 
         System.out.println(categories.size());
 
+        for(CategoryScheme cat : categorySchemes){
+            System.out.println(cat);
+        }
+
+        System.out.println(categorySchemes.size());
+
         assertAll(
                 () -> assertEquals(1,categorySchemes.size()),
                 () -> assertEquals(9,categories.size())
