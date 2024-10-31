@@ -206,6 +206,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 dbaccess.deleteObject(item);
             }
         }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceDistribution.class)){
+            WebserviceDistribution item = (WebserviceDistribution) object;
+            if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
         for(Distribution object : elementList){
             dbaccess.deleteObject(object);
