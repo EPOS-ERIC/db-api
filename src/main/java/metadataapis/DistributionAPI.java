@@ -62,6 +62,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         /** TITLE **/
         if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
+            for(Object object : dbaccess.getAllFromDB(DistributionTitle.class)){
+                DistributionTitle title = (DistributionTitle) object;
+                if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(title);
+                }
+            }
             for(String title : obj.getTitle()){
                 DistributionTitle pi = new DistributionTitle();
                 pi.setInstanceId(UUID.randomUUID().toString());
@@ -77,6 +83,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
+            for(Object object : dbaccess.getAllFromDB(DistributionDescription.class)){
+                DistributionDescription title = (DistributionDescription) object;
+                if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(title);
+                }
+            }
             for(String description : obj.getDescription()){
                 DistributionDescription pi = new DistributionDescription();
                 pi.setInstanceId(UUID.randomUUID().toString());

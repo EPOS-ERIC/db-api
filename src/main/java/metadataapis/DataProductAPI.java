@@ -81,6 +81,13 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         /** TITLE **/
         if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
 
+            for(Object object : dbaccess.getAllFromDB(DataproductTitle.class)){
+                DataproductTitle title = (DataproductTitle) object;
+                if(title.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(title);
+                }
+            }
+
             for(String title : obj.getTitle()){
                 DataproductTitle pi = new DataproductTitle();
                 pi.setInstanceId(UUID.randomUUID().toString());
@@ -97,6 +104,13 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
+
+            for(Object object : dbaccess.getAllFromDB(DataproductDescription.class)){
+                DataproductDescription title = (DataproductDescription) object;
+                if(title.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(title);
+                }
+            }
 
             for(String description : obj.getDescription()){
                 DataproductDescription pi = new DataproductDescription();
@@ -379,11 +393,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproduct_instance_id", edmobj.getInstanceId(),DataproductContactpoint.class)) {
                 DataproductContactpoint item = (DataproductContactpoint) object;
-                System.out.println("RETRIEVE CONTACT POINT: "+item);
                 if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
                     LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
-                    System.out.println("RETRIEVE CONTACT POINT: "+le);
                     o.addContactPoint(le);
                 }
             }
