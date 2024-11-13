@@ -39,7 +39,7 @@ public class EntityManagerService {
         hikariConfig.setAutoCommit(false);
 
         hikariConfig.setDriverClassName("org.postgresql.Driver");
-        hikariConfig.setPoolName("cerif");
+        hikariConfig.setPoolName("metadata_catalogue");
         //hikariConfig.setConnectionTestQuery("SELECT 1");
         hikariConfig.setConnectionTimeout(1000);
         hikariConfig.setInitializationFailTimeout(9000);
