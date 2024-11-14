@@ -235,7 +235,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() {
-        List<SoftwareApplication> list = getDbaccess().getAllFromDB(SoftwareApplication.class);
+        List<Softwareapplication> list = getDbaccess().getAllFromDB(Softwareapplication.class);
         List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
         list.parallelStream().forEach(item -> {
             returnList.add(retrieve(item.getInstanceId()));
@@ -245,9 +245,9 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
-        List<SoftwareApplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareApplication.class);
+        List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareApplication edmobj = elementList.get(0);
+            Softwareapplication edmobj = elementList.get(0);
             LinkedEntity o = new LinkedEntity();
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
