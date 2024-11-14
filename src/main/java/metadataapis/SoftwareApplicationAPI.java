@@ -163,23 +163,23 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     @Override
     public org.epos.eposdatamodel.SoftwareApplication retrieve(String instanceId) {
-        List<SoftwareApplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareApplication.class);
+        List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareApplication edmobj = elementList.get(0);
+            Softwareapplication edmobj = elementList.get(0);
             org.epos.eposdatamodel.SoftwareApplication o = new org.epos.eposdatamodel.SoftwareApplication();
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setVersionId(edmobj.getVersionId());
+            o.setVersionId(edmobj.getVersion().getVersionId());
             o.setName(edmobj.getName());
             o.setDescription(edmobj.getDescription());
-            o.setDownloadURL(edmobj.getDownloadURL());
-            o.setInstallURL(edmobj.getInstallURL());
+            o.setDownloadURL(edmobj.getDownloadurl());
+            o.setInstallURL(edmobj.getInstallurl());
             o.addKeywords(edmobj.getKeywords());
-            o.setLicenseURL(edmobj.getLicenseURL());
-            o.setMainEntityOfPage(edmobj.getMainEntityOfPage());
+            o.setLicenseURL(edmobj.getLicenseurl());
+            o.setMainEntityOfPage(edmobj.getMainentityofpage());
             o.setRequirements(edmobj.getRequirements());
-            o.setSoftwareVersion(edmobj.getSoftwareVersion());
+            o.setSoftwareVersion(edmobj.getSoftwareversion());
 
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationCategory.class)) {
