@@ -62,15 +62,20 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
 
     private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus){
-        CategorySchemeAPI api = new CategorySchemeAPI(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
-        org.epos.eposdatamodel.CategoryScheme childObj = new org.epos.eposdatamodel.CategoryScheme();
-        childObj.setInstanceId(inscheme.getInstanceId());
-        childObj.setMetaId(inscheme.getMetaId());
-        childObj.setUid(inscheme.getUid());
-        childObj.setStatus(StatusType.valueOf(edmobj.getVersion().getStatus()));
-        LinkedEntity le = api.create(childObj, overrideStatus, null, null);
-        edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
 
+        List<CategoryScheme> categorySchemeList = dbaccess.getOneFromDBByLinkedEntity(inscheme,CategoryScheme.class);
+        if(!categorySchemeList.isEmpty()) {
+            edmobj.setInScheme(categorySchemeList.get(0));
+        } else{
+            CategorySchemeAPI api = new CategorySchemeAPI(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
+            org.epos.eposdatamodel.CategoryScheme childObj = new org.epos.eposdatamodel.CategoryScheme();
+            childObj.setInstanceId(inscheme.getInstanceId());
+            childObj.setMetaId(inscheme.getMetaId());
+            childObj.setUid(inscheme.getUid());
+            childObj.setStatus(StatusType.valueOf(edmobj.getVersion().getStatus()));
+            LinkedEntity le = api.create(childObj, overrideStatus, null, null);
+            edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
+        }
     }
 
     private void createBroaders(List<LinkedEntity> broaders, Category edmobj, StatusType overrideStatus){
