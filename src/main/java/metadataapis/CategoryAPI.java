@@ -82,18 +82,10 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         for(LinkedEntity broader : broaders) {
 
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus);
-//
-//            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
-//            for(CategoryIspartof item : list){
-//                if(item.getCategory1Instance().equals(le.getInstanceId())
-//                        && item.getCategory2InstanceId().equals(edmobj.getInstanceId())){
-//                    getDbaccess().deleteObject(item);
-//                }
-//            }
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
-            categoryIspartof.setCategory1Instance(edmobj);
-            categoryIspartof.setCategory2Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
+            categoryIspartof.setCategory1Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
+            categoryIspartof.setCategory2Instance(edmobj);
 
             getDbaccess().updateObject(categoryIspartof);
         }
@@ -104,14 +96,6 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         for(LinkedEntity narrower : narrowers) {
 
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus);
-
-//            List<CategoryIspartof> list = getDbaccess().getAllFromDB(CategoryIspartof.class);
-//            for(CategoryIspartof item : list){
-//                if(item.getCategory2InstanceId().equals(le.getInstanceId())
-//                        && item.getCategory1InstanceId().equals(edmobj.getInstanceId())){
-//                    getDbaccess().deleteObject(item);
-//                }
-//            }
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
             categoryIspartof.setCategory1Instance(edmobj);
