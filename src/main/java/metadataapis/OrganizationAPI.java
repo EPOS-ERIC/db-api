@@ -108,8 +108,8 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 List<Organization> list2 = getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Organization.class);
 
                 OrganizationMemberof pi = new OrganizationMemberof();
-                pi.setOrganization1Instance(edmobj);
-                pi.setOrganization2Instance(list2.get(0));
+                pi.setOrganization2Instance(edmobj);
+                pi.setOrganization1Instance(list2.get(0));
                 dbaccess.updateObject(pi);
             }
         }
@@ -272,7 +272,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("organization1Instance", edmobj.getInstanceId(),OrganizationMemberof.class)) {
                 OrganizationMemberof item = (OrganizationMemberof) object;
-                if(item.getOrganization1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
+                if(item.getOrganization2Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                     OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
                     LinkedEntity le = api.retrieveLinkedEntity(item.getOrganization2Instance().getInstanceId());
                     o.addMemberOf(le);

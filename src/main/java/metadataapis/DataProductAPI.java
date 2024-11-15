@@ -152,8 +152,8 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
                 if(dataproduct!=null) {
                     DataproductIspartof pi = new DataproductIspartof();
-                    pi.setDataproduct1Instance(edmobj);
-                    pi.setDataproduct2Instance(dataproduct);
+                    pi.setDataproduct1Instance(dataproduct);
+                    pi.setDataproduct2Instance(edmobj);
                     dbaccess.updateObject(pi);
                 }
             }
