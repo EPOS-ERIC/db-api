@@ -82,6 +82,16 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Parameter> retrieveBunch(List<String> entities) {
+        List<SoftwareapplicationParameter> list = getDbaccess().getListFromDBByInstanceId(entities, SoftwareapplicationParameter.class);
+        List<org.epos.eposdatamodel.Parameter> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Parameter> retrieveAll() {
         List<SoftwareapplicationParameter> list = getDbaccess().getAllFromDB(SoftwareapplicationParameter.class);
         List<org.epos.eposdatamodel.Parameter> returnList = new ArrayList<>();

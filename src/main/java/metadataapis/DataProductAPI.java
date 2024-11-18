@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.ContactPoint;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -489,6 +490,16 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             return o;
         }
         return null;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.DataProduct> retrieveBunch(List<String> entities) {
+        List<DataProduct> list = getDbaccess().getListFromDBByInstanceId(entities, DataProduct.class);
+        List<org.epos.eposdatamodel.DataProduct> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override

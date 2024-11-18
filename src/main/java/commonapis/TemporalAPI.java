@@ -2,6 +2,7 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
+import model.Spatial;
 import model.StatusType;
 import model.Temporal;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -79,6 +80,16 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
             return o;
         }
         return null;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunch(List<String> entities) {
+        List<Temporal> list = getDbaccess().getListFromDBByInstanceId(entities, Temporal.class);
+        List<org.epos.eposdatamodel.PeriodOfTime> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override

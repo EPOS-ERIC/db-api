@@ -99,6 +99,16 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     }
 
     @Override
+    public List<org.epos.eposdatamodel.CategoryScheme> retrieveBunch(List<String> entities) {
+        List<CategoryScheme> list = getDbaccess().getListFromDBByInstanceId(entities, CategoryScheme.class);
+        List<org.epos.eposdatamodel.CategoryScheme> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveAll() {
         List<CategoryScheme> list = getDbaccess().getAllFromDB(CategoryScheme.class);
         List<org.epos.eposdatamodel.CategoryScheme> returnList = new ArrayList<>();

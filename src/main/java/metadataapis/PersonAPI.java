@@ -240,6 +240,16 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Person> retrieveBunch(List<String> entities) {
+        List<Person> list = getDbaccess().getListFromDBByInstanceId(entities, Person.class);
+        List<org.epos.eposdatamodel.Person> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Person> retrieveAll() {
         List<Person> list = getDbaccess().getAllFromDB(Person.class);
         List<org.epos.eposdatamodel.Person> returnList = new ArrayList<>();

@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
@@ -308,6 +309,16 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             return o;
         }
         return null;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.Distribution> retrieveBunch(List<String> entities) {
+        List<Distribution> list = getDbaccess().getListFromDBByInstanceId(entities, Distribution.class);
+        List<org.epos.eposdatamodel.Distribution> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override

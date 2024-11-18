@@ -322,6 +322,16 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Equipment> retrieveBunch(List<String> entities) {
+        List<Equipment> list = getDbaccess().getListFromDBByInstanceId(entities, Equipment.class);
+        List<org.epos.eposdatamodel.Equipment> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveAll() {
         List<Equipment> list = getDbaccess().getAllFromDB(Equipment.class);
         List<org.epos.eposdatamodel.Equipment> returnList = new ArrayList<>();

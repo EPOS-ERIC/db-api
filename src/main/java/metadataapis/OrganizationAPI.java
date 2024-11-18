@@ -287,6 +287,16 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveBunch(List<String> entities) {
+        List<Organization> list = getDbaccess().getListFromDBByInstanceId(entities, Organization.class);
+        List<org.epos.eposdatamodel.Organization> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Organization> retrieveAll() {
         List<Organization> list = getDbaccess().getAllFromDB(Organization.class);
         List<org.epos.eposdatamodel.Organization> returnList = new ArrayList<>();

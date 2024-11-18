@@ -46,6 +46,8 @@ public abstract class AbstractAPI<T> {
 
     public abstract Boolean delete(String instanceId);
 
+    public abstract List<T> retrieveBunch(List<String> entities);
+
     public abstract List<T> retrieveAll();
 
     public abstract LinkedEntity retrieveLinkedEntity(String instanceId);

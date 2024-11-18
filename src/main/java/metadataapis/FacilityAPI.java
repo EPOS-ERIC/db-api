@@ -269,6 +269,16 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Facility> retrieveBunch(List<String> entities) {
+        List<Facility> list = getDbaccess().getListFromDBByInstanceId(entities, Facility.class);
+        List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAll() {
         List<Facility> list = getDbaccess().getAllFromDB(Facility.class);
         List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();

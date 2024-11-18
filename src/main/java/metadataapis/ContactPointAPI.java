@@ -212,6 +212,16 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveBunch(List<String> entities) {
+        List<ContactPoint> list = getDbaccess().getListFromDBByInstanceId(entities, ContactPoint.class);
+        List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.ContactPoint> retrieveAll() {
         List<Contactpoint> list = getDbaccess().getAllFromDB(Contactpoint.class);
         List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();

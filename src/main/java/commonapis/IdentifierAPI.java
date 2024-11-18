@@ -2,6 +2,7 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
+import model.Element;
 import model.Identifier;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -57,6 +58,16 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     @Override
     public Boolean delete(String instanceId) {
         return true;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveBunch(List<String> entities) {
+        List<Identifier> list = getDbaccess().getListFromDBByInstanceId(entities, Identifier.class);
+        List<org.epos.eposdatamodel.Identifier> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override

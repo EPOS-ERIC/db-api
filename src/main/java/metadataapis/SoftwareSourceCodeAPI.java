@@ -208,6 +208,16 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
     }
 
     @Override
+    public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveBunch(List<String> entities) {
+        List<Softwaresourcecode> list = getDbaccess().getListFromDBByInstanceId(entities, Softwaresourcecode.class);
+        List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAll() {
         List<Softwaresourcecode> list = getDbaccess().getAllFromDB(Softwaresourcecode.class);
         List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();

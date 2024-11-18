@@ -82,6 +82,16 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Element> retrieveBunch(List<String> entities) {
+        List<Element> list = getDbaccess().getListFromDBByInstanceId(entities, Element.class);
+        List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Element> retrieveAll() {
         List<Element> list = getDbaccess().getAllFromDB(Element.class);
         List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();

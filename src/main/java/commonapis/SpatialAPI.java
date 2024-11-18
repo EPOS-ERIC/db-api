@@ -78,6 +78,16 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Location> retrieveBunch(List<String> entities) {
+        List<Spatial> list = getDbaccess().getListFromDBByInstanceId(entities, Spatial.class);
+        List<org.epos.eposdatamodel.Location> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Location> retrieveAll() {
         List<Spatial> list = getDbaccess().getAllFromDB(Spatial.class);
         List<org.epos.eposdatamodel.Location> returnList = new ArrayList<>();

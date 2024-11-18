@@ -348,6 +348,16 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     }
 
     @Override
+    public List<org.epos.eposdatamodel.WebService> retrieveBunch(List<String> entities) {
+        List<Webservice> list = getDbaccess().getListFromDBByInstanceId(entities, Webservice.class);
+        List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.WebService> retrieveAll() {
         List<Webservice> list = getDbaccess().getAllFromDB(Webservice.class);
         List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();

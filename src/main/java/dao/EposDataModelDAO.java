@@ -69,6 +69,20 @@ public class EposDataModelDAO<T> {
         return resultList;
     }
 
+    public List<T> getListFromDBByInstanceId(List<String> instanceIds, Class<T> obj){
+        EntityManager em = EntityManagerService.getInstance().createEntityManager();
+        em.setFlushMode(FlushModeType.AUTO);
+        em.clear();
+        em.getTransaction().begin();
+        List resultList = em.createQuery(
+                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c.instanceId IN :instanceId")
+                .setParameter("instanceId", instanceIds)
+                .getResultList();
+        em.getTransaction().commit();
+        em.close();
+        return resultList;
+    }
+
     public List<T> getOneFromDBByInstanceId(String instanceId, Class<T> obj){
         EntityManager em = EntityManagerService.getInstance().createEntityManager();
         em.setFlushMode(FlushModeType.AUTO);

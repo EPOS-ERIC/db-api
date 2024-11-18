@@ -151,6 +151,16 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Mapping> retrieveBunch(List<String> entities) {
+        List<Mapping> list = getDbaccess().getListFromDBByInstanceId(entities, Mapping.class);
+        List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAll() {
         List<Mapping> list = getDbaccess().getAllFromDB(Mapping.class);
         List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();

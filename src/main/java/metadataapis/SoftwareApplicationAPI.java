@@ -234,6 +234,16 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     }
 
     @Override
+    public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) {
+        List<Softwareapplication> list = getDbaccess().getListFromDBByInstanceId(entities, Softwareapplication.class);
+        List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() {
         List<Softwareapplication> list = getDbaccess().getAllFromDB(Softwareapplication.class);
         List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();

@@ -3,6 +3,7 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.Quantitativevalue;
+import model.SoftwareapplicationParameter;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.QuantitativeValue;
@@ -78,6 +79,16 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
             return o;
         }
         return null;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.QuantitativeValue> retrieveBunch(List<String> entities) {
+        List<Quantitativevalue> list = getDbaccess().getListFromDBByInstanceId(entities, Quantitativevalue.class);
+        List<org.epos.eposdatamodel.QuantitativeValue> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override

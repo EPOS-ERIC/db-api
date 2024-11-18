@@ -191,6 +191,15 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         return null;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveBunch(List<String> entities) {
+        List<Operation> list = getDbaccess().getListFromDBByInstanceId(entities, Operation.class);
+        List<org.epos.eposdatamodel.Operation> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAll() {

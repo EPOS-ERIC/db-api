@@ -16,7 +16,7 @@ public class TestcontainersLifecycle {
             DockerImageName.parse("epos/metadata-database-deploy-test:latest")
                     .asCompatibleSubstituteFor("postgres")
 
-    ).withDatabaseName("cerif").withUsername("postgres").withPassword("changeme").withExposedPorts(5432);
+    ).withDatabaseName("metadata_catalogue").withUsername("postgres").withPassword("changeme").withExposedPorts(5432);
 
     @BeforeAll
     static void startContainers()  {

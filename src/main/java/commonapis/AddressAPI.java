@@ -3,6 +3,7 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.Address;
+import model.Category;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 
@@ -86,6 +87,16 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     @Override
     public Boolean delete(String instanceId) {
         return true;
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.Address> retrieveBunch(List<String> entities) {
+        List<Address> list = getDbaccess().getListFromDBByInstanceId(entities, Address.class);
+        List<org.epos.eposdatamodel.Address> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
     }
 
     @Override
