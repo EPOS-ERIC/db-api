@@ -494,7 +494,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
     @Override
     public List<org.epos.eposdatamodel.DataProduct> retrieveBunch(List<String> entities) {
-        List<DataProduct> list = getDbaccess().getListFromDBByInstanceId(entities, DataProduct.class);
+        List<Dataproduct> list = getDbaccess().getListFromDBByInstanceId(entities, Dataproduct.class);
         List<org.epos.eposdatamodel.DataProduct> returnList = new ArrayList<>();
         list.parallelStream().forEach(item -> {
             returnList.add(retrieve(item.getInstanceId()));
