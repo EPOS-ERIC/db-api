@@ -384,7 +384,7 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         return parameter;
     }
 
-    public void setParameter(ArrayList<LinkedEntity> parameter) {
+    public void setParameter(List<LinkedEntity> parameter) {
         this.parameter = parameter;
     }
 

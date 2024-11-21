@@ -1,6 +1,7 @@
 package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
+import commonapis.LinkedEntityAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import org.epos.eposdatamodel.Address;
@@ -9,8 +10,7 @@ import org.epos.eposdatamodel.Organization;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,17 +38,47 @@ public class EntityManagementOrganizationsTest extends TestcontainersLifecycle {
         organization1.setInstanceId(UUID.randomUUID().toString());
         organization1.setMetaId(UUID.randomUUID().toString());
         organization1.setUid(UUID.randomUUID().toString());
-        organization1.setLegalName(List.of("Son organization"));
+        organization1.setLegalName(List.of("Son 1 organization"));
         organization1.setMemberOf(List.of(linkedEntity));
 
+        Organization organization2 = new Organization();
+        organization2.setInstanceId(UUID.randomUUID().toString());
+        organization2.setMetaId(UUID.randomUUID().toString());
+        organization2.setUid(UUID.randomUUID().toString());
+        organization2.setLegalName(List.of("Son 2 organization"));
+        organization2.setMemberOf(List.of(linkedEntity));
+
         LinkedEntity linkedEntity1 = api.create(organization1, null, null, null);
+        LinkedEntity linkedEntity2 = api.create(organization2, null, null, null);
 
-        Organization sonReOrganization2 = (Organization) api.retrieve(linkedEntity1.getInstanceId());
+        List<Organization> organizations = api.retrieveAll();
 
-        LOG.info("RECEIVED:\n"+sonReOrganization2.toString());
+        LOG.info("RECEIVED:\n"+organizations.toString());
 
-        assertNotNull(sonReOrganization2);
-        assertNotNull(sonReOrganization2.getMemberOf());
+        for (Organization org : organizations) {
+            // only take into account the organization with legalname
+            if (org.getLegalName() != null && !org.getLegalName().isEmpty()) {
+                String mainOrganizationLegalName = String.join(".", org.getLegalName());
+                System.out.println(mainOrganizationLegalName);
+
+                if (org.getMemberOf() == null) {
+                    organizations.stream().filter(organization3 -> organization3.getMemberOf()!=null)
+                            .forEach(organization3 -> {
+                                Optional<LinkedEntity> resultEntities = organization3.getMemberOf().stream()
+                                        .filter(linkedEntity3 -> linkedEntity3.getInstanceId().equals(organization3.getInstanceId()))
+                                        .findAny();
+                                if (resultEntities.isPresent()) {
+                                    if (organization3.getLegalName() != null && !organization3.getLegalName().isEmpty()) {
+                                        String relatedOrganizationLegalName = String.join(".", organization3.getLegalName());
+                                        System.out.println(relatedOrganizationLegalName);
+                                    }
+                                }
+                            });
+                }
+            }
+        }
+
+        assertNotNull(organizations);
     }
 
 

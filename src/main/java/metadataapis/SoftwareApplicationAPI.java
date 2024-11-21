@@ -85,16 +85,17 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getParameter() != null && !obj.getParameter().isEmpty()) {
             for(org.epos.eposdatamodel.LinkedEntity parameter : obj.getParameter()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(parameter, overrideStatus);
-//   TODO:             List<model.SoftwareapplicationParameter> parameterList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.SoftwareapplicationParameter.class);
-//                if(!parameterList.isEmpty()) {
-//                    for(<model.SoftwareapplicationParameter parameter1 : parameterList){
-//                        SoftwareapplicationParameter pi = new SoftwareapplicationParameter();
-//                        pi.setSoftwareapplicationInstance(edmobj);
-//                        pi.set(parameterList.get(0));
-//                        dbaccess.updateObject(pi);
-//                    }
-//                }
+                List<model.SoftwareapplicationParameter> parameterList = dbaccess.getOneFromDBByInstanceId(parameter.getInstanceId(), model.SoftwareapplicationParameter.class);
+                if(parameterList.isEmpty()) {
+
+                    SoftwareapplicationParameter pi = new SoftwareapplicationParameter();
+                    pi.setSoftwareapplicationInstance(edmobj);
+                    pi.setInstanceId(parameter.getInstanceId());
+                    pi.setMetaId(parameter.getMetaId());
+                    pi.setUid(parameter.getUid());
+                    dbaccess.updateObject(pi);
+
+                }
             }
         }
 
@@ -222,7 +223,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     OperationAPI api = new OperationAPI(EntityNames.OPERATION.name(), model.Operation.class);
                     LinkedEntity le = api.retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
-                    o.addIdentifier(le);
+                    o.addRelation(le);
                 }
             }
 
