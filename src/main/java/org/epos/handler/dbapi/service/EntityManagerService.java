@@ -73,10 +73,6 @@ public class EntityManagerService {
         DataSource hikariDataSource = new HikariDataSource(hikariConfig);
 
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
-        properties.put("prepStmtCacheSize",400);
-        properties.put("prepStmtCacheSqlLimit",400);
-        properties.put("cachePrepStmts",true);
-        properties.put("useServerPrepStmts",true);
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
     }
 
