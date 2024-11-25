@@ -4,23 +4,23 @@ import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
-import org.epos.eposdatamodel.Parameter;
+import org.epos.eposdatamodel.SoftwareApplicationParameter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> {
+public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApplicationParameter> {
 
     public ParameterAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
     }
 
     @Override
-    public LinkedEntity create(Parameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+    public LinkedEntity create(SoftwareApplicationParameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        List<SoftwareapplicationParameter> returnList = getDbaccess().getOneFromDB(
+        List<Parameter> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
                 obj.getUid(),
@@ -31,21 +31,21 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersionId());
+            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
-        obj = (org.epos.eposdatamodel.Parameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+        obj = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        SoftwareapplicationParameter edmobj = new SoftwareapplicationParameter();
-        edmobj.setVersionId(obj.getVersionId());
+        Parameter edmobj = new Parameter();
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setEncodingformat(obj.getEncodingFormat());
-        edmobj.setConformsto(obj.getConformsTo());
-        if(obj.getAction()!=null) edmobj.setAction(obj.getAction().name());
+        edmobj.setEncodingformat(obj.getEncodingformat());
+        edmobj.setConformsto(obj.getConformsto());
+        edmobj.setAction(obj.getAction());
 
         getDbaccess().updateObject(edmobj);
 
@@ -56,20 +56,20 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     }
 
     @Override
-    public org.epos.eposdatamodel.Parameter retrieve(String instanceId) {
-        List<SoftwareapplicationParameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameter.class);
+    public org.epos.eposdatamodel.SoftwareApplicationParameter retrieve(String instanceId) {
+        List<Parameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Parameter.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareapplicationParameter edmobj = elementList.get(0);
-            org.epos.eposdatamodel.Parameter o = new org.epos.eposdatamodel.Parameter();
+            Parameter edmobj = elementList.get(0);
+            org.epos.eposdatamodel.SoftwareApplicationParameter o = new org.epos.eposdatamodel.SoftwareApplicationParameter();
 
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setEncodingFormat(edmobj.getEncodingformat());
-            o.setConformsTo(edmobj.getConformsto());
-            o.setAction(Parameter.ActionEnum.fromValue(edmobj.getAction()));
+            o.setEncodingformat(edmobj.getEncodingformat());
+            o.setConformsto(edmobj.getConformsto());
+            o.setAction(edmobj.getAction());
 
-            o = (org.epos.eposdatamodel.Parameter) VersioningStatusAPI.retrieveVersion(o);
+            o = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
         }
@@ -82,9 +82,9 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     }
 
     @Override
-    public List<org.epos.eposdatamodel.Parameter> retrieveBunch(List<String> entities) {
-        List<SoftwareapplicationParameter> list = getDbaccess().getListFromDBByInstanceId(entities, SoftwareapplicationParameter.class);
-        List<org.epos.eposdatamodel.Parameter> returnList = new ArrayList<>();
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveBunch(List<String> entities) {
+        List<Parameter> list = getDbaccess().getListFromDBByInstanceId(entities, Parameter.class);
+        List<org.epos.eposdatamodel.SoftwareApplicationParameter> returnList = new ArrayList<>();
         list.parallelStream().forEach(item -> {
             returnList.add(retrieve(item.getInstanceId()));
         });
@@ -92,9 +92,9 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
     }
 
     @Override
-    public List<org.epos.eposdatamodel.Parameter> retrieveAll() {
-        List<SoftwareapplicationParameter> list = getDbaccess().getAllFromDB(SoftwareapplicationParameter.class);
-        List<org.epos.eposdatamodel.Parameter> returnList = new ArrayList<>();
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAll() {
+        List<Parameter> list = getDbaccess().getAllFromDB(Parameter.class);
+        List<org.epos.eposdatamodel.SoftwareApplicationParameter> returnList = new ArrayList<>();
         list.parallelStream().forEach(item -> {
             returnList.add(retrieve(item.getInstanceId()));
         });
@@ -103,9 +103,9 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.Parameter> 
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
-        List<SoftwareapplicationParameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, SoftwareapplicationParameter.class);
+        List<Parameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Parameter.class);
         if(elementList!=null && !elementList.isEmpty()) {
-            SoftwareapplicationParameter edmobj = elementList.get(0);
+            Parameter edmobj = elementList.get(0);
             LinkedEntity o = new LinkedEntity();
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());

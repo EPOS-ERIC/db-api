@@ -3,7 +3,6 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.Quantitativevalue;
-import model.SoftwareapplicationParameter;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.QuantitativeValue;

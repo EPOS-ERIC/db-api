@@ -127,9 +127,9 @@ public class LinkedEntityAPI {
                 entity = new org.epos.eposdatamodel.Documentation();
                 break;
             case PARAMETER:
-                edmClass = SoftwareapplicationParameter.class;
+                edmClass = Parameter.class;
                 api = new ParameterAPI(entityType, edmClass);
-                entity = new org.epos.eposdatamodel.Parameter();
+                entity = new org.epos.eposdatamodel.SoftwareApplicationParameter();
                 break;
             case RELATION:
                 System.out.println("Relation empty case");

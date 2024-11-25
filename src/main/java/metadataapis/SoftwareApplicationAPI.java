@@ -85,16 +85,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getParameter() != null && !obj.getParameter().isEmpty()) {
             for(org.epos.eposdatamodel.LinkedEntity parameter : obj.getParameter()){
-                List<model.SoftwareapplicationParameter> parameterList = dbaccess.getOneFromDBByInstanceId(parameter.getInstanceId(), model.SoftwareapplicationParameter.class);
-                if(parameterList.isEmpty()) {
-
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(parameter, overrideStatus);
+                List<model.Parameter> parameterList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Parameter.class);
+                if(!parameterList.isEmpty()) {
                     SoftwareapplicationParameter pi = new SoftwareapplicationParameter();
                     pi.setSoftwareapplicationInstance(edmobj);
-                    pi.setInstanceId(parameter.getInstanceId());
-                    pi.setMetaId(parameter.getMetaId());
-                    pi.setUid(parameter.getUid());
+                    pi.setParameterInstance(parameterList.get(0));
                     dbaccess.updateObject(pi);
-
                 }
             }
         }
@@ -214,7 +211,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
                 ParameterAPI api = new ParameterAPI(EntityNames.PARAMETER.name(), SoftwareapplicationParameter.class);
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    o.addParameter(api.retrieveLinkedEntity(item.getInstanceId()));
+                    o.addParameter(api.retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
                 }
             }
 
