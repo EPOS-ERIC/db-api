@@ -110,7 +110,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setEntityType(EntityNames.PARAMETER.name());
+            o.setEntityType(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name());
 
             return o;
         }

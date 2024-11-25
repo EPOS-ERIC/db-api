@@ -141,7 +141,7 @@ public abstract class AbstractAPI<T> {
                 edmClass = Element.class;
                 api = new DocumentationAPI(entityType, edmClass);
                 break;
-            case PARAMETER:
+            case SOFTWAREAPPLICATIONPARAMETER:
                 edmClass = SoftwareapplicationParameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 break;
@@ -220,7 +220,7 @@ public abstract class AbstractAPI<T> {
             case DOCUMENTATION:
                 edmClass = Element.class;
                 break;
-            case PARAMETER:
+            case SOFTWAREAPPLICATIONPARAMETER:
                 edmClass = SoftwareapplicationParameter.class;
                 break;
             case RELATION:

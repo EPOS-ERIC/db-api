@@ -53,7 +53,7 @@ public class EntityManagementSoftwaresTest extends TestcontainersLifecycle {
         parameter.setInstanceId(UUID.randomUUID().toString());
         parameter.setMetaId(UUID.randomUUID().toString());
         parameter.setUid(UUID.randomUUID().toString());
-        parameter.setEntityType(EntityNames.PARAMETER.name());
+        parameter.setEntityType(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name());
 
         SoftwareApplication softwareApplication = new SoftwareApplication();
         softwareApplication.setInstanceId(UUID.randomUUID().toString());
@@ -112,7 +112,7 @@ public class EntityManagementSoftwaresTest extends TestcontainersLifecycle {
         parameter.setInstanceId(UUID.randomUUID().toString());
         parameter.setMetaId(UUID.randomUUID().toString());
         parameter.setUid(UUID.randomUUID().toString());
-        parameter.setEntityType(EntityNames.PARAMETER.name());
+        parameter.setEntityType(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name());
 
         SoftwareSourceCode softwareSourceCode = new SoftwareSourceCode();
         softwareSourceCode.setInstanceId(UUID.randomUUID().toString());

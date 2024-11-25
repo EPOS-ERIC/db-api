@@ -126,7 +126,7 @@ public class LinkedEntityAPI {
                 api = new DocumentationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Documentation();
                 break;
-            case PARAMETER:
+            case SOFTWAREAPPLICATIONPARAMETER:
                 edmClass = Parameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.SoftwareApplicationParameter();
@@ -257,7 +257,7 @@ public class LinkedEntityAPI {
                 edmClass = Element.class;
                 api = new DocumentationAPI(entityType, edmClass);
                 break;
-            case PARAMETER:
+            case SOFTWAREAPPLICATIONPARAMETER:
                 edmClass = SoftwareapplicationParameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 break;
