@@ -142,7 +142,7 @@ public abstract class AbstractAPI<T> {
                 api = new DocumentationAPI(entityType, edmClass);
                 break;
             case SOFTWAREAPPLICATIONPARAMETER:
-                edmClass = SoftwareapplicationParameter.class;
+                edmClass = Parameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 break;
             case RELATION:
@@ -221,7 +221,7 @@ public abstract class AbstractAPI<T> {
                 edmClass = Element.class;
                 break;
             case SOFTWAREAPPLICATIONPARAMETER:
-                edmClass = SoftwareapplicationParameter.class;
+                edmClass = Parameter.class;
                 break;
             case RELATION:
                 System.out.println("Relation empty case");

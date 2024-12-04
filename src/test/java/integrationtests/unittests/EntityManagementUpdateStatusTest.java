@@ -59,4 +59,34 @@ public class EntityManagementUpdateStatusTest extends TestcontainersLifecycle {
         assertEquals(StatusType.SUBMITTED, retrievedAddress.get(0).getStatus());
     }
 
+    @Test
+    @Order(3)
+    public void testUpdateAddress2() {
+        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.ADDRESS.name());
+
+        address.setStatus(StatusType.PUBLISHED);
+
+        LinkedEntity le = api.create(address, null, null, null);
+
+        List<Address> retrievedAddress = api.retrieveAll();
+
+        assertEquals(1, retrievedAddress.size());
+        assertEquals(StatusType.PUBLISHED, retrievedAddress.get(0).getStatus());
+    }
+
+    @Test
+    @Order(3)
+    public void testUpdateAddress3() {
+        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.ADDRESS.name());
+
+        address.setStatus(StatusType.ARCHIVED);
+
+        LinkedEntity le = api.create(address, null, null, null);
+
+        List<Address> retrievedAddress = api.retrieveAll();
+
+        assertEquals(1, retrievedAddress.size());
+        assertEquals(StatusType.ARCHIVED, retrievedAddress.get(0).getStatus());
+    }
+
 }
