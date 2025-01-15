@@ -288,6 +288,15 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         return returnList;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.Facility> retrieveAllWithStatus(StatusType status) {
+        List<Facility> list = getDbaccess().getAllFromDBWithStatus(Facility.class, status);
+        List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

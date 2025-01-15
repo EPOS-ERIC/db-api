@@ -512,6 +512,16 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         return returnList;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.DataProduct> retrieveAllWithStatus(StatusType status) {
+        List<Dataproduct> list = getDbaccess().getAllFromDBWithStatus(Dataproduct.class, status);
+        List<org.epos.eposdatamodel.DataProduct> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

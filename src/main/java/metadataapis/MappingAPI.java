@@ -170,6 +170,16 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         return returnList;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.Mapping> retrieveAllWithStatus(StatusType status) {
+        List<Mapping> list = getDbaccess().getAllFromDBWithStatus(Mapping.class, status);
+        List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

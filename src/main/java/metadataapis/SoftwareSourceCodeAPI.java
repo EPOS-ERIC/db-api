@@ -228,6 +228,16 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
     }
 
     @Override
+    public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAllWithStatus(StatusType status) {
+        List<Softwaresourcecode> list = getDbaccess().getAllFromDBWithStatus(Softwaresourcecode.class, status);
+        List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Softwaresourcecode> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwaresourcecode.class);
         if(elementList!=null && !elementList.isEmpty()) {

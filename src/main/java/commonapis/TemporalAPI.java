@@ -103,6 +103,16 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
     }
 
     @Override
+    public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllWithStatus(StatusType status) {
+        List<Temporal> list = getDbaccess().getAllFromDBWithStatus(Temporal.class, status);
+        List<org.epos.eposdatamodel.PeriodOfTime> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Temporal> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Temporal.class);
         if(elementList!=null && !elementList.isEmpty()) {

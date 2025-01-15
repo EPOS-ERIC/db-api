@@ -102,6 +102,16 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     }
 
     @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllWithStatus(StatusType status) {
+        List<Parameter> list = getDbaccess().getAllFromDBWithStatus(Parameter.class, status);
+        List<org.epos.eposdatamodel.SoftwareApplicationParameter> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Parameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Parameter.class);
         if(elementList!=null && !elementList.isEmpty()) {

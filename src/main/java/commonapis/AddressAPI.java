@@ -110,6 +110,16 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Address> retrieveAllWithStatus(StatusType status) {
+        List<Address> list = getDbaccess().getAllFromDBWithStatus(Address.class, status);
+        List<org.epos.eposdatamodel.Address> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Address> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Address.class);
         if(elementList!=null && !elementList.isEmpty()) {

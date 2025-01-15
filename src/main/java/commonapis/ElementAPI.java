@@ -101,6 +101,16 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         return returnList;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.Element> retrieveAllWithStatus(StatusType status) {
+        List<Element> list = getDbaccess().getAllFromDBWithStatus(Element.class, status);
+        List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

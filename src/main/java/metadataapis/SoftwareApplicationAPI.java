@@ -252,6 +252,16 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     }
 
     @Override
+    public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllWithStatus(StatusType status) {
+        List<Softwareapplication> list = getDbaccess().getAllFromDBWithStatus(Softwareapplication.class, status);
+        List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
         if(elementList!=null && !elementList.isEmpty()) {

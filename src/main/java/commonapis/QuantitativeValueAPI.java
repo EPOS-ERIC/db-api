@@ -101,6 +101,16 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
     }
 
     @Override
+    public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllWithStatus(StatusType status) {
+        List<Quantitativevalue> list = getDbaccess().getAllFromDBWithStatus(Quantitativevalue.class, status);
+        List<org.epos.eposdatamodel.QuantitativeValue> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Quantitativevalue> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Quantitativevalue.class);
         if(elementList!=null && !elementList.isEmpty()) {

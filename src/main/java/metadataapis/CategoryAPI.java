@@ -185,6 +185,16 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Category> retrieveAllWithStatus(StatusType status) {
+        List<Category> list = getDbaccess().getAllFromDBWithStatus(Category.class, status);
+        List<org.epos.eposdatamodel.Category> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
         if(elementList!=null && !elementList.isEmpty()) {

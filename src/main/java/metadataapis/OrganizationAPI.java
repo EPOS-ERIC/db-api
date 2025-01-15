@@ -306,6 +306,16 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         return returnList;
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllWithStatus(StatusType status) {
+        List<Organization> list = getDbaccess().getAllFromDBWithStatus(Organization.class, status);
+        List<org.epos.eposdatamodel.Organization> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

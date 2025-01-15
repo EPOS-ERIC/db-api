@@ -212,6 +212,16 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveAllWithStatus(StatusType status) {
+        List<Operation> list = getDbaccess().getAllFromDBWithStatus(Operation.class, status);
+        List<org.epos.eposdatamodel.Operation> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
         if(elementList!=null && !elementList.isEmpty()) {

@@ -98,6 +98,16 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Location> retrieveAllWithStatus(StatusType status) {
+        List<Spatial> list = getDbaccess().getAllFromDBWithStatus(Spatial.class, status);
+        List<org.epos.eposdatamodel.Location> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Spatial> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Spatial.class);
         if(elementList!=null && !elementList.isEmpty()) {

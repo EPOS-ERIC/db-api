@@ -109,6 +109,16 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveAllWithStatus(StatusType status) {
+        List<Element> list = getDbaccess().getAllFromDBWithStatus(Element.class, status);
+        List<org.epos.eposdatamodel.Documentation> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Element> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Element.class);
         if(elementList!=null && !elementList.isEmpty()) {

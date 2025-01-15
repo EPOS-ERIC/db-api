@@ -101,6 +101,16 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     }
 
     @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveAllWithStatus(StatusType status) {
+        List<Identifier> list = getDbaccess().getAllFromDBWithStatus(Identifier.class, status);
+        List<org.epos.eposdatamodel.Identifier> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Identifier> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Identifier.class);
         if(elementList!=null && !elementList.isEmpty()) {

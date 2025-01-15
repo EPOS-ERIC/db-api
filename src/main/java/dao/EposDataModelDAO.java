@@ -1,6 +1,7 @@
 package dao;
 
 import jakarta.persistence.*;
+import model.StatusType;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
@@ -195,6 +196,18 @@ public class EposDataModelDAO<T> {
         em.getTransaction().begin();
         List resultList = em.createQuery(
                         "SELECT c FROM "+obj.getSimpleName()+" c")
+                .getResultList();
+        em.getTransaction().commit();
+        em.close();
+        return resultList;
+    }
+
+    public List<T> getAllFromDBWithStatus(Class<T> obj, StatusType status){
+        EntityManager em = EntityManagerService.getInstance().createEntityManager();
+        em.setFlushMode(FlushModeType.AUTO);
+        em.getTransaction().begin();
+        List resultList = em.createQuery(
+                        "SELECT c FROM "+obj.getSimpleName()+" c JOIN Versioningstatus v WHERE c.instanceId=v.instanceId AND v.status='"+status.name()+"'")
                 .getResultList();
         em.getTransaction().commit();
         em.close();

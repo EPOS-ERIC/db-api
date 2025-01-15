@@ -50,6 +50,8 @@ public abstract class AbstractAPI<T> {
 
     public abstract List<T> retrieveAll();
 
+    public abstract List<T> retrieveAllWithStatus(StatusType status);
+
     public abstract LinkedEntity retrieveLinkedEntity(String instanceId);
 
     public static AbstractAPI retrieveAPI(String entityType){

@@ -368,6 +368,16 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     }
 
     @Override
+    public List<org.epos.eposdatamodel.WebService> retrieveAllWithStatus(StatusType status) {
+        List<Webservice> list = getDbaccess().getAllFromDBWithStatus(Webservice.class, status);
+        List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Webservice> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Webservice.class);
         if(elementList!=null && !elementList.isEmpty()) {

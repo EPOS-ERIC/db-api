@@ -232,6 +232,16 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     }
 
     @Override
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveAllWithStatus(StatusType status) {
+        List<Contactpoint> list = getDbaccess().getAllFromDBWithStatus(Contactpoint.class, status);
+        List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();
+        list.parallelStream().forEach(item -> {
+            returnList.add(retrieve(item.getInstanceId()));
+        });
+        return returnList;
+    }
+
+    @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
         if(elementList!=null && !elementList.isEmpty()) {
