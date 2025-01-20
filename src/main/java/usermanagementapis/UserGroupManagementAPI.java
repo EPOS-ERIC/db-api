@@ -6,6 +6,7 @@ import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.UserGroup;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -113,9 +114,15 @@ public class UserGroupManagementAPI {
                         group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
                     }
                 }
+                group1.setUsers(new ArrayList<>());
+                HashMap<String,String> items = new HashMap<>();
                 for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
                     if(metadataGroupUser.getGroup().getId().equals(groupId)){
-                        group1.getUsers().add(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+                        items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+                        items.put("role",metadataGroupUser.getRole());
+                        items.put("requestStatus",metadataGroupUser.getRequestStatus());
+                        group1.getUsers().add(items);
+                        //group1.getUsers()..(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
                     }
                 }
                 return group1;

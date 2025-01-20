@@ -92,7 +92,7 @@ public class UserGroupDoubleGroupManagementTest extends TestcontainersLifecycle 
         assertAll(
                 () -> assertNotNull(retrieveGroup),
                 () -> assertEquals(1, retrieveGroup.getUsers().size()),
-                () -> assertEquals(retrieveGroup.getUsers().get(0), retrieveUser.getAuthIdentifier()),
+                () -> assertEquals(retrieveGroup.getUsers().get(0).get("userId"), retrieveUser.getAuthIdentifier()),
                 () -> assertEquals(1, retrieveUser.getGroups().size()),
                 () -> assertEquals(retrieveUser.getGroups().get(0).getGroupId(), retrieveGroup.getId()),
                 () -> assertEquals(retrieveUser.getGroups().get(0).getRole(), RoleType.EDITOR)
@@ -122,7 +122,7 @@ public class UserGroupDoubleGroupManagementTest extends TestcontainersLifecycle 
         assertAll(
                 () -> assertNotNull(retrieveGroup),
                 () -> assertEquals(1, retrieveGroup.getUsers().size()),
-                () -> assertEquals(retrieveGroup.getUsers().get(0), retrieveUser.getAuthIdentifier()),
+                () -> assertEquals(retrieveGroup.getUsers().get(0).get("userId"), retrieveUser.getAuthIdentifier()),
                 () -> assertEquals(2, retrieveUser.getGroups().size())
         );
     }

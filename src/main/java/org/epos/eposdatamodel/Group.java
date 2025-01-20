@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class Group {
@@ -18,7 +19,7 @@ public class Group {
     private String description;
 
     @Schema(name = "users", description = "This property refers to the list of users id of a group", example = "[\"authidentifier\"]",  required = false)
-    private List<String> users;
+    private List<Map<String,String>> users;
 
     @Schema(name = "entities", description = "This property refers to the list of entities id of a group", example = "[\"entitymetaid\"]", required = false)
     private List<String> entities;
@@ -58,11 +59,11 @@ public class Group {
         this.description = description;
     }
 
-    public List<String> getUsers() {
+    public List<Map<String,String>> getUsers() {
         return users;
     }
 
-    public void setUsers(List<String> users) {
+    public void setUsers(List<Map<String,String>> users) {
         this.users = users;
     }
 
