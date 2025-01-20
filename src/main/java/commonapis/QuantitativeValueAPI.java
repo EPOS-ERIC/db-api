@@ -2,7 +2,9 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
+import model.Parameter;
 import model.Quantitativevalue;
+import model.SoftwareapplicationParameter;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.QuantitativeValue;
@@ -57,6 +59,13 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(Quantitativevalue.class)){
+            Quantitativevalue item = (Quantitativevalue) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 

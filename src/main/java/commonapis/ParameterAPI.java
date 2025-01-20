@@ -78,6 +78,20 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
 
     @Override
     public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationParameter.class)){
+            SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
+            if(item.getParameterInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(Parameter.class)){
+            Parameter item = (Parameter) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 

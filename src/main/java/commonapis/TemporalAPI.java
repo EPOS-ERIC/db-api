@@ -2,9 +2,7 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Spatial;
-import model.StatusType;
-import model.Temporal;
+import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.PeriodOfTime;
 
@@ -59,6 +57,41 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
     @Override
     public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductTemporal.class)){
+            DataproductTemporal item = (DataproductTemporal) object;
+            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(WebserviceTemporal.class)){
+            WebserviceTemporal item = (WebserviceTemporal) object;
+            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(EquipmentTemporal.class)){
+            EquipmentTemporal item = (EquipmentTemporal) object;
+            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(ServiceTemporal.class)){
+            ServiceTemporal item = (ServiceTemporal) object;
+            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(Temporal.class)){
+            Temporal item = (Temporal) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 

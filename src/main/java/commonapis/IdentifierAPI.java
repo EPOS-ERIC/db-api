@@ -2,9 +2,7 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Element;
-import model.Identifier;
-import model.StatusType;
+import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.ArrayList;
@@ -57,6 +55,40 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
+            DataproductIdentifier item = (DataproductIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
+            WebserviceIdentifier item = (WebserviceIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
+            OrganizationIdentifier item = (OrganizationIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
+            PersonIdentifier item = (PersonIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(Identifier.class)){
+            Identifier item = (Identifier) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 

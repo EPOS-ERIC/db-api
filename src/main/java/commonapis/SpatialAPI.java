@@ -55,6 +55,48 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public Boolean delete(String instanceId) {
+
+        for(Object object : getDbaccess().getAllFromDB(DataproductSpatial.class)){
+            DataproductSpatial item = (DataproductSpatial) object;
+            if(item.getSpatialInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(WebserviceSpatial.class)){
+            WebserviceSpatial item = (WebserviceSpatial) object;
+            if(item.getSpatialInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(FacilitySpatial.class)){
+            FacilitySpatial item = (FacilitySpatial) object;
+            if(item.getSpatialInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(EquipmentSpatial.class)){
+            EquipmentSpatial item = (EquipmentSpatial) object;
+            if(item.getSpatialInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(ServiceSpatial.class)){
+            ServiceSpatial item = (ServiceSpatial) object;
+            if(item.getSpatialInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(Spatial.class)){
+            Spatial item = (Spatial) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 

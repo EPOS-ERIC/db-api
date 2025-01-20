@@ -2,9 +2,7 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
-import model.Element;
-import model.ElementType;
-import model.StatusType;
+import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
 import java.util.ArrayList;
@@ -78,6 +76,82 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     @Override
     public Boolean delete(String instanceId) {
+        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
+            ContactpointElement item = (ContactpointElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(Element.class)){
+            Element item = (Element) object;
+            if(item.getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         return true;
     }
 
