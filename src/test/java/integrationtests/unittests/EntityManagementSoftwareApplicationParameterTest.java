@@ -42,11 +42,8 @@ public class EntityManagementSoftwareApplicationParameterTest extends Testcontai
         System.out.println(retrievedAll);
 
 
-        List<SoftwareApplicationParameter> retrievedAll2 = AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name()).retrieveAll();
-        System.out.println(retrievedAll2);
-
         assertNotNull(retrievedAll);
-        assertEquals(2,retrievedAll.size()+retrievedAll2.size());
+        assertEquals(2,retrievedAll.size());
     }
 
 
