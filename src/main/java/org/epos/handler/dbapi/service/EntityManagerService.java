@@ -44,6 +44,10 @@ public class EntityManagerService {
         hikariConfig.setConnectionTimeout(1000);
         hikariConfig.setInitializationFailTimeout(9000);
 
+        hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+
         this.connectionString = entityManagerServiceBuilder.connectionString;
         this.postgresqlHost = entityManagerServiceBuilder.postgresqlHost;
         this.postgresqlDBName = entityManagerServiceBuilder.postgresqlDBName;

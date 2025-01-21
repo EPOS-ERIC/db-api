@@ -70,7 +70,7 @@ public class EntityManagementSoftwaresTest extends TestcontainersLifecycle {
         softwareApplication.setMainEntityOfPage("mainentityofpage");
         softwareApplication.setIdentifier(List.of(identifier));
         softwareApplication.setRequirements("requirements");
-        softwareApplication.setRelation(List.of(operation));
+        softwareApplication.setRelatedOperation(List.of(operation));
         softwareApplication.addInputParameter(parameter);
 
         api.create(softwareApplication, null, null, null);

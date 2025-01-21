@@ -3,7 +3,6 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import model.Person;
 import org.epos.eposdatamodel.*;
 import org.epos.eposdatamodel.Category;
 import org.epos.eposdatamodel.Identifier;
@@ -96,8 +95,8 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             }
         }
 
-        if (obj.getRelation() != null && !obj.getRelation().isEmpty()) {
-            for(LinkedEntity relation : obj.getRelation()){
+        if (obj.getRelatedOperation() != null && !obj.getRelatedOperation().isEmpty()) {
+            for(LinkedEntity relation : obj.getRelatedOperation()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(relation, overrideStatus);
                 List<model.Operation> relationList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Operation.class);
                 if(!relationList.isEmpty()) {

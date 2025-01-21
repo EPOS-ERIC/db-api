@@ -112,13 +112,13 @@ public class SoftwareApplication extends EPOSDataModelEntity {
      * It represents the link to another Epos resource. e.g. Software, WebService,
      * Operation linked to this software.
      */
-    @Schema(name="relation", description = "It represents the link to OPERATION Epos resource", example = "[{\n" +
+    @Schema(name="relatedOperation", description = "It represents the link to OPERATION Epos resource", example = "[{\n" +
             "    \"entityType\": \"OPERATION\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +
             "    \"uid\": \"an UUID\"\n" +
             "  }]", required = false)
-    private List<LinkedEntity> relation;
+    private List<LinkedEntity> relatedOperation;
 
     /**
      * Component dependency requirements for application. This includes runtime environments and shared libraries that are not included in the application distribution package, but required to run the application.
@@ -133,12 +133,12 @@ public class SoftwareApplication extends EPOSDataModelEntity {
     private String softwareVersion;
 
     public void addRelation(LinkedEntity relation) {
-        if (this.getRelation() == null) {
+        if (this.getRelatedOperation() == null) {
             ArrayList<LinkedEntity> relationList = new ArrayList<>();
             relationList.add(relation);
-            this.setRelation(relationList);
+            this.setRelatedOperation(relationList);
         } else {
-            this.getRelation().add(relation);
+            this.getRelatedOperation().add(relation);
         }
     }
 
@@ -491,12 +491,12 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         this.contactPoint = contactPoint;
     }
 
-    public List<LinkedEntity> getRelation() {
-        return relation;
+    public List<LinkedEntity> getRelatedOperation() {
+        return relatedOperation;
     }
 
-    public void setRelation(List<LinkedEntity> relation) {
-        this.relation = relation;
+    public void setRelatedOperation(List<LinkedEntity> relation) {
+        this.relatedOperation = relation;
     }
 
     @Override
@@ -504,12 +504,12 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SoftwareApplication that = (SoftwareApplication) o;
-        return Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(installURL, that.installURL) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityOfPage, that.mainEntityOfPage) && Objects.equals(name, that.name) && Objects.equals(inputParameter, that.inputParameter) && Objects.equals(outputParameter, that.outputParameter) && Objects.equals(relation, that.relation) && Objects.equals(requirements, that.requirements) && Objects.equals(softwareVersion, that.softwareVersion);
+        return Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(installURL, that.installURL) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityOfPage, that.mainEntityOfPage) && Objects.equals(name, that.name) && Objects.equals(inputParameter, that.inputParameter) && Objects.equals(outputParameter, that.outputParameter) && Objects.equals(relatedOperation, that.relatedOperation) && Objects.equals(requirements, that.requirements) && Objects.equals(softwareVersion, that.softwareVersion);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(category, contactPoint, description, downloadURL, identifier, installURL, keywords, licenseURL, mainEntityOfPage, name, inputParameter, outputParameter, relation, requirements, softwareVersion);
+        return Objects.hash(category, contactPoint, description, downloadURL, identifier, installURL, keywords, licenseURL, mainEntityOfPage, name, inputParameter, outputParameter, relatedOperation, requirements, softwareVersion);
     }
 
     @Override
@@ -527,7 +527,7 @@ public class SoftwareApplication extends EPOSDataModelEntity {
                 ", name='" + name + '\'' +
                 ", inputParameter=" + inputParameter +
                 ", outputParameter=" + outputParameter +
-                ", relation=" + relation +
+                ", operation=" + relatedOperation +
                 ", requirements='" + requirements + '\'' +
                 ", softwareVersion='" + softwareVersion + '\'' +
                 '}'+ super.toString();
