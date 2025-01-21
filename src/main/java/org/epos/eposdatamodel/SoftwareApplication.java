@@ -439,8 +439,8 @@ public class SoftwareApplication extends EPOSDataModelEntity {
 
     public List<LinkedEntity> getParameter() {
         List<LinkedEntity> merge = new ArrayList<>();
-        merge.addAll(inputParameter);
-        merge.addAll(outputParameter);
+        if(inputParameter!=null) merge.addAll(inputParameter);
+        if(outputParameter!=null)  merge.addAll(outputParameter);
         return merge;
     }
 

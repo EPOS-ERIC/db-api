@@ -34,16 +34,19 @@ public class EntityManagementSoftwareApplicationParameterTest extends Testcontai
         outputParameter.setConformsto(UUID.randomUUID().toString());
         outputParameter.setEncodingformat("ISO-8859-1");
 
-        AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name()).create(inputParameter, StatusType.PUBLISHED, null, null);
-        AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name()).create(outputParameter, StatusType.PUBLISHED, null, null);
+        AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name()).create(inputParameter, StatusType.PUBLISHED, null, null);
+        AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name()).create(outputParameter, StatusType.PUBLISHED, null, null);
 
 
-        List<SoftwareApplicationParameter> retrievedAll = AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name()).retrieveAll();
+        List<SoftwareApplicationParameter> retrievedAll = AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name()).retrieveAll();
         System.out.println(retrievedAll);
 
 
+        List<SoftwareApplicationParameter> retrievedAll2 = AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name()).retrieveAll();
+        System.out.println(retrievedAll2);
+
         assertNotNull(retrievedAll);
-        assertEquals(2,retrievedAll.size());
+        assertEquals(2,retrievedAll.size()+retrievedAll2.size());
     }
 
 

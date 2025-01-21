@@ -6,6 +6,8 @@ import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.SoftwareApplicationInputParameter;
+import org.epos.eposdatamodel.SoftwareApplicationOutputParameter;
 
 import java.util.List;
 import java.util.Locale;
@@ -126,10 +128,15 @@ public class LinkedEntityAPI {
                 api = new DocumentationAPI(entityType, edmClass);
                 entity = new org.epos.eposdatamodel.Documentation();
                 break;
-            case SOFTWAREAPPLICATIONPARAMETER:
+            case SOFTWAREAPPLICATIONINPUTPARAMETER:
                 edmClass = Parameter.class;
                 api = new ParameterAPI(entityType, edmClass);
-                entity = new org.epos.eposdatamodel.SoftwareApplicationParameter();
+                entity = new org.epos.eposdatamodel.SoftwareApplicationInputParameter();
+                break;
+            case SOFTWAREAPPLICATIONOUTPUTPARAMETER:
+                edmClass = Parameter.class;
+                api = new ParameterAPI(entityType, edmClass);
+                entity = new org.epos.eposdatamodel.SoftwareApplicationOutputParameter();
                 break;
             case RELATION:
                 System.out.println("Relation empty case");
@@ -257,8 +264,12 @@ public class LinkedEntityAPI {
                 edmClass = Element.class;
                 api = new DocumentationAPI(entityType, edmClass);
                 break;
-            case SOFTWAREAPPLICATIONPARAMETER:
-                edmClass = SoftwareapplicationParameter.class;
+            case SOFTWAREAPPLICATIONINPUTPARAMETER:
+                edmClass = SoftwareApplicationInputParameter.class;
+                api = new ParameterAPI(entityType, edmClass);
+                break;
+            case SOFTWAREAPPLICATIONOUTPUTPARAMETER:
+                edmClass = SoftwareApplicationOutputParameter.class;
                 api = new ParameterAPI(entityType, edmClass);
                 break;
             case RELATION:
