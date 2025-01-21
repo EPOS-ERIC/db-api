@@ -211,7 +211,10 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
                 ParameterAPI api = new ParameterAPI(EntityNames.SOFTWAREAPPLICATIONPARAMETER.name(), SoftwareapplicationParameter.class);
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    o.addParameter(api.retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
+                    if(item.getParameterInstance().getAction().equals("OBJECT"))
+                        o.addInputParameter(api.retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
+                    if(item.getParameterInstance().getAction().equals("RESULT"))
+                        o.addOutputParameter(api.retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
                 }
             }
 
