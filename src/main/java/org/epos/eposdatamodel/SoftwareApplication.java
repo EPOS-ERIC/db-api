@@ -89,13 +89,24 @@ public class SoftwareApplication extends EPOSDataModelEntity {
     /**
      * This property represents an input or output parameters of the Software Application.
      **/
-    @Schema(name="parameter", description = "This property represents an input or output parameters of the Software Application.", example = "[{\n" +
+    @Schema(name="parameter", description = "This property represents a input parameters of the Software Application.", example = "[{\n" +
             "    \"entityType\": \"PARAMETER\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +
             "    \"uid\": \"an UUID\"\n" +
             "  }]", required = false)
-    private List<LinkedEntity> parameter;
+    private List<LinkedEntity> inputParameter;
+
+    /**
+     * This property represents an input or output parameters of the Software Application.
+     **/
+    @Schema(name="parameter", description = "This property represents a output parameters of the Software Application.", example = "[{\n" +
+            "    \"entityType\": \"PARAMETER\",\n" +
+            "    \"instanceId\": \"an UUID\",\n" +
+            "    \"metaId\": \"an UUID\",\n" +
+            "    \"uid\": \"an UUID\"\n" +
+            "  }]", required = false)
+    private List<LinkedEntity> outputParameter;
 
     /**
      * It represents the link to another Epos resource. e.g. Software, WebService,
@@ -161,13 +172,23 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         }
     }
 
-    public void addParameter(LinkedEntity parameter) {
-        if (this.getParameter() == null) {
+    public void addInputParameter(LinkedEntity parameter) {
+        if (this.getInputParameter() == null) {
             ArrayList<LinkedEntity> parameterList = new ArrayList<>();
             parameterList.add(parameter);
-            this.setParameter(parameterList);
+            this.setInputParameter(parameterList);
         } else {
-            this.getParameter().add(parameter);
+            this.getInputParameter().add(parameter);
+        }
+    }
+
+    public void addOutputParameter(LinkedEntity parameter) {
+        if (this.getOutputParameter() == null) {
+            ArrayList<LinkedEntity> parameterList = new ArrayList<>();
+            parameterList.add(parameter);
+            this.setOutputParameter(parameterList);
+        } else {
+            this.getOutputParameter().add(parameter);
         }
     }
 
@@ -361,16 +382,16 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         this.name = name;
     }
 
-    public SoftwareApplication parameter(ArrayList<LinkedEntity> parameter) {
-        this.parameter = parameter;
+    public SoftwareApplication inputParameter(ArrayList<LinkedEntity> parameter) {
+        this.inputParameter = inputParameter;
         return this;
     }
 
-    public SoftwareApplication addParameterItem(LinkedEntity parameterItem) {
-        if (this.parameter == null) {
-            this.parameter = new ArrayList<>();
+    public SoftwareApplication addInputParameterItem(LinkedEntity parameterItem) {
+        if (this.inputParameter == null) {
+            this.inputParameter = new ArrayList<>();
         }
-        this.parameter.add(parameterItem);
+        this.inputParameter.add(parameterItem);
         return this;
     }
 
@@ -380,12 +401,47 @@ public class SoftwareApplication extends EPOSDataModelEntity {
      * @return parameter
      **/
 
-    public List<LinkedEntity> getParameter() {
-        return parameter;
+    public List<LinkedEntity> getInputParameter() {
+        return inputParameter;
     }
 
-    public void setParameter(List<LinkedEntity> parameter) {
-        this.parameter = parameter;
+    public void setInputParameter(List<LinkedEntity> parameter) {
+        this.inputParameter = parameter;
+    }
+
+    public SoftwareApplication outputParameter(ArrayList<LinkedEntity> outputParameter) {
+        this.outputParameter = outputParameter;
+        return this;
+    }
+
+    public SoftwareApplication addOutputParameterItem(LinkedEntity parameterItem) {
+        if (this.outputParameter == null) {
+            this.outputParameter = new ArrayList<>();
+        }
+        this.outputParameter.add(parameterItem);
+        return this;
+    }
+
+    /**
+     * This property represents an input or output parameters of the Software Application.
+     *
+     * @return parameter
+     **/
+
+    public List<LinkedEntity> getOutputParameter() {
+        return outputParameter;
+    }
+
+    public void setOutputParameter(List<LinkedEntity> parameter) {
+        this.outputParameter = parameter;
+    }
+
+
+    public List<LinkedEntity> getParameter() {
+        List<LinkedEntity> merge = new ArrayList<>();
+        merge.addAll(inputParameter);
+        merge.addAll(outputParameter);
+        return merge;
     }
 
 
@@ -448,12 +504,12 @@ public class SoftwareApplication extends EPOSDataModelEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SoftwareApplication that = (SoftwareApplication) o;
-        return Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(installURL, that.installURL) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityOfPage, that.mainEntityOfPage) && Objects.equals(name, that.name) && Objects.equals(parameter, that.parameter) && Objects.equals(relation, that.relation) && Objects.equals(requirements, that.requirements) && Objects.equals(softwareVersion, that.softwareVersion);
+        return Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(installURL, that.installURL) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityOfPage, that.mainEntityOfPage) && Objects.equals(name, that.name) && Objects.equals(inputParameter, that.inputParameter) && Objects.equals(outputParameter, that.outputParameter) && Objects.equals(relation, that.relation) && Objects.equals(requirements, that.requirements) && Objects.equals(softwareVersion, that.softwareVersion);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(category, contactPoint, description, downloadURL, identifier, installURL, keywords, licenseURL, mainEntityOfPage, name, parameter, relation, requirements, softwareVersion);
+        return Objects.hash(category, contactPoint, description, downloadURL, identifier, installURL, keywords, licenseURL, mainEntityOfPage, name, inputParameter, outputParameter, relation, requirements, softwareVersion);
     }
 
     @Override
@@ -469,7 +525,8 @@ public class SoftwareApplication extends EPOSDataModelEntity {
                 ", licenseURL='" + licenseURL + '\'' +
                 ", mainEntityOfPage='" + mainEntityOfPage + '\'' +
                 ", name='" + name + '\'' +
-                ", parameter=" + parameter +
+                ", inputParameter=" + inputParameter +
+                ", outputParameter=" + outputParameter +
                 ", relation=" + relation +
                 ", requirements='" + requirements + '\'' +
                 ", softwareVersion='" + softwareVersion + '\'' +
