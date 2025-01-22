@@ -191,16 +191,14 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             for(Object organizationContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),OrganizationContactpoint.class)){
                 OrganizationContactpoint item = (OrganizationContactpoint) organizationContactpoint;
                 if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
-                    OrganizationAPI organizationAPI = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-                    o.setOrganization(organizationAPI.retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId()));
+                    o.setOrganization(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId()));
                 }
             }
 
             for(Object personContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),PersonContactpoint.class)){
                 PersonContactpoint item = (PersonContactpoint) personContactpoint;
                 if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
-                    PersonAPI personAPI = new PersonAPI(EntityNames.PERSON.name(), Person.class);
-                    o.setPerson(personAPI.retrieveLinkedEntity(item.getPersonInstance().getInstanceId()));
+                    o.setPerson(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getPersonInstance().getInstanceId()));
                 }
             }
 

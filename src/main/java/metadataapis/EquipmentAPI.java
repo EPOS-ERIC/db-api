@@ -172,8 +172,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         EquipmentElement ce = new EquipmentElement();
         ce.setEquipmentInstance(edmobj);
@@ -207,8 +206,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
                 EquipmentCategory item = (EquipmentCategory) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
                 }
             }
@@ -216,8 +214,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addCategory(le);
                 }
             }
@@ -226,12 +223,10 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 EquipmentIspartof item = (EquipmentIspartof) object;
                 if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
-                        FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
-                        o.addIsPartOf(api.retrieveLinkedEntity(item.getEntityInstanceId()));
+                        o.addIsPartOf(retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                     if(item.getResourceEntity().equals(EntityNames.EQUIPMENT.name())){
-                        EquipmentAPI api = new EquipmentAPI(EntityNames.EQUIPMENT.name(), Equipment.class);
-                        o.addIsPartOf(api.retrieveLinkedEntity(item.getEntityInstanceId()));
+                        o.addIsPartOf(retrieveAPI(EntityNames.EQUIPMENT.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                 }
             }
@@ -239,8 +234,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentSpatial.class)) {
                 EquipmentSpatial item = (EquipmentSpatial) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addSpatialExtentItem(le);
                 }
             }
@@ -248,8 +242,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentTemporal.class)) {
                 EquipmentTemporal item = (EquipmentTemporal) object;
                 if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    TemporalAPI api = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
                     o.addTemporalExtent(le);
                 }
             }

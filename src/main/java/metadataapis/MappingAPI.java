@@ -1,7 +1,6 @@
 package metadataapis;
 
 import abstractapis.AbstractAPI;
-import commonapis.ElementAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
@@ -81,8 +80,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         MappingElement ce = new MappingElement();
         ce.setMappingInstance(edmobj);

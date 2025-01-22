@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
@@ -26,7 +28,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
                 obj.getVersionId(),
                 getEdmClass());
 
-        if(!returnList.isEmpty()){
+        if (!returnList.isEmpty()) {
             obj.setInstanceId(returnList.get(0).getInstanceId());
             obj.setMetaId(returnList.get(0).getMetaId());
             obj.setUid(returnList.get(0).getUid());
@@ -41,7 +43,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setType(Optional.ofNullable(obj.getType().toString()).orElse(null));
         edmobj.setValue(Optional.ofNullable(obj.getValue()).orElse(null));
 
@@ -56,152 +58,113 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     @Override
     public org.epos.eposdatamodel.Element retrieve(String instanceId) {
         List<Element> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Element.class);
-        if(elementList!=null && !elementList.isEmpty()) {
-            Element edmobj = elementList.get(0);
-            org.epos.eposdatamodel.Element o = new org.epos.eposdatamodel.Element();
-
-
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
-            o.setType(ElementType.valueOf(edmobj.getType()));
-            o.setValue(edmobj.getValue());
-
-            o = (org.epos.eposdatamodel.Element) VersioningStatusAPI.retrieveVersion(o);
-
-            return o;
+        if (elementList.isEmpty()) {
+            return null;
         }
-        return null;
+
+        Element edmobj = elementList.get(0);
+        org.epos.eposdatamodel.Element o = new org.epos.eposdatamodel.Element();
+
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(ElementType.valueOf(edmobj.getType()));
+        o.setValue(edmobj.getValue());
+
+        return (org.epos.eposdatamodel.Element) VersioningStatusAPI.retrieveVersion(o);
     }
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
-            ContactpointElement item = (ContactpointElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        // List of element types to delete
+        List<Class<?>> elementTypes = List.of(
+                ContactpointElement.class,
+                DistributionElement.class,
+                WebserviceElement.class,
+                OrganizationElement.class,
+                PersonElement.class,
+                OperationElement.class,
+                MappingElement.class,
+                SoftwaresourcecodeElement.class,
+                EquipmentElement.class,
+                FacilityElement.class
+        );
 
-        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        elementTypes.forEach(elementType -> {
+            List<?> itemsToDelete = (List<?>) getDbaccess().getAllFromDB(elementType).stream()
+                    .filter(item -> ((Element) item).getInstanceId().equals(instanceId))
+                    .collect(Collectors.toList());
+            dbaccess.deleteListOfObjects(itemsToDelete);
+        });
 
-        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        // Delete Element itself
+        List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
+        elementList.stream()
+                .filter(item -> item.getInstanceId().equals(instanceId))
+                .forEach(dbaccess::deleteObject);
 
-        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(Element.class)){
-            Element item = (Element) object;
-            if(item.getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
         return true;
     }
 
     @Override
     public List<org.epos.eposdatamodel.Element> retrieveBunch(List<String> entities) {
         List<Element> list = getDbaccess().getListFromDBByInstanceId(entities, Element.class);
-        List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+
+        // Using CompletableFuture for parallel retrieval
+        List<CompletableFuture<org.epos.eposdatamodel.Element>> futures = list.stream()
+                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
+                .collect(Collectors.toList());
+
+        // Collecting results after all futures complete
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<org.epos.eposdatamodel.Element> retrieveAll() {
         List<Element> list = getDbaccess().getAllFromDB(Element.class);
-        List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+
+        // Using CompletableFuture for parallel retrieval
+        List<CompletableFuture<org.epos.eposdatamodel.Element>> futures = list.stream()
+                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
+                .collect(Collectors.toList());
+
+        // Collecting results after all futures complete
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<org.epos.eposdatamodel.Element> retrieveAllWithStatus(StatusType status) {
         List<Element> list = getDbaccess().getAllFromDBWithStatus(Element.class, status);
-        List<org.epos.eposdatamodel.Element> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
-    }
 
+        // Using CompletableFuture for parallel retrieval
+        List<CompletableFuture<org.epos.eposdatamodel.Element>> futures = list.stream()
+                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
+                .collect(Collectors.toList());
+
+        // Collecting results after all futures complete
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
+    }
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Element> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Element.class);
-        if(elementList!=null && !elementList.isEmpty()) {
-            Element edmobj = elementList.get(0);
-
-            LinkedEntity o = new LinkedEntity();
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
-            o.setEntityType(EntityNames.ELEMENT.name());
-
-            return o;
+        if (elementList.isEmpty()) {
+            return null;
         }
-        return null;
+
+        Element edmobj = elementList.get(0);
+        LinkedEntity o = new LinkedEntity();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setEntityType(EntityNames.ELEMENT.name());
+
+        return o;
     }
-
-
 }

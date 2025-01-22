@@ -67,13 +67,12 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         if(!categorySchemeList.isEmpty()) {
             edmobj.setInScheme(categorySchemeList.get(0));
         } else{
-            CategorySchemeAPI api = new CategorySchemeAPI(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
             org.epos.eposdatamodel.CategoryScheme childObj = new org.epos.eposdatamodel.CategoryScheme();
             childObj.setInstanceId(inscheme.getInstanceId());
             childObj.setMetaId(inscheme.getMetaId());
             childObj.setUid(inscheme.getUid());
             childObj.setStatus(StatusType.valueOf(edmobj.getVersion().getStatus()));
-            LinkedEntity le = api.create(childObj, overrideStatus, null, null);
+            LinkedEntity le = retrieveAPI(EntityNames.CATEGORYSCHEME.name()).create(childObj, overrideStatus, null, null);
             edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
         }
     }
@@ -92,7 +91,6 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
 
     private void createNarrowers(List<LinkedEntity> narrowers, Category edmobj, StatusType overrideStatus){
-        CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
         for(LinkedEntity narrower : narrowers) {
 
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus);
@@ -140,8 +138,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             o.setName(edmobj.getName());
             o.setDescription(edmobj.getDescription());
             if (edmobj.getInScheme() != null) {
-                CategorySchemeAPI csapi = new CategorySchemeAPI(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
-                o.setInScheme(csapi.retrieveLinkedEntity(edmobj.getInScheme().getInstanceId()));
+                o.setInScheme(retrieveAPI(EntityNames.CATEGORYSCHEME.name()).retrieveLinkedEntity(edmobj.getInScheme().getInstanceId()));
             }
 
             ArrayList<LinkedEntity> broaders = new ArrayList<>();

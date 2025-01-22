@@ -138,8 +138,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         FacilityElement ce = new FacilityElement();
         ce.setFacilityInstance(edmobj);
@@ -211,8 +210,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
                 FacilityCategory item = (FacilityCategory) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
                 }
             }
@@ -220,8 +218,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
                 FacilityContactpoint item = (FacilityContactpoint) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
                 }
             }
@@ -229,8 +226,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
                 FacilityAddress item = (FacilityAddress) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    AddressAPI api = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getAddressInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(item.getAddressInstance().getInstanceId());
                     o.addAddress(le);
                 }
             }
@@ -238,8 +234,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
                 FacilityIspartof item = (FacilityIspartof) object;
                 if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getFacility2Instance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getFacility2Instance().getInstanceId());
                     o.addIsPartOf(le);
                 }
             }
@@ -247,8 +242,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
                 FacilitySpatial item = (FacilitySpatial) object;
                 if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addIsPartOf(le);
                 }
             }

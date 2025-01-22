@@ -141,8 +141,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OrganizationElement ce = new OrganizationElement();
         ce.setOrganizationInstance(edmobj);
@@ -222,22 +221,19 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             for (Object object : dbaccess.getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(),OrganizationIdentifier.class)) {
                 OrganizationIdentifier item = (OrganizationIdentifier) object;
                 if(item.getOrganizationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
                 }
             }
 
             if (edmobj.getAddress() != null) {
-                AddressAPI api = new AddressAPI(EntityNames.ADDRESS.name(), Address.class);
-                o.setAddress(api.retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
+                o.setAddress(retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(),OrganizationContactpoint.class)) {
                 OrganizationContactpoint item = (OrganizationContactpoint) object;
                 if(item.getOrganizationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
                 }
             }
@@ -260,12 +256,10 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 OrganizationOwn item = (OrganizationOwn) object;
                 if(item.getOrganization().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
-                        FacilityAPI api = new FacilityAPI(EntityNames.FACILITY.name(), Facility.class);
-                        o.addOwns(api.retrieveLinkedEntity(item.getEntityInstanceId()));
+                        o.addOwns(retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                     if(item.getResourceEntity().equals(EntityNames.EQUIPMENT.name())){
-                        EquipmentAPI api = new EquipmentAPI(EntityNames.EQUIPMENT.name(), Equipment.class);
-                        o.addOwns(api.retrieveLinkedEntity(item.getEntityInstanceId()));
+                        o.addOwns(retrieveAPI(EntityNames.EQUIPMENT.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                 }
             }
@@ -273,8 +267,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             for (Object object : dbaccess.getOneFromDBBySpecificKey("organization2Instance", edmobj.getInstanceId(),OrganizationMemberof.class)) {
                 OrganizationMemberof item = (OrganizationMemberof) object;
                 if(item.getOrganization2Instance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getOrganization1Instance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganization1Instance().getInstanceId());
                     o.addMemberOf(le);
                 }
             }

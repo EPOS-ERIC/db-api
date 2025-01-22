@@ -271,8 +271,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
                 DistributionDataproduct item = (DistributionDataproduct) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    DataProductAPI api = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getDataproductInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproductInstance().getInstanceId());
                     o.addDataproduct(le);
                 }
             }
@@ -280,8 +279,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),WebserviceDistribution.class)) {
                 WebserviceDistribution item = (WebserviceDistribution) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
                     o.addAccessService(le);
                 }
             }
@@ -289,8 +287,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
                 OperationDistribution item = (OperationDistribution) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addSupportedOperation(le);
                 }
             }

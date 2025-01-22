@@ -102,8 +102,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OperationElement ce = new OperationElement();
         ce.setOperationInstance(edmobj);
@@ -161,8 +160,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
                 if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    WebServiceAPI api = new WebServiceAPI(EntityNames.WEBSERVICE.name(), Webservice.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
                     o.addWebservice(le);
                 }
             }
@@ -170,8 +168,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationMapping.class)) {
                 OperationMapping item = (OperationMapping) object;
                 if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    MappingAPI api = new MappingAPI(EntityNames.MAPPING.name(), Mapping.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getMappingInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.MAPPING.name()).retrieveLinkedEntity(item.getMappingInstance().getInstanceId());
                     o.addMapping(le);
                 }
             }

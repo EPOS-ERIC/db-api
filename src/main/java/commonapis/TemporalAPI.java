@@ -7,10 +7,10 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.PeriodOfTime;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime> {
 
@@ -21,6 +21,7 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
     @Override
     public LinkedEntity create(PeriodOfTime obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
+        // Fetch existing record if it already exists
         List<Temporal> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
@@ -28,22 +29,24 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
                 obj.getVersionId(),
                 getEdmClass());
 
-        if(!returnList.isEmpty()){
-            obj.setInstanceId(returnList.get(0).getInstanceId());
-            obj.setMetaId(returnList.get(0).getMetaId());
-            obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
+        // Update if the record exists
+        if (!returnList.isEmpty()) {
+            Temporal existing = returnList.get(0);
+            obj.setInstanceId(existing.getInstanceId());
+            obj.setMetaId(existing.getMetaId());
+            obj.setUid(existing.getUid());
+            obj.setVersionId(existing.getVersion().getVersionId());
         }
 
+        // Versioning and entity creation
         obj = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.checkVersion(obj, overrideStatus);
-
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Temporal edmobj = new Temporal();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setStartdate(obj.getStartDate());
         edmobj.setEnddate(obj.getEndDate());
 
@@ -57,109 +60,98 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
     @Override
     public Boolean delete(String instanceId) {
+        // Use streams to batch delete related temporal entities
+        List<Object> relatedItems = (List<Object>) getDbaccess().getAllFromDB(DataproductTemporal.class).stream()
+                .filter(item -> ((DataproductTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        dbaccess.deleteListOfObjects(relatedItems);
 
-        for(Object object : getDbaccess().getAllFromDB(DataproductTemporal.class)){
-            DataproductTemporal item = (DataproductTemporal) object;
-            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        relatedItems = (List<Object>) getDbaccess().getAllFromDB(WebserviceTemporal.class).stream()
+                .filter(item -> ((WebserviceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        dbaccess.deleteListOfObjects(relatedItems);
 
-        for(Object object : getDbaccess().getAllFromDB(WebserviceTemporal.class)){
-            WebserviceTemporal item = (WebserviceTemporal) object;
-            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        relatedItems = (List<Object>) getDbaccess().getAllFromDB(EquipmentTemporal.class).stream()
+                .filter(item -> ((EquipmentTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        dbaccess.deleteListOfObjects(relatedItems);
 
-        for(Object object : getDbaccess().getAllFromDB(EquipmentTemporal.class)){
-            EquipmentTemporal item = (EquipmentTemporal) object;
-            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        relatedItems = (List<Object>) getDbaccess().getAllFromDB(ServiceTemporal.class).stream()
+                .filter(item -> ((ServiceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        dbaccess.deleteListOfObjects(relatedItems);
 
-        for(Object object : getDbaccess().getAllFromDB(ServiceTemporal.class)){
-            ServiceTemporal item = (ServiceTemporal) object;
-            if(item.getTemporalInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
+        // Delete the main Temporal record
+        List<Temporal> temporalItems = (List<Temporal>) getDbaccess().getAllFromDB(Temporal.class).stream()
+                .filter(item -> ((Temporal)item).getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        dbaccess.deleteListOfObjects(temporalItems);
 
-        for(Object object : getDbaccess().getAllFromDB(Temporal.class)){
-            Temporal item = (Temporal) object;
-            if(item.getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
         return true;
     }
 
     @Override
     public org.epos.eposdatamodel.PeriodOfTime retrieve(String instanceId) {
         List<Temporal> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Temporal.class);
-        if(elementList!=null && !elementList.isEmpty()) {
-            Temporal edmobj = elementList.get(0);
-            org.epos.eposdatamodel.PeriodOfTime o = new org.epos.eposdatamodel.PeriodOfTime();
-
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
-            o.setStartDate(edmobj.getStartdate());
-            o.setEndDate(edmobj.getEnddate());
-
-            o = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
-
-            return o;
+        if (elementList.isEmpty()) {
+            return null;
         }
-        return null;
+
+        Temporal edmobj = elementList.get(0);
+        org.epos.eposdatamodel.PeriodOfTime o = new org.epos.eposdatamodel.PeriodOfTime();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setStartDate(edmobj.getStartdate());
+        o.setEndDate(edmobj.getEnddate());
+
+        return (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
     }
 
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunch(List<String> entities) {
         List<Temporal> list = getDbaccess().getListFromDBByInstanceId(entities, Temporal.class);
-        List<org.epos.eposdatamodel.PeriodOfTime> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+
+        // Using stream for efficient processing
+        return list.stream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAll() {
         List<Temporal> list = getDbaccess().getAllFromDB(Temporal.class);
-        List<org.epos.eposdatamodel.PeriodOfTime> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+
+        // Using stream for efficient processing
+        return list.stream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllWithStatus(StatusType status) {
         List<Temporal> list = getDbaccess().getAllFromDBWithStatus(Temporal.class, status);
-        List<org.epos.eposdatamodel.PeriodOfTime> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+
+        // Using stream for efficient processing
+        return list.stream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Temporal> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Temporal.class);
-        if(elementList!=null && !elementList.isEmpty()) {
-            Temporal edmobj = elementList.get(0);
-            LinkedEntity o = new LinkedEntity();
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
-            o.setEntityType(EntityNames.PERIODOFTIME.name());
-
-            return o;
+        if (elementList.isEmpty()) {
+            return null;
         }
-        return null;
+
+        Temporal edmobj = elementList.get(0);
+        LinkedEntity o = new LinkedEntity();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setEntityType(EntityNames.PERIODOFTIME.name());
+
+        return o;
     }
-
-
 }

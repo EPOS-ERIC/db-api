@@ -273,8 +273,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceCategory.class)) {
                 WebserviceCategory item = (WebserviceCategory) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    CategoryAPI api = new CategoryAPI(EntityNames.CATEGORY.name(), Category.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
                 }
             }
@@ -282,31 +281,27 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceContactpoint.class)) {
                 WebserviceContactpoint item = (WebserviceContactpoint) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    ContactPointAPI api = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
                 }
             }
 
             if (edmobj.getProvider() != null) {
-                OrganizationAPI api = new OrganizationAPI(EntityNames.ORGANIZATION.name(), Organization.class);
-                o.setProvider(api.retrieveLinkedEntity(edmobj.getProvider()));
+                o.setProvider(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(edmobj.getProvider()));
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceElement.class)) {
                 WebserviceElement item = (WebserviceElement) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    DocumentationAPI api = new DocumentationAPI(EntityNames.DOCUMENTATION.name(), Documentation.class);
                     Element el = item.getElementInstance();
-                    if (el.getType().equals(ElementType.DOCUMENTATION.name())) o.addDocumentation(api.retrieveLinkedEntity(el.getInstanceId()));
+                    if (el.getType().equals(ElementType.DOCUMENTATION.name())) o.addDocumentation(retrieveAPI(EntityNames.DOCUMENTATION.name()).retrieveLinkedEntity(el.getInstanceId()));
                 }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceIdentifier.class)) {
                 WebserviceIdentifier item = (WebserviceIdentifier) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    IdentifierAPI api = new IdentifierAPI(EntityNames.IDENTIFIER.name(), Identifier.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
                 }
             }
@@ -314,8 +309,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceSpatial.class)) {
                 WebserviceSpatial item = (WebserviceSpatial) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    SpatialAPI api = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addSpatialExtentItem(le);
                 }
             }
@@ -323,8 +317,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceTemporal.class)) {
                 WebserviceTemporal item = (WebserviceTemporal) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    TemporalAPI api = new TemporalAPI(EntityNames.PERIODOFTIME.name(), Temporal.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
                     o.addTemporalExtent(le);
                 }
             }
@@ -332,8 +325,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
                 if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    OperationAPI api = new OperationAPI(EntityNames.OPERATION.name(), Operation.class);
-                    LinkedEntity le = api.retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addSupportedOperation(le);
                 }
             }
