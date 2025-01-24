@@ -343,6 +343,13 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
 
+        for(Object object : getDbaccess().getAllFromDB(DistributionDataproduct.class)){
+            DistributionDataproduct item = (DistributionDataproduct) object;
+            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
 
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
         for(Dataproduct object : elementList){
