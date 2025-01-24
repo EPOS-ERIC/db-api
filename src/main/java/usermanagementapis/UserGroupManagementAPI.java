@@ -115,14 +115,14 @@ public class UserGroupManagementAPI {
                     }
                 }
                 group1.setUsers(new ArrayList<>());
-                HashMap<String,String> items = new HashMap<>();
+
                 for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                    if(metadataGroupUser.getGroup().getId().equals(groupId)){
+                    if(metadataGroupUser.getGroup().getId().equals(metadataGroup.getId())){
+                        HashMap<String,String> items = new HashMap<>();
                         items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
                         items.put("role",metadataGroupUser.getRole());
                         items.put("requestStatus",metadataGroupUser.getRequestStatus());
                         group1.getUsers().add(items);
-                        //group1.getUsers()..(metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
                     }
                 }
                 return group1;
@@ -175,16 +175,23 @@ public class UserGroupManagementAPI {
             MetadataGroup selectedGroup = selectedGroupList.get(0);
             MetadataUser selectedUser = selectedUserList.get(0);
 
+            System.out.println(selectedGroup.getId());
+            System.out.println(selectedUser.getAuthIdentifier());
+
             MetadataGroupUser metadataGroupUser = null;
             for(MetadataGroupUser metadataGroupUser1 : metadataGroupUserList){
-                if(metadataGroupUser1.getGroup().getId().equals(selectedGroup.getId())
-                        && metadataGroupUser1.getAuthIdentifier().getAuthIdentifier().equals(selectedUser.getAuthIdentifier())){
+                if(metadataGroupUser1.getGroup().getId().equals(groupId)
+                        && metadataGroupUser1.getAuthIdentifier().getAuthIdentifier().equals(userId)){
+                    System.out.println("Match found");
                     metadataGroupUser = metadataGroupUser1;
                     metadataGroupUser.setRequestStatus(requestStatusType.name());
                     metadataGroupUser.setRole(role.name());
                 }
             }
             if(metadataGroupUser == null){
+                System.out.println("No Match found");
+                System.out.println(selectedGroup.getId());
+                System.out.println(selectedUser.getAuthIdentifier());
                 metadataGroupUser = new MetadataGroupUser();
                 metadataGroupUser.setId(UUID.randomUUID().toString());
                 metadataGroupUser.setGroup(selectedGroup);
@@ -192,6 +199,8 @@ public class UserGroupManagementAPI {
                 metadataGroupUser.setRequestStatus(requestStatusType.name());
                 metadataGroupUser.setRole(role.name());
             }
+
+            System.out.println(metadataGroupUser.toString());
 
             return getDbaccess().updateObject(metadataGroupUser);
         }

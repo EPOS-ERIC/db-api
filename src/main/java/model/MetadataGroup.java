@@ -42,4 +42,12 @@ public class MetadataGroup {
         this.description = description;
     }
 
+    @Override
+    public String toString() {
+        return "MetadataGroup{" +
+                "id='" + id + '\'' +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
 }

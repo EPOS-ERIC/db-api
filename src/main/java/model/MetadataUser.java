@@ -69,4 +69,14 @@ public class MetadataUser {
         this.isadmin = isadmin;
     }
 
+    @Override
+    public String toString() {
+        return "MetadataUser{" +
+                "authIdentifier='" + authIdentifier + '\'' +
+                ", familyname='" + familyname + '\'' +
+                ", givenname='" + givenname + '\'' +
+                ", email='" + email + '\'' +
+                ", isadmin='" + isadmin + '\'' +
+                '}';
+    }
 }

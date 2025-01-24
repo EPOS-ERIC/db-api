@@ -67,4 +67,14 @@ public class MetadataGroupUser {
         this.role = role;
     }
 
+    @Override
+    public String toString() {
+        return "MetadataGroupUser{" +
+                "id='" + id + '\'' +
+                ", authIdentifier=" + authIdentifier +
+                ", group=" + group +
+                ", requestStatus='" + requestStatus + '\'' +
+                ", role='" + role + '\'' +
+                '}';
+    }
 }
