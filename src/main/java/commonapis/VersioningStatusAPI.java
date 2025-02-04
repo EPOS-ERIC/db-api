@@ -64,6 +64,11 @@ public class VersioningStatusAPI {
                     edmobj.setStatus(obj.getStatus().toString());
                 }
             }
+            edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+            edmobj.setChangeComment(obj.getChangeComment());
+            edmobj.setEditorId(obj.getEditorId());
+            edmobj.setProvenance(obj.getFileProvenance());
+            edmobj.setVersion(obj.getVersion());
             getDbaccess().updateObject(edmobj);
             return obj;
         } else {

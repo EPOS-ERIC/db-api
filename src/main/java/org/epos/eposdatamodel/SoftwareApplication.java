@@ -132,7 +132,7 @@ public class SoftwareApplication extends EPOSDataModelEntity {
     @Schema(name="softwareVersion", description = "This property contains the version of the Software Application instance.", example = "1.0", required = false)
     private String softwareVersion;
 
-    public void addRelation(LinkedEntity relation) {
+    public void addRelatedOperation(LinkedEntity relation) {
         if (this.getRelatedOperation() == null) {
             ArrayList<LinkedEntity> relationList = new ArrayList<>();
             relationList.add(relation);

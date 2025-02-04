@@ -215,7 +215,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                 SoftwareapplicationOperation item = (SoftwareapplicationOperation) object;
                 if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le =  retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
-                    o.addRelation(le);
+                    o.addRelatedOperation(le);
                 }
             }
 
