@@ -93,8 +93,8 @@ public class LinkedEntity {
 
     public static Boolean contains(List<LinkedEntity> list, LinkedEntity linkedEntity){
         for(LinkedEntity linkedEntity1 : list){
-            System.out.println(linkedEntity1.toString());
-            System.out.println(linkedEntity.toString());
+            //System.out.println(linkedEntity1.toString());
+            //System.out.println(linkedEntity.toString());
             if(linkedEntity1.equals(linkedEntity)){
                 return true;
             }

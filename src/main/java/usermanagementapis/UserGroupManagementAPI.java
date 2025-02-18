@@ -211,23 +211,23 @@ public class UserGroupManagementAPI {
             MetadataGroup selectedGroup = selectedGroupList.get(0);
             MetadataUser selectedUser = selectedUserList.get(0);
 
-            System.out.println(selectedGroup.getId());
-            System.out.println(selectedUser.getAuthIdentifier());
+            //System.out.println(selectedGroup.getId());
+            //System.out.println(selectedUser.getAuthIdentifier());
 
             MetadataGroupUser metadataGroupUser = null;
             for(MetadataGroupUser metadataGroupUser1 : metadataGroupUserList){
                 if(metadataGroupUser1.getGroup().getId().equals(groupId)
                         && metadataGroupUser1.getAuthIdentifier().getAuthIdentifier().equals(userId)){
-                    System.out.println("Match found");
+                    //System.out.println("Match found");
                     metadataGroupUser = metadataGroupUser1;
                     metadataGroupUser.setRequestStatus(requestStatusType.name());
                     metadataGroupUser.setRole(role.name());
                 }
             }
             if(metadataGroupUser == null){
-                System.out.println("No Match found");
-                System.out.println(selectedGroup.getId());
-                System.out.println(selectedUser.getAuthIdentifier());
+                //System.out.println("No Match found");
+                //System.out.println(selectedGroup.getId());
+                //System.out.println(selectedUser.getAuthIdentifier());
                 metadataGroupUser = new MetadataGroupUser();
                 metadataGroupUser.setId(UUID.randomUUID().toString());
                 metadataGroupUser.setGroup(selectedGroup);
@@ -236,7 +236,7 @@ public class UserGroupManagementAPI {
                 metadataGroupUser.setRole(role.name());
             }
 
-            System.out.println(metadataGroupUser.toString());
+            //System.out.println(metadataGroupUser.toString());
 
             return getDbaccess().updateObject(metadataGroupUser);
         }
@@ -259,7 +259,7 @@ public class UserGroupManagementAPI {
 
     public static Boolean addMetadataElementToGroup(String metaId, String groupId){
 
-        System.out.println(metaId+" "+groupId);
+        //System.out.println(metaId+" "+groupId);
 
         List<MetadataGroup> selectedGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class);
         List<EdmEntityId> selectedEdmEntityIdList = getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class);

@@ -67,7 +67,7 @@ public class LinkedEntityAPI {
         edmClassMap.put(EntityNames.PERIODOFTIME.name(), org.epos.eposdatamodel.PeriodOfTime.class);
         edmClassMap.put(EntityNames.IDENTIFIER.name(), org.epos.eposdatamodel.Identifier.class);
         edmClassMap.put(EntityNames.QUANTITATIVEVALUE.name(), org.epos.eposdatamodel.QuantitativeValue.class);
-        edmClassMap.put(EntityNames.DOCUMENTATION.name(), org.epos.eposdatamodel.Element.class);
+        edmClassMap.put(EntityNames.DOCUMENTATION.name(), org.epos.eposdatamodel.Documentation.class);
         edmClassMap.put(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), org.epos.eposdatamodel.SoftwareApplicationInputParameter.class);
         edmClassMap.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), org.epos.eposdatamodel.SoftwareApplicationOutputParameter.class);
     }

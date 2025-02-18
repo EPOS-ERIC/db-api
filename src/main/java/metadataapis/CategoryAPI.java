@@ -120,6 +120,42 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 dbaccess.deleteObject(item);
             }
         }
+        for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
+            DataproductCategory item = (DataproductCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceCategory.class)){
+            WebserviceCategory item = (WebserviceCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationCategory.class)){
+            SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeCategory.class)){
+            SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityCategory.class)){
+            FacilityCategory item = (FacilityCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentCategory.class)){
+            EquipmentCategory item = (EquipmentCategory) object;
+            if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
         for(Category object : elementList){
             dbaccess.deleteObject(object);

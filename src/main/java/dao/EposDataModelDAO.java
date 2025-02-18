@@ -265,7 +265,7 @@ public class EposDataModelDAO<T> {
                 LOG.info(Boolean.toString(em.contains(singleObj)));
                 if (!em.contains(singleObj)) {
                     T target = em.merge(singleObj);
-                    System.out.println(target.toString());
+                    //System.out.println(target.toString());
                     LOG.info(target.toString());
                     em.remove(target);
                 }
