@@ -3,10 +3,12 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.SoftwareSourceCode;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -197,6 +199,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
             }
 
             o = (org.epos.eposdatamodel.SoftwareSourceCode) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

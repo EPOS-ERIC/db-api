@@ -4,8 +4,10 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -228,6 +230,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
 
             o = (org.epos.eposdatamodel.Person) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

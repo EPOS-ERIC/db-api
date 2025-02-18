@@ -3,8 +3,10 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.QuantitativeValue;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.List;
 import java.util.Optional;
@@ -82,6 +84,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
         o.setUid(edmobj.getUid());
         o.setUnit(edmobj.getUnitcode());
         o.setValue(edmobj.getValue());
+        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.QuantitativeValue) VersioningStatusAPI.retrieveVersion(o);
     }

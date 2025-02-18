@@ -5,7 +5,9 @@ import commonapis.EposDataModelEntityIDAPI;
 import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 
@@ -156,6 +158,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             o.setBroader(broaders);
             o.setNarrower(narrowers);
             o = (org.epos.eposdatamodel.Category) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
             return o;
         }
         return null;

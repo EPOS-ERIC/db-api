@@ -88,7 +88,7 @@ public abstract class VersioningAndApproval {
      * list of group which the entity belong
      */
     @Schema(name="groups", description = "list of group ids which the entity belong", required = false)
-    private List<Group> groups;
+    private List<String> groups;
 
 
     public String getVersionId() {
@@ -187,11 +187,11 @@ public abstract class VersioningAndApproval {
         this.fileProvenance = fileProvenance;
     }
 
-    public List<Group> getGroups() {
+    public List<String> getGroups() {
         return groups;
     }
 
-    public void setGroups(List<Group> groups) {
+    public void setGroups(List<String> groups) {
         this.groups = groups;
     }
 

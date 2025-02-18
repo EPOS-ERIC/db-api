@@ -131,6 +131,42 @@ public class UserGroupManagementAPI {
         return null;
     }
 
+    public static Group retrieveGroupByName(String groupName){
+        List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
+
+        if(metadataGroupList.isEmpty()) return null;
+
+        for(MetadataGroup metadataGroup : metadataGroupList){
+            if(metadataGroup.getName().equals(groupName)){
+                org.epos.eposdatamodel.Group group1 = new org.epos.eposdatamodel.Group(
+                        metadataGroup.getId(),
+                        metadataGroup.getName(),
+                        metadataGroup.getDescription()
+                );
+                for(AuthorizationGroup authorizationGroup : authorizationGroupList){
+                    if(authorizationGroup.getGroup().getName().equals(groupName)){
+                        group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
+                    }
+                }
+                group1.setUsers(new ArrayList<>());
+
+                for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
+                    if(metadataGroupUser.getGroup().getId().equals(metadataGroup.getId())){
+                        HashMap<String,String> items = new HashMap<>();
+                        items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+                        items.put("role",metadataGroupUser.getRole());
+                        items.put("requestStatus",metadataGroupUser.getRequestStatus());
+                        group1.getUsers().add(items);
+                    }
+                }
+                return group1;
+            }
+        }
+        return null;
+    }
+
     public static Group retrieveGroup(Group group){
         if(group==null) return null;
         return retrieveGroupById(group.getId());
@@ -223,6 +259,8 @@ public class UserGroupManagementAPI {
 
     public static Boolean addMetadataElementToGroup(String metaId, String groupId){
 
+        System.out.println(metaId+" "+groupId);
+
         List<MetadataGroup> selectedGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class);
         List<EdmEntityId> selectedEdmEntityIdList = getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class);
         List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
@@ -246,6 +284,34 @@ public class UserGroupManagementAPI {
             return getDbaccess().updateObject(authorizationGroup);
         }
         else return false;
+    }
+
+    public static List<Group> retrieveGroupsFromMetaId(String metaId){
+
+        List<Group> groups = new ArrayList<>();
+
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+
+        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
+            if(authorizationGroup.getMeta().getMetaId().equals(metaId)){
+                groups.add(retrieveGroupById(authorizationGroup.getGroup().getId()));
+            }
+        }
+        return groups;
+    }
+
+    public static List<String> retrieveShortGroupsFromMetaId(String metaId){
+
+        List<String> groups = new ArrayList<>();
+
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+
+        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
+          if(authorizationGroup.getMeta().getMetaId().equals(metaId)){
+              groups.add(authorizationGroup.getGroup().getId());
+          }
+        }
+        return groups;
     }
 
     public static Boolean removeMetadataElementFromGroup(String metaId, String groupId){

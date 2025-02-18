@@ -4,10 +4,12 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -256,6 +258,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             }
 
             o = (org.epos.eposdatamodel.Equipment) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

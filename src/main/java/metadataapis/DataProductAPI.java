@@ -3,13 +3,14 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.ContactPoint;
-import org.epos.eposdatamodel.DataProduct;
-import org.epos.eposdatamodel.EPOSDataModelEntity;
-import org.epos.eposdatamodel.LinkedEntity;
+import model.Distribution;
+import model.Identifier;
+import model.Organization;
+import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -484,6 +485,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
 
             o = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

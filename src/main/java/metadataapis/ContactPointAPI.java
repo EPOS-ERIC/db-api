@@ -6,7 +6,9 @@ import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
 import org.epos.eposdatamodel.ContactPoint;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 
@@ -203,6 +205,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             }
 
             o = (org.epos.eposdatamodel.ContactPoint) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

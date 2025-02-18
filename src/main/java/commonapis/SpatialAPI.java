@@ -3,8 +3,10 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.Location;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +42,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         // Versioning and entity creation
         obj = (org.epos.eposdatamodel.Location) VersioningStatusAPI.checkVersion(obj, overrideStatus);
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
 
         Spatial edmobj = new Spatial();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -107,6 +110,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         o.setMetaId(edmobj.getMetaId());
         o.setUid(edmobj.getUid());
         o.setLocation(edmobj.getLocation());
+        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Location) VersioningStatusAPI.retrieveVersion(o);
     }

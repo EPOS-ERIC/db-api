@@ -4,7 +4,9 @@ import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -142,6 +144,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             }
 
             o = (org.epos.eposdatamodel.Mapping) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

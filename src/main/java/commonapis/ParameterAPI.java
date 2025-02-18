@@ -3,8 +3,10 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.SoftwareApplicationParameter;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +76,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         o.setEncodingformat(edmobj.getEncodingformat());
         o.setConformsto(edmobj.getConformsto());
         o.setAction(edmobj.getAction());
+        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.retrieveVersion(o);
     }

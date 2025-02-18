@@ -3,7 +3,9 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 
@@ -273,6 +275,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             }
 
             o = (org.epos.eposdatamodel.Organization) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

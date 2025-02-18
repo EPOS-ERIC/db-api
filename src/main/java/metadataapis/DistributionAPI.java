@@ -5,8 +5,10 @@ import commonapis.*;
 import model.*;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -302,6 +304,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             }
 
             o = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

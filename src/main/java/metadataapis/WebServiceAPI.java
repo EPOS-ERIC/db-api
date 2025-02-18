@@ -3,13 +3,15 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.Documentation;
-import org.epos.eposdatamodel.EPOSDataModelEntity;
-import org.epos.eposdatamodel.LinkedEntity;
-import org.epos.eposdatamodel.WebService;
+import model.Element;
+import model.Identifier;
+import model.Operation;
+import model.Organization;
+import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 
@@ -333,6 +335,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             /** TODO: RELATION **/
 
             o = (org.epos.eposdatamodel.WebService) VersioningStatusAPI.retrieveVersion(o);
+            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

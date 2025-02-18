@@ -4,6 +4,8 @@ import dao.EposDataModelDAO;
 import model.*;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import org.epos.eposdatamodel.Group;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -14,17 +16,7 @@ import java.util.UUID;
 import static model.StatusType.DRAFT;
 
 public class VersioningStatusAPI {
-
-    public static Boolean updateStatus(String instanceId, StatusType status) {
-        List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceId(instanceId, Versioningstatus.class);
-        if (!returnList.isEmpty()) {
-            Versioningstatus statusObj = returnList.get(0);
-            statusObj.setStatus(status.toString());
-            return getDbaccess().updateObject(statusObj);
-        }
-        return false;
-    }
-
+    
     public static EPOSDataModelEntity checkVersion(EPOSDataModelEntity obj, StatusType overrideStatus) {
         List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -70,6 +62,13 @@ public class VersioningStatusAPI {
             edmobj.setProvenance(obj.getFileProvenance());
             edmobj.setVersion(obj.getVersion());
             getDbaccess().updateObject(edmobj);
+
+            if(obj.getGroups() != null) {
+                for(String groupId : obj.getGroups()) {
+                    UserGroupManagementAPI.addMetadataElementToGroup(edmobj.getMetaId(), groupId);
+                }
+            }
+
             return obj;
         } else {
             if (overrideStatus != null) {
@@ -94,19 +93,14 @@ public class VersioningStatusAPI {
             edmobj.setVersion(obj.getVersion());
 
             getDbaccess().updateObject(edmobj);
+            if(obj.getGroups() != null) {
+                for(String groupId : obj.getGroups()) {
+                    UserGroupManagementAPI.addMetadataElementToGroup(edmobj.getMetaId(), groupId);
+                }
+            }
+
             return obj;
         }
-    }
-
-    public static EPOSDataModelEntity updateVersion(EPOSDataModelEntity obj, Versioningstatus vs) {
-        vs.setChangeComment(obj.getChangeComment());
-        vs.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
-        vs.setEditorId(obj.getEditorId());
-        vs.setProvenance(obj.getFileProvenance());
-        vs.setVersion(obj.getVersion());
-
-        getDbaccess().updateObject(vs);
-        return obj;
     }
 
     public static EPOSDataModelEntity retrieveVersion(EPOSDataModelEntity obj) {

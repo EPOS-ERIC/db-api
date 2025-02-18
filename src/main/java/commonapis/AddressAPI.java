@@ -3,7 +3,9 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +37,9 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
             obj.setVersionId(returnList.get(0).getVersion().getVersionId());
         }
 
-        VersioningStatusAPI.checkVersion(obj, overrideStatus);
-
-        System.out.println(obj.getVersionId() + " " + obj.getStatus());
+        obj = (org.epos.eposdatamodel.Address) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
-
-        System.out.println(VersioningStatusAPI.retrieveVersioningStatus(obj).getVersionId() + " " + VersioningStatusAPI.retrieveVersioningStatus(obj).getStatus());
 
         Address edmobj = new Address();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -79,6 +77,7 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
         o.setPostalCode(edmobj.getPostalCode());
         o.setCountryCode(edmobj.getCountrycode());
         o.setLocality(edmobj.getLocality());
+        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Address) VersioningStatusAPI.retrieveVersion(o);
     }
