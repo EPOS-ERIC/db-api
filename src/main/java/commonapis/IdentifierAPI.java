@@ -59,21 +59,34 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public Boolean delete(String instanceId) {
-        // List of element types to delete
-        List<Class<?>> identifierTypes = List.of(
-                DataproductIdentifier.class,
-                WebserviceIdentifier.class,
-                OrganizationIdentifier.class,
-                PersonIdentifier.class
-        );
 
-        identifierTypes.forEach(identifierType -> {
-            List<?> itemsToDelete = (List<?>) getDbaccess().getAllFromDB(identifierType).stream()
-                    .filter(item -> ((Identifier) item).getInstanceId().equals(instanceId))
-                    .collect(Collectors.toList());
-            dbaccess.deleteListOfObjects(itemsToDelete);
-        });
+        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
+            DataproductIdentifier item = (DataproductIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
 
+        for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
+            WebserviceIdentifier item = (WebserviceIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
+            OrganizationIdentifier item = (OrganizationIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
+            PersonIdentifier item = (PersonIdentifier) object;
+            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
         // Delete Identifier itself
         List<Identifier> identifierList = getDbaccess().getAllFromDB(Identifier.class);
         identifierList.stream()
