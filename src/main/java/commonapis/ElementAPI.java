@@ -79,25 +79,66 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     @Override
     public Boolean delete(String instanceId) {
         // List of element types to delete
-        List<Class<?>> elementTypes = List.of(
-                ContactpointElement.class,
-                DistributionElement.class,
-                WebserviceElement.class,
-                OrganizationElement.class,
-                PersonElement.class,
-                OperationElement.class,
-                MappingElement.class,
-                SoftwaresourcecodeElement.class,
-                EquipmentElement.class,
-                FacilityElement.class
-        );
-
-        elementTypes.forEach(elementType -> {
-            List<?> itemsToDelete = (List<?>) getDbaccess().getAllFromDB(elementType).stream()
-                    .filter(item -> ((Element) item).getInstanceId().equals(instanceId))
-                    .collect(Collectors.toList());
-            dbaccess.deleteListOfObjects(itemsToDelete);
-        });
+        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
+            ContactpointElement item = (ContactpointElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
+            DistributionElement item = (DistributionElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
+            WebserviceElement item = (WebserviceElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
+            OrganizationElement item = (OrganizationElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
+            PersonElement item = (PersonElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
+            OperationElement item = (OperationElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
+            MappingElement item = (MappingElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
+            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
+            EquipmentElement item = (EquipmentElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
+            FacilityElement item = (FacilityElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
 
         // Delete Element itself
         List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
