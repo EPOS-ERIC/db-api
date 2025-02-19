@@ -62,15 +62,15 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         edmobj.setCoderepository(obj.getCodeRepository());
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** IDENTIFIER **/
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
                 List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
@@ -85,7 +85,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
 
         /** PROGRAMMING LANGUAGE **/
-        if(obj.getProgrammingLanguage()!=null && !obj.getProgrammingLanguage().isEmpty()){
+        if(obj.getProgrammingLanguage()!=null){
             for(String returns : obj.getProgrammingLanguage()) {
                 createInnerElement(ElementType.PROGRAMMINGLANGUAGE, returns, edmobj, overrideStatus);
             }

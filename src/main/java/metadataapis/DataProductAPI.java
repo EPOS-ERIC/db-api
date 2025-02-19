@@ -73,15 +73,15 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             edmobj.setIssued(obj.getIssued());
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** TITLE **/
-        if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
+        if (obj.getTitle() != null) {
 
             for(Object object : dbaccess.getAllFromDB(DataproductTitle.class)){
                 DataproductTitle title = (DataproductTitle) object;
@@ -105,7 +105,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** DESCRIPTION **/
-        if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
+        if (obj.getDescription() != null) {
 
             for(Object object : dbaccess.getAllFromDB(DataproductDescription.class)){
                 DataproductDescription description = (DataproductDescription) object;
@@ -128,7 +128,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** HASPART **/
-        if (obj.getHasPart() != null && !obj.getHasPart().isEmpty()) {
+        if (obj.getHasPart() != null) {
             if(relationFromUpdate!=null && obj.getHasPart().contains(relationFromUpdate)){
                 obj.getHasPart().remove(relationFromUpdate);
                 obj.getHasPart().add(relationToUpdate);
@@ -145,7 +145,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** ISPARTOF **/
-        if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+        if (obj.getIsPartOf() != null) {
             if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
                 obj.getIsPartOf().remove(relationFromUpdate);
                 obj.getIsPartOf().add(relationToUpdate);
@@ -162,7 +162,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** IDENTIFIER **/
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
                 List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
@@ -175,7 +175,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
         /** PROVENANCE **/
-        if (obj.getProvenance() != null && !obj.getProvenance().isEmpty()) {
+        if (obj.getProvenance() != null) {
             for(String provenance : obj.getProvenance()){
                 DataproductProvenance pi = new DataproductProvenance();
                 pi.setInstanceId(UUID.randomUUID().toString());
@@ -189,7 +189,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** PUBLISHER **/
-        if (obj.getPublisher() != null && !obj.getPublisher().isEmpty()) {
+        if (obj.getPublisher() != null) {
             if(relationFromUpdate!=null && obj.getPublisher().contains(relationFromUpdate)){
                 obj.getPublisher().remove(relationFromUpdate);
                 obj.getPublisher().add(relationToUpdate);
@@ -206,7 +206,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** DISTRIBUTION **/
-        if (obj.getDistribution() != null && !obj.getDistribution().isEmpty()) {
+        if (obj.getDistribution() != null) {
             if(relationFromUpdate!=null && obj.getDistribution().contains(relationFromUpdate)){
                 obj.getDistribution().remove(relationFromUpdate);
                 obj.getDistribution().add(relationToUpdate);
@@ -223,7 +223,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** SPATIAL **/
-        if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+        if (obj.getSpatialExtent() != null) {
             if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
                 obj.getSpatialExtent().remove(relationFromUpdate);
                 obj.getSpatialExtent().add(relationToUpdate);
@@ -240,7 +240,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         /** TEMPORAL **/
-        if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+        if (obj.getTemporalExtent() != null) {
             if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
                 obj.getTemporalExtent().remove(relationFromUpdate);
                 obj.getTemporalExtent().add(relationToUpdate);

@@ -52,7 +52,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         edmobj.setMethod(obj.getMethod());
         edmobj.setTemplate(obj.getTemplate());
 
-        if (obj.getMapping() != null && !obj.getMapping().isEmpty()) {
+        if (obj.getMapping() != null) {
             if(relationFromUpdate!=null && obj.getMapping().contains(relationFromUpdate)){
                 obj.getMapping().remove(relationFromUpdate);
                 obj.getMapping().add(relationToUpdate);
@@ -68,7 +68,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             }
         }
 
-        if (obj.getWebservice() != null && !obj.getWebservice().isEmpty()) {
+        if (obj.getWebservice() != null) {
             if(relationFromUpdate!=null && obj.getWebservice().contains(relationFromUpdate)){
                 obj.getWebservice().remove(relationFromUpdate);
                 obj.getWebservice().add(relationToUpdate);
@@ -85,7 +85,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         /** RETURNS **/
-        if(obj.getReturns()!=null && !obj.getReturns().isEmpty()){
+        if(obj.getReturns()!=null){
             for(String returns : obj.getReturns()) {
                 createInnerElement(ElementType.RETURNS, returns, edmobj, overrideStatus);
             }

@@ -60,15 +60,15 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         edmobj.setSoftwareversion(obj.getSoftwareVersion());
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** IDENTIFIER **/
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
                 List<model.Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Identifier.class);
@@ -81,7 +81,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             }
         }
 
-        if (obj.getParameter() != null && !obj.getParameter().isEmpty()) {
+        if (obj.getParameter() != null) {
             for(org.epos.eposdatamodel.LinkedEntity parameter : obj.getParameter()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(parameter, overrideStatus);
                 List<model.Parameter> parameterList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Parameter.class);
@@ -94,7 +94,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             }
         }
 
-        if (obj.getRelatedOperation() != null && !obj.getRelatedOperation().isEmpty()) {
+        if (obj.getRelatedOperation() != null) {
             for(LinkedEntity relation : obj.getRelatedOperation()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(relation, overrideStatus);
                 List<model.Operation> relationList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Operation.class);

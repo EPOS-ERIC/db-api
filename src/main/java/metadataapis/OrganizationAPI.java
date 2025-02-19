@@ -62,7 +62,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         }
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+        if (obj.getContactPoint() != null) {
             for(LinkedEntity contactPoint : obj.getContactPoint()){
                 List<Contactpoint> contactpoint = dbaccess.getOneFromDBByLinkedEntity(contactPoint, Contactpoint.class);
                 if(!contactpoint.isEmpty()) {
@@ -75,7 +75,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         }
 
         /** IDENTIFIER **/
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
                 List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
@@ -89,21 +89,21 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         }
 
         /* TELEPHONE */
-        if(obj.getTelephone()!=null && !obj.getTelephone().isEmpty()){
+        if(obj.getTelephone()!=null){
             for(String tel : obj.getTelephone()) {
                 createInnerElement(ElementType.TELEPHONE, tel, edmobj, overrideStatus);
             }
         }
 
         /* EMAIL */
-        if(obj.getEmail()!=null && !obj.getEmail().isEmpty()){
+        if(obj.getEmail()!=null){
             for(String email : obj.getEmail()) {
                 createInnerElement(ElementType.EMAIL, email, edmobj, overrideStatus);
             }
         }
 
         /** MEMBER OF **/
-        if (obj.getMemberOf() != null && !obj.getMemberOf().isEmpty()) {
+        if (obj.getMemberOf() != null) {
             for(LinkedEntity organization : obj.getMemberOf()) {
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(organization, overrideStatus);
 
@@ -117,7 +117,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         }
 
         /** OWNS **/
-        if (obj.getOwns() != null && !obj.getOwns().isEmpty()) {
+        if (obj.getOwns() != null) {
             for(LinkedEntity owns : obj.getOwns()) {
                 if (owns != null){
                     OrganizationOwn pi = new OrganizationOwn();

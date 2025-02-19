@@ -61,16 +61,16 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         edmobj.setKeywords(obj.getKeywords());
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
 
         /** ADDRESS **/
-        if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
+        if (obj.getAddress() != null) {
             if(relationFromUpdate!=null && obj.getAddress().contains(relationFromUpdate)){
                 obj.getAddress().remove(relationFromUpdate);
                 obj.getAddress().add(relationToUpdate);
@@ -87,7 +87,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         }
 
         /** ISPARTOF **/
-        if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+        if (obj.getIsPartOf() != null) {
             if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
                 obj.getIsPartOf().remove(relationFromUpdate);
                 obj.getIsPartOf().add(relationToUpdate);
@@ -104,7 +104,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         }
 
         /** SPATIAL **/
-        if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+        if (obj.getSpatialExtent() != null) {
             if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
                 obj.getSpatialExtent().remove(relationFromUpdate);
                 obj.getSpatialExtent().add(relationToUpdate);
@@ -121,7 +121,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         }
 
         /* PAGEURL */
-        if(obj.getPageURL()!=null && !obj.getPageURL().isEmpty()){
+        if(obj.getPageURL()!=null){
             for(String pageurl : obj.getPageURL()) {
                 createInnerElement(ElementType.PAGEURL, pageurl, edmobj, overrideStatus);
             }

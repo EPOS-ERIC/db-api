@@ -61,7 +61,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         }
 
         /** IDENTIFIER **/
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
                 List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
@@ -75,7 +75,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         }
 
         /** AFFILIATION **/
-        if (obj.getAffiliation() != null && !obj.getAffiliation().isEmpty()) {
+        if (obj.getAffiliation() != null) {
             if(relationFromUpdate!=null && obj.getAffiliation().contains(relationFromUpdate)){
                 obj.getAffiliation().remove(relationFromUpdate);
                 obj.getAffiliation().add(relationToUpdate);
@@ -92,7 +92,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         }
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+        if (obj.getContactPoint() != null) {
             if(relationFromUpdate!=null && obj.getContactPoint().contains(relationFromUpdate)){
                 obj.getContactPoint().remove(relationFromUpdate);
                 obj.getContactPoint().add(relationToUpdate);
@@ -109,14 +109,14 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         }
 
         /* TELEPHONE */
-        if(obj.getTelephone()!=null && !obj.getTelephone().isEmpty()){
+        if(obj.getTelephone()!=null){
             for(String tel : obj.getTelephone()) {
                 createInnerElement(ElementType.TELEPHONE, tel, edmobj, overrideStatus);
             }
         }
 
         /* EMAIL */
-        if(obj.getEmail()!=null && !obj.getEmail().isEmpty()){
+        if(obj.getEmail()!=null){
             for(String email : obj.getEmail()) {
                 createInnerElement(ElementType.EMAIL, email, edmobj, overrideStatus);
             }

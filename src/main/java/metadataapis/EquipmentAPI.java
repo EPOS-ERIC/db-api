@@ -70,15 +70,15 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         /** TODO: creator **/
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** ISPARTOF EQUIPMENT **/
-        if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+        if (obj.getIsPartOf() != null) {
             if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
                 obj.getIsPartOf().remove(relationFromUpdate);
                 obj.getIsPartOf().add(relationToUpdate);
@@ -100,7 +100,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         }
 
         /** ISPARTOF FACILITY **/
-        if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+        if (obj.getIsPartOf() != null) {
             if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
                 obj.getIsPartOf().remove(relationFromUpdate);
                 obj.getIsPartOf().add(relationToUpdate);
@@ -122,7 +122,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         }
 
         /** SPATIAL **/
-        if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+        if (obj.getSpatialExtent() != null) {
             if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
                 obj.getSpatialExtent().remove(relationFromUpdate);
                 obj.getSpatialExtent().add(relationToUpdate);
@@ -140,7 +140,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         }
 
         /** TEMPORAL **/
-        if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+        if (obj.getTemporalExtent() != null) {
             if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
                 obj.getTemporalExtent().remove(relationFromUpdate);
                 obj.getTemporalExtent().add(relationToUpdate);
@@ -157,7 +157,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         }
 
         /* PAGEURL */
-        if(obj.getPageURL()!=null && !obj.getPageURL().isEmpty()){
+        if(obj.getPageURL()!=null){
             createInnerElement(ElementType.PAGEURL, obj.getPageURL(), edmobj, overrideStatus);
         }
 

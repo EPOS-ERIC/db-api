@@ -64,7 +64,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             edmobj.setIssued(obj.getIssued());
 
         /** TITLE **/
-        if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
+        if (obj.getTitle() != null) {
             for(Object object : dbaccess.getAllFromDB(DistributionTitle.class)){
                 DistributionTitle title = (DistributionTitle) object;
                 if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
@@ -85,7 +85,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
 
         /** DESCRIPTION **/
-        if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
+        if (obj.getDescription() != null) {
             for(Object object : dbaccess.getAllFromDB(DistributionDescription.class)){
                 DistributionDescription title = (DistributionDescription) object;
                 if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
@@ -107,7 +107,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
 
         /** DATAPRODUCT **/
-        if (obj.getDataProduct() != null && !obj.getDataProduct().isEmpty()) {
+        if (obj.getDataProduct() != null) {
             if(relationFromUpdate!=null && obj.getDataProduct().contains(relationFromUpdate)){
                 obj.getDataProduct().remove(relationFromUpdate);
                 obj.getDataProduct().add(relationToUpdate);
@@ -155,13 +155,13 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             }
         }
 
-        if(obj.getAccessURL()!=null && !obj.getAccessURL().isEmpty()){
+        if(obj.getAccessURL()!=null){
             for(String accessurl : obj.getAccessURL()) {
                 createInnerElement(ElementType.ACCESSURL, accessurl, edmobj, overrideStatus);
             }
         }
 
-        if(obj.getDownloadURL()!=null && !obj.getDownloadURL().isEmpty()) {
+        if(obj.getDownloadURL()!=null) {
             for (String downloadurl : obj.getDownloadURL()) {
                 createInnerElement(ElementType.DOWNLOADURL, downloadurl, edmobj, overrideStatus);
             }

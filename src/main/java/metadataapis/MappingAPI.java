@@ -63,7 +63,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
 
         /** RETURNS **/
-        if(obj.getParamValue()!=null && !obj.getParamValue().isEmpty()){
+        if(obj.getParamValue()!=null){
             for(String paramvalue : obj.getParamValue()) {
                 createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
             }

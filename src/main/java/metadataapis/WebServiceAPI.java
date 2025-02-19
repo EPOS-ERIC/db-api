@@ -78,15 +78,15 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         /** CATEGORY **/
-        if (obj.getCategory() != null && !obj.getCategory().isEmpty())
+        if (obj.getCategory() != null)
             CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty())
+        if (obj.getContactPoint() != null)
             ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
 
         /** DOCUMENTATION **/
-        if (obj.getDocumentation() != null && !obj.getDocumentation().isEmpty()) {
+        if (obj.getDocumentation() != null) {
             if(relationFromUpdate!=null && obj.getDocumentation().contains(relationFromUpdate)){
                 obj.getDocumentation().remove(relationFromUpdate);
                 obj.getDocumentation().add(relationToUpdate);
@@ -103,7 +103,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             }
         }
 
-        if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
+        if (obj.getIdentifier() != null) {
             if(relationFromUpdate!=null && obj.getIdentifier().contains(relationFromUpdate)){
                 obj.getIdentifier().remove(relationFromUpdate);
                 obj.getIdentifier().add(relationToUpdate);
@@ -120,7 +120,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         /** SPATIAL **/
-        if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+        if (obj.getSpatialExtent() != null) {
             if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
                 obj.getSpatialExtent().remove(relationFromUpdate);
                 obj.getSpatialExtent().add(relationToUpdate);
@@ -137,7 +137,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         /** TEMPORAL **/
-        if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
+        if (obj.getTemporalExtent() != null) {
             if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
                 obj.getTemporalExtent().remove(relationFromUpdate);
                 obj.getTemporalExtent().add(relationToUpdate);
@@ -153,7 +153,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             }
         }
 
-        if (obj.getSupportedOperation() != null && !obj.getSupportedOperation().isEmpty()) {
+        if (obj.getSupportedOperation() != null) {
             if(relationFromUpdate!=null && obj.getSupportedOperation().contains(relationFromUpdate)){
                 obj.getSupportedOperation().remove(relationFromUpdate);
                 obj.getSupportedOperation().add(relationToUpdate);
@@ -169,7 +169,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             }
         }
 
-        if (obj.getRelation() != null && !obj.getRelation().isEmpty()) {
+        if (obj.getRelation() != null) {
             for(LinkedEntity relation : obj.getRelation()){
                 WebserviceRelation pi = new WebserviceRelation();
                 pi.setWebservice(edmobj);
