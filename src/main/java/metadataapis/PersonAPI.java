@@ -230,7 +230,6 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
 
             o = (org.epos.eposdatamodel.Person) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

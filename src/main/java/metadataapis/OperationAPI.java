@@ -184,7 +184,6 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             }
 
             o = (org.epos.eposdatamodel.Operation) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

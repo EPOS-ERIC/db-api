@@ -194,7 +194,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             o.setBroader(broaders);
             o.setNarrower(narrowers);
             o = (org.epos.eposdatamodel.Category) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
+
             return o;
         }
         return null;

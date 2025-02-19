@@ -77,7 +77,6 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
         o.setPostalCode(edmobj.getPostalCode());
         o.setCountryCode(edmobj.getCountrycode());
         o.setLocality(edmobj.getLocality());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Address) VersioningStatusAPI.retrieveVersion(o);
     }

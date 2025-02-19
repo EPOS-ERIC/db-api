@@ -72,7 +72,6 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         o.setUid(edmobj.getUid());
         o.setType(ElementType.valueOf(edmobj.getType()));
         o.setValue(edmobj.getValue());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Element) VersioningStatusAPI.retrieveVersion(o);
     }

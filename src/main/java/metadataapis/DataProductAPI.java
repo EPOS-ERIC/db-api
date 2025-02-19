@@ -485,7 +485,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
 
             o = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

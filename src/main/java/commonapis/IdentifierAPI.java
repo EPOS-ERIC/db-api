@@ -125,7 +125,6 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
         o.setUid(edmobj.getUid());
         o.setType(edmobj.getType());
         o.setIdentifier(edmobj.getValue());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.retrieveVersion(o);
     }

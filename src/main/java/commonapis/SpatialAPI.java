@@ -110,7 +110,6 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         o.setMetaId(edmobj.getMetaId());
         o.setUid(edmobj.getUid());
         o.setLocation(edmobj.getLocation());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Location) VersioningStatusAPI.retrieveVersion(o);
     }

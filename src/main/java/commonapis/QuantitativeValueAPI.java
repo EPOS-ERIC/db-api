@@ -84,7 +84,6 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
         o.setUid(edmobj.getUid());
         o.setUnit(edmobj.getUnitcode());
         o.setValue(edmobj.getValue());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.QuantitativeValue) VersioningStatusAPI.retrieveVersion(o);
     }

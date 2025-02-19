@@ -304,7 +304,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             }
 
             o = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }

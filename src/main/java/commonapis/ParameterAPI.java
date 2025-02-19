@@ -76,7 +76,6 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         o.setEncodingformat(edmobj.getEncodingformat());
         o.setConformsto(edmobj.getConformsto());
         o.setAction(edmobj.getAction());
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.retrieveVersion(o);
     }

@@ -84,7 +84,6 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         o.setTitle(doc.has("Title") ? doc.get("Title").getAsString() : null);
         o.setDescription(doc.has("Description") ? doc.get("Description").getAsString() : null);
         o.setUri(doc.has("Uri") ? doc.get("Uri").getAsString() : null);
-        o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
         return (org.epos.eposdatamodel.Documentation) VersioningStatusAPI.retrieveVersion(o);
     }

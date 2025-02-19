@@ -63,12 +63,6 @@ public class VersioningStatusAPI {
             edmobj.setVersion(obj.getVersion());
             getDbaccess().updateObject(edmobj);
 
-            if(obj.getGroups() != null) {
-                for(String groupId : obj.getGroups()) {
-                    UserGroupManagementAPI.addMetadataElementToGroup(edmobj.getMetaId(), groupId);
-                }
-            }
-
             return obj;
         } else {
             if (overrideStatus != null) {
@@ -93,11 +87,6 @@ public class VersioningStatusAPI {
             edmobj.setVersion(obj.getVersion());
 
             getDbaccess().updateObject(edmobj);
-            if(obj.getGroups() != null) {
-                for(String groupId : obj.getGroups()) {
-                    UserGroupManagementAPI.addMetadataElementToGroup(edmobj.getMetaId(), groupId);
-                }
-            }
 
             return obj;
         }

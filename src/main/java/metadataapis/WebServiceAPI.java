@@ -335,7 +335,6 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             /** TODO: RELATION **/
 
             o = (org.epos.eposdatamodel.WebService) VersioningStatusAPI.retrieveVersion(o);
-            o.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(edmobj.getMetaId()));
 
             return o;
         }
