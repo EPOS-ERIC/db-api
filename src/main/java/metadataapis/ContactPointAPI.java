@@ -106,7 +106,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceContactpoint.class)){
             WebserviceContactpoint item = (WebserviceContactpoint) object;
-            if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
+            if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
                 dbaccess.deleteObject(item);
             }
         }
