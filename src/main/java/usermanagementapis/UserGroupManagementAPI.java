@@ -7,6 +7,7 @@ import org.epos.eposdatamodel.User;
 import org.epos.eposdatamodel.UserGroup;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class UserGroupManagementAPI {
 
@@ -219,41 +220,6 @@ public class UserGroupManagementAPI {
         metadataGroupUser.setRole(role.name());
         return getDbaccess().updateObject(metadataGroupUser);
     }
-    /*public static Boolean addUserToGroup(String groupId, String userId, RoleType role, RequestStatusType requestStatusType){
-
-        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-        List<MetadataGroup> selectedGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class);
-        List<MetadataUser> selectedUserList = getDbaccess().getOneFromDBBySpecificKeySimple("authIdentifier",userId, MetadataUser.class);
-
-        if(!selectedGroupList.isEmpty() && !selectedUserList.isEmpty()){
-
-            MetadataGroup selectedGroup = selectedGroupList.get(0);
-            MetadataUser selectedUser = selectedUserList.get(0);
-
-            MetadataGroupUser metadataGroupUser = null;
-            for(MetadataGroupUser metadataGroupUser1 : metadataGroupUserList){
-                if(metadataGroupUser1.getGroup().getId().equals(groupId)
-                        && metadataGroupUser1.getAuthIdentifier().getAuthIdentifier().equals(userId)){
-                    metadataGroupUser = metadataGroupUser1;
-                    metadataGroupUser.setRequestStatus(requestStatusType.name());
-                    metadataGroupUser.setRole(role.name());
-                }
-            }
-            if(metadataGroupUser == null){
-                metadataGroupUser = new MetadataGroupUser();
-                metadataGroupUser.setId(UUID.randomUUID().toString());
-                metadataGroupUser.setGroup(selectedGroup);
-                metadataGroupUser.setAuthIdentifier(selectedUser);
-                metadataGroupUser.setRequestStatus(requestStatusType.name());
-                metadataGroupUser.setRole(role.name());
-            }
-
-            //System.out.println(metadataGroupUser.toString());
-
-            return getDbaccess().updateObject(metadataGroupUser);
-        }
-        return null;
-    }*/
 
     public static Boolean removeUserFromGroup(String groupId, String userId){
 
@@ -285,35 +251,6 @@ public class UserGroupManagementAPI {
         return getDbaccess().updateObject(authorizationGroup);
     }
 
-    /*public static Boolean addMetadataElementToGroup(String metaId, String groupId){
-
-        //System.out.println(metaId+" "+groupId);
-
-        List<MetadataGroup> selectedGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class);
-        List<EdmEntityId> selectedEdmEntityIdList = getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class);
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-
-        if(!selectedEdmEntityIdList.isEmpty() && !selectedGroupList.isEmpty()) {
-
-            MetadataGroup selectedGroup = selectedGroupList.get(0);
-            EdmEntityId selectedEdmEntityId = selectedEdmEntityIdList.get(0);
-
-            AuthorizationGroup authorizationGroup = new AuthorizationGroup();
-            authorizationGroup.setId(UUID.randomUUID().toString());
-            for(AuthorizationGroup authorizationGroup1 : authorizationGroupList){
-                if(authorizationGroup1.getGroup().getId().equals(groupId)
-                        && authorizationGroup1.getMeta().getMetaId().equals(metaId)){
-                    authorizationGroup = authorizationGroup1;
-                }
-            }
-            authorizationGroup.setGroup(selectedGroup);
-            authorizationGroup.setMeta(selectedEdmEntityId);
-
-            return getDbaccess().updateObject(authorizationGroup);
-        }
-        else return false;
-    }*/
-
     public static List<Group> retrieveGroupsFromMetaId(String metaId){
 
         List<Group> groups = new ArrayList<>();
@@ -332,13 +269,7 @@ public class UserGroupManagementAPI {
 
         List<String> groups = new ArrayList<>();
         getDbaccess().getFromDBBySpecificKeySimple("meta", metaId, AuthorizationGroup.class).forEach(group -> groups.add(((MetadataGroup) group).getId()));
-        /*List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBBySpecificKeySimple("meta", metaId, AuthorizationGroup.class);
 
-        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-          if(authorizationGroup.getMeta().getMetaId().equals(metaId)){
-              groups.add(authorizationGroup.getGroup().getId());
-          }
-        }*/
         return groups;
     }
 
@@ -355,6 +286,41 @@ public class UserGroupManagementAPI {
         }
         return false;
     }
+
+    public static List<String> retrieveMetaIdsFromGroups(){
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        if(authorizationGroupList.isEmpty()) return new ArrayList<>();
+
+        List<String> returnList = new ArrayList<>();
+        for(AuthorizationGroup group : authorizationGroupList){
+            returnList.add(group.getMeta().getMetaId());
+        }
+
+        return returnList;
+    }
+    //I NEED TO CHECK IF METAID GROUP IS IN USER AVAILABLE GROUPS
+    public static Boolean checkIfMetaIdAndUserIdAreInSameGroup(String metaId, String userId){
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("meta.metaId", metaId);
+
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBByUsingMultipleKeys(filters,AuthorizationGroup.class);
+
+        filters = new HashMap<>();
+        filters.put("authIdentifier.authIdentifier", userId);
+
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getFromDBByUsingMultipleKeys(filters,MetadataGroupUser.class);
+
+        List<MetadataGroup> groupList1 = authorizationGroupList.stream().map(AuthorizationGroup::getGroup).collect(Collectors.toList());
+        List<MetadataGroup> groupList2 = metadataGroupUserList.stream().map(MetadataGroupUser::getGroup).collect(Collectors.toList());
+
+        Set<MetadataGroup> groupSet = new HashSet<>(groupList2);
+        List<MetadataGroup> commonGroups = groupList1.stream()
+                .filter(groupSet::contains)
+                .collect(Collectors.toList());
+
+        return commonGroups.isEmpty();
+    }
+
 
     private static EposDataModelDAO getDbaccess() {
         return new EposDataModelDAO();
