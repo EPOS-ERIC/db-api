@@ -1,6 +1,10 @@
 package dao;
 
 import jakarta.persistence.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import model.StatusType;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -8,6 +12,7 @@ import org.epos.handler.dbapi.service.EntityManagerService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class EposDataModelDAO<T> {
@@ -54,6 +59,56 @@ public class EposDataModelDAO<T> {
     }
 
     public List<T> getOneFromDBBySpecificKeySimple(String key, String value, Class<T> obj){
+        EntityManager em = EntityManagerService.getInstance().createEntityManager();
+        em.setFlushMode(FlushModeType.AUTO);
+        em.clear();
+        em.getTransaction().begin();
+
+        List resultList = em.createQuery(
+                        "SELECT c FROM "+obj.getSimpleName()+" c WHERE c."+key+"=:value")
+                .setParameter("value", value)
+                .getResultList();
+
+        em.getTransaction().commit();
+        em.close();
+
+        return resultList;
+    }
+
+    public List<T> getFromDBByUsingMultipleKeys(Map<String, Object> keyValues, Class<T> obj) {
+        EntityManager em = EntityManagerService.getInstance().createEntityManager();
+        em.getTransaction().begin();
+
+
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<T> query = cb.createQuery(obj);
+        Root<T> root = query.from(obj);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        for (Map.Entry<String, Object> entry : keyValues.entrySet()) {
+            String[] key = entry.getKey().split("\\.");
+            Object value = entry.getValue();
+
+            // Add conditions dynamically
+            if(key.length > 1) predicates.add(cb.equal(root.get(key[0]).get(key[1]), value));
+            else predicates.add(cb.equal(root.get(key[0]), value));
+        }
+
+        // Apply predicates to query
+        query.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
+
+        TypedQuery<T> typedQuery = em.createQuery(query);
+        List<T> resultList = typedQuery.getResultList();
+
+        em.getTransaction().commit();
+        em.close();
+
+        return resultList;
+    }
+
+
+    public List<T> getFromDBBySpecificKeySimple(String key, String value, Class<T> obj){
         EntityManager em = EntityManagerService.getInstance().createEntityManager();
         em.setFlushMode(FlushModeType.AUTO);
         em.clear();

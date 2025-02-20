@@ -232,6 +232,8 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
 
         Boolean response = UserGroupManagementAPI.addMetadataElementToGroup(identifierLe.getMetaId(), metadataGroup.getId());
 
+        System.out.println(UserGroupManagementAPI.retrieveGroupsFromMetaId(identifierLe.getMetaId()));
+
         Group returnGroup = UserGroupManagementAPI.retrieveGroupById(metadataGroup.getId());
         System.out.println(returnGroup);
 
