@@ -268,8 +268,8 @@ public class UserGroupManagementAPI {
     public static List<String> retrieveShortGroupsFromMetaId(String metaId){
 
         List<String> groups = new ArrayList<>();
-        getDbaccess().getFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class).forEach(group -> groups.add(((MetadataGroup) group).getId()));
-
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class);
+        authorizationGroupList.forEach(authorizationGroup -> groups.add(authorizationGroup.getGroup().getId()));
         return groups;
     }
 
