@@ -64,6 +64,12 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
         /** RETURNS **/
         if(obj.getParamValue()!=null){
+            for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
+                MappingElement item = (MappingElement) object;
+                if(item.getMappingInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(item);
+                }
+            }
             for(String paramvalue : obj.getParamValue()) {
                 createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
             }
