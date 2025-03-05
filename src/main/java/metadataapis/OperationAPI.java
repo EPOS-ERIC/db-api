@@ -86,6 +86,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
         /** RETURNS **/
         if(obj.getReturns()!=null){
+            for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
+                OperationElement item = (OperationElement) object;
+                if(item.getOperationInstance().getInstanceId().equals(obj.getInstanceId())){
+                    dbaccess.deleteObject(item);
+                }
+            }
             for(String returns : obj.getReturns()) {
                 createInnerElement(ElementType.RETURNS, returns, edmobj, overrideStatus);
             }

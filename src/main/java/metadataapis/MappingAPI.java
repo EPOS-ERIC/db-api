@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import usermanagementapis.UserGroupManagementAPI;
@@ -21,7 +22,6 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Mapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
-
         List<Mapping> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
@@ -61,8 +61,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         edmobj.setProperty(obj.getProperty());
         edmobj.setVariable(obj.getVariable());
 
-
-        /** RETURNS **/
+        /** PARAM VALUE **/
         if(obj.getParamValue()!=null){
             for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
                 MappingElement item = (MappingElement) object;
@@ -85,6 +84,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     private void createInnerElement(ElementType elementType, String value, Mapping edmobj, StatusType overrideStatus){
+
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
