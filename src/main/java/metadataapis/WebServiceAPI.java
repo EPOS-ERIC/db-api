@@ -8,6 +8,7 @@ import model.Identifier;
 import model.Operation;
 import model.Organization;
 import org.epos.eposdatamodel.*;
+import org.epos.eposdatamodel.Distribution;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
@@ -148,6 +149,22 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceTemporal pi = new WebserviceTemporal();
                     pi.setWebserviceInstance(edmobj);
                     pi.setTemporalInstance(temporal);
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getDistribution() != null) {
+            if(relationFromUpdate!=null && obj.getSupportedOperation().contains(relationFromUpdate)){
+                obj.getSupportedOperation().remove(relationFromUpdate);
+                obj.getSupportedOperation().add(relationToUpdate);
+            }
+            for(LinkedEntity distribution : obj.getDistribution()){
+                model.Distribution distribution1 = (model.Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, model.Distribution.class);
+                if(distribution1!=null) {
+                    WebserviceDistribution pi = new WebserviceDistribution();
+                    pi.setWebserviceInstance(edmobj);
+                    pi.setDistributionInstance(distribution1);
                     dbaccess.updateObject(pi);
                 }
             }
