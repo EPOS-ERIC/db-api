@@ -13,6 +13,7 @@ import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
+import utilities.OperationWebserviceInDistributionSingleton;
 
 import java.util.*;
 

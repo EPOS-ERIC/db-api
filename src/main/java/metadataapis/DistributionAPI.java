@@ -9,6 +9,7 @@ import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
+import utilities.OperationWebserviceInDistributionSingleton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -123,22 +124,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             }
         }
 
-        if (obj.getAccessService() != null ) {
-            if(relationFromUpdate!=null && obj.getAccessService().contains(relationFromUpdate)){
-                obj.getAccessService().remove(relationFromUpdate);
-                obj.getAccessService().add(relationToUpdate);
-            }
-            for(LinkedEntity accessService : obj.getAccessService()) {
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class);
-                if(webservice!=null){
-                    WebserviceDistribution pi = new WebserviceDistribution();
-                    pi.setDistributionInstance(edmobj);
-                    pi.setWebserviceInstance(webservice);
-                    dbaccess.updateObject(pi);
-                }
-            }
-        }
-
         if (obj.getSupportedOperation() != null ) {
             if(relationFromUpdate!=null && obj.getSupportedOperation().contains(relationFromUpdate)){
                 obj.getSupportedOperation().remove(relationFromUpdate);
@@ -150,6 +135,22 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     OperationDistribution pi = new OperationDistribution();
                     pi.setDistributionInstance(edmobj);
                     pi.setOperationInstance(operation);
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getAccessService() != null ) {
+            if(relationFromUpdate!=null && obj.getAccessService().contains(relationFromUpdate)){
+                obj.getAccessService().remove(relationFromUpdate);
+                obj.getAccessService().add(relationToUpdate);
+            }
+            for(LinkedEntity accessService : obj.getAccessService()) {
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class);
+                if(webservice!=null){
+                    WebserviceDistribution pi = new WebserviceDistribution();
+                    pi.setDistributionInstance(edmobj);
+                    pi.setWebserviceInstance(webservice);
                     dbaccess.updateObject(pi);
                 }
             }
@@ -289,6 +290,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
                 OperationDistribution item = (OperationDistribution) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    System.out.println(item.getDistributionInstance().getInstanceId());
                     LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addSupportedOperation(le);
                 }

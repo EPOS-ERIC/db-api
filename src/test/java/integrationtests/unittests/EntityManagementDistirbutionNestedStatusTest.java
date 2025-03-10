@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,6 +20,7 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
     static Distribution distribution;
     static WebService webService;
     static Operation operation;
+    static Mapping mapping;
 
     @Test
     @Order(1)
@@ -69,6 +72,31 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
 
         assertNotNull(retrievedOperation);
         assertEquals(StatusType.PUBLISHED, retrievedOperation.getStatus());
+
+        api = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
+
+        mapping = new Mapping();
+        mapping.setInstanceId(UUID.randomUUID().toString());
+        mapping.setMetaId(UUID.randomUUID().toString());
+        mapping.setUid(UUID.randomUUID().toString());
+        mapping.setStatus(StatusType.PUBLISHED);
+
+        LinkedEntity linkedEntityMapping = api.create(mapping, null, null, null);
+
+        Mapping retrievedMapping = (Mapping) api.retrieve(mapping.getInstanceId());
+
+        assertNotNull(retrievedMapping);
+        assertEquals(StatusType.PUBLISHED, retrievedMapping.getStatus());
+
+        api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
+        operation.addMapping(linkedEntityMapping);
+
+        linkedEntityOperation = api.create(operation, null, null, null);
+
+        api = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+        distribution.addSupportedOperation(linkedEntityOperation);
+
+        linkedEntityOperation = api.create(distribution, null, null, null);
     }
 
     @Test
@@ -89,14 +117,56 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
         List<Operation> operationList = api.retrieveAll();
 
+        api = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
+        List<Mapping> mappingList = api.retrieveAll();
+
         System.out.println(distributionList);
         System.out.println(webserviceList);
         System.out.println(operationList);
+        System.out.println(mappingList);
 
         assertAll(
                 () -> assertEquals(2, distributionList.size()),
                 () -> assertEquals(2, webserviceList.size()),
-                () -> assertEquals(2, operationList.size())
+                () -> assertEquals(2, operationList.size()),
+                () -> assertEquals(2, mappingList.size())
+        );
+
+    }
+
+    @Test
+    @Order(3)
+    public void testUpdateAndGetItems2() {
+
+        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
+        Mapping retrievedMapping = (Mapping) api.retrieveAll().stream().filter(item -> ((Mapping) item).getStatus().equals(StatusType.DRAFT)).findFirst().get();
+        retrievedMapping.setLabel("TEST");
+
+        api.create(retrievedMapping, null, null, null);
+
+        api = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+        List<Distribution> distributionList = api.retrieveAll();
+
+        api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
+        List<WebService> webserviceList = api.retrieveAll();
+
+
+        api = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name());
+        List<Operation> operationList = api.retrieveAll();
+
+        api = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name());
+        List<Mapping> mappingList = api.retrieveAll();
+
+        System.out.println(distributionList);
+        System.out.println(webserviceList);
+        System.out.println(operationList);
+        System.out.println(mappingList);
+
+        assertAll(
+                () -> assertEquals(2, distributionList.size()),
+                () -> assertEquals(2, webserviceList.size()),
+                () -> assertEquals(2, operationList.size()),
+                () -> assertEquals(2, mappingList.size())
         );
 
     }
