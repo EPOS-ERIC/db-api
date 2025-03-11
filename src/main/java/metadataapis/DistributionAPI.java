@@ -146,7 +146,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 obj.getAccessService().add(relationToUpdate);
             }
             for(LinkedEntity accessService : obj.getAccessService()) {
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class, false);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class, true);
                 if(webservice!=null){
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setDistributionInstance(edmobj);

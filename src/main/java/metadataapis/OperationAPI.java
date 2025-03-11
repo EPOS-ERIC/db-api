@@ -74,7 +74,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 obj.getWebservice().add(relationToUpdate);
             }
             for(LinkedEntity webService : obj.getWebservice()){
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, webService, overrideStatus, Webservice.class, false);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, webService, overrideStatus, Webservice.class, true);
                 if(webservice!=null){
                     OperationWebservice pi = new OperationWebservice();
                     pi.setOperationInstance(edmobj);
