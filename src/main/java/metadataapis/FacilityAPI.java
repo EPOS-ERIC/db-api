@@ -76,7 +76,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 obj.getAddress().add(relationToUpdate);
             }
             for(LinkedEntity address : obj.getAddress()){
-                Address address1 = (Address) RelationChecker.checkRelation(obj, previousObj, null, address, overrideStatus, Address.class);
+                Address address1 = (Address) RelationChecker.checkRelation(obj, previousObj, null, address, overrideStatus, Address.class, false);
                 if(address1 != null){
                     FacilityAddress pi = new FacilityAddress();
                     pi.setFacilityInstance(edmobj);
@@ -93,7 +93,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 obj.getIsPartOf().add(relationToUpdate);
             }
             for(LinkedEntity facility : obj.getIsPartOf()){
-                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class);
+                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class, false);
                 if(facility1 != null){
                     FacilityIspartof pi = new FacilityIspartof();
                     pi.setFacility1Instance(edmobj);
@@ -110,7 +110,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 obj.getSpatialExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class, false);
                 if(spatial != null){
                     FacilitySpatial pi = new FacilitySpatial();
                     pi.setFacilityInstance(edmobj);

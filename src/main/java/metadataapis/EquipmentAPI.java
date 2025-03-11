@@ -86,7 +86,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
             for(LinkedEntity equipment : obj.getIsPartOf()){
 
-                Equipment equipment1 = (Equipment) RelationChecker.checkRelation(obj, previousObj, null, equipment, overrideStatus, Equipment.class);
+                Equipment equipment1 = (Equipment) RelationChecker.checkRelation(obj, previousObj, null, equipment, overrideStatus, Equipment.class, false);
 
                 if(equipment1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
@@ -108,7 +108,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
             for(LinkedEntity facility : obj.getIsPartOf()){
 
-                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class);
+                Facility facility1 = (Facility) RelationChecker.checkRelation(obj, previousObj, null, facility, overrideStatus, Facility.class, false);
 
                 if(facility1!=null) {
                     EquipmentIspartof pi = new EquipmentIspartof();
@@ -129,7 +129,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             }
 
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class, false);
                 if(spatial!=null){
                     EquipmentSpatial pi = new EquipmentSpatial();
                     pi.setEquipmentInstance(edmobj);
@@ -146,7 +146,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 obj.getTemporalExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class, false);
                 if(temporal!=null){
                     EquipmentTemporal pi = new EquipmentTemporal();
                     pi.setEquipmentInstance(edmobj);

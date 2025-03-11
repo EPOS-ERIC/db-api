@@ -134,7 +134,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getHasPart().add(relationToUpdate);
             }
             for(LinkedEntity dataProduct : obj.getHasPart()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
                 if(dataproduct!=null) {
                     DataproductHaspart pi = new DataproductHaspart();
                     pi.setDataproduct1Instance(edmobj);
@@ -151,7 +151,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getIsPartOf().add(relationToUpdate);
             }
             for(LinkedEntity dataProduct : obj.getIsPartOf()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
                 if(dataproduct!=null) {
                     DataproductIspartof pi = new DataproductIspartof();
                     pi.setDataproduct1Instance(dataproduct);
@@ -195,7 +195,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getPublisher().add(relationToUpdate);
             }
             for(LinkedEntity organization : obj.getPublisher()){
-                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class);
+                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class, false);
                 if(organization1!=null) {
                     DataproductPublisher pi = new DataproductPublisher();
                     pi.setDataproductInstance(edmobj);
@@ -212,7 +212,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getDistribution().add(relationToUpdate);
             }
             for(LinkedEntity distribution : obj.getDistribution()){
-                Distribution distribution1 = (Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, Distribution.class);
+                Distribution distribution1 = (Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, Distribution.class, false);
                 if(distribution1!=null) {
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDataproductInstance(edmobj);
@@ -229,7 +229,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getSpatialExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class, false);
                 if(spatial!=null){
                     DataproductSpatial pi = new DataproductSpatial();
                     pi.setDataproductInstance(edmobj);
@@ -246,7 +246,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getTemporalExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class, false);
                 if(temporal!=null){
                     DataproductTemporal pi = new DataproductTemporal();
                     pi.setDataproductInstance(edmobj);

@@ -74,7 +74,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.setProvider(relationToUpdate);
             }
 
-            Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class);
+            Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class, false);
 
             edmobj.setProvider(organization1.getInstanceId());
         }
@@ -94,7 +94,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getDocumentation().add(relationToUpdate);
             }
             for(LinkedEntity documentation : obj.getDocumentation()){
-                Element documentation1 = (Element) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Element.class);
+                Element documentation1 = (Element) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Element.class, false);
                 if(documentation1!=null) {
                     List<Element> el = dbaccess.getOneFromDBByInstanceId(documentation1.getInstanceId(), Element.class);
                     WebserviceElement pi = new WebserviceElement();
@@ -111,7 +111,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getIdentifier().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                Identifier identifier1 = (Identifier) RelationChecker.checkRelation(obj, previousObj, null, identifier, overrideStatus, Identifier.class);
+                Identifier identifier1 = (Identifier) RelationChecker.checkRelation(obj, previousObj, null, identifier, overrideStatus, Identifier.class, false);
                 if(identifier1!=null) {
                     WebserviceIdentifier pi = new WebserviceIdentifier();
                     pi.setWebserviceInstance(edmobj);
@@ -128,7 +128,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getSpatialExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class);
+                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class, false);
                 if(spatial!=null){
                     WebserviceSpatial pi = new WebserviceSpatial();
                     pi.setWebserviceInstance(edmobj);
@@ -145,7 +145,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getTemporalExtent().add(relationToUpdate);
             }
             for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class);
+                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class, false);
                 if(temporal!=null){
                     WebserviceTemporal pi = new WebserviceTemporal();
                     pi.setWebserviceInstance(edmobj);
@@ -161,7 +161,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getSupportedOperation().add(relationToUpdate);
             }
             for(LinkedEntity distribution : obj.getDistribution()){
-                model.Distribution distribution1 = (model.Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, model.Distribution.class);
+                model.Distribution distribution1 = (model.Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, model.Distribution.class, false);
                 if(distribution1!=null) {
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setWebserviceInstance(edmobj);
@@ -177,7 +177,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj.getSupportedOperation().add(relationToUpdate);
             }
             for(LinkedEntity operation : obj.getSupportedOperation()){
-                Operation operation1 = (Operation) RelationChecker.checkRelation(obj, previousObj, null, operation, overrideStatus, Operation.class);
+                Operation operation1 = (Operation) RelationChecker.checkRelation(obj, previousObj, null, operation, overrideStatus, Operation.class, true);
                 if(operation1!=null) {
                     OperationWebservice pi = new OperationWebservice();
                     pi.setWebserviceInstance(edmobj);

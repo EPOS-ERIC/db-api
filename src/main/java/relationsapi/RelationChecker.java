@@ -54,7 +54,7 @@ public class RelationChecker {
 //        return results.isEmpty()? null : results.get(0);
 //    }
 
-    public static Object checkRelation(EPOSDataModelEntity mainEntity, EPOSDataModelEntity oldMainEntity, Class mainEntityClazz, LinkedEntity linkedEntity, StatusType overrideStatus, Class clazz) {
+    public static Object checkRelation(EPOSDataModelEntity mainEntity, EPOSDataModelEntity oldMainEntity, Class mainEntityClazz, LinkedEntity linkedEntity, StatusType overrideStatus, Class clazz, Boolean enableStore) {
         if(mainEntityClazz == null) mainEntityClazz = mainEntity.getClass();
 
         LinkedEntity newLinkedEntityMainEntity = mainEntity==null? null : AbstractAPI.retrieveAPI(EntityNames.valueOf(mainEntityClazz.getSimpleName().toUpperCase(Locale.ROOT)).name()).retrieveLinkedEntity(mainEntity.getInstanceId());
@@ -71,10 +71,10 @@ public class RelationChecker {
             /** CHANGE THE STATUS ACCORDING WITH THE MAIN ENTITY **/
             if (mainEntity.getStatus()!=null && relationEntity.getStatus()!=null && !mainEntity.getStatus().equals(relationEntity.getStatus())) {
                 relationEntity.setStatus(mainEntity.getStatus());
-                obj = OperationWebserviceInDistributionSingleton.getInstance().getTarget(linkedEntity);
+                if(enableStore) obj = OperationWebserviceInDistributionSingleton.getInstance().getTarget(linkedEntity);
                 if(obj==null) {
                     obj = AbstractAPI.retrieveAPI(EntityNames.valueOf(linkedEntity.getEntityType().toUpperCase(Locale.ROOT)).name()).create(relationEntity, overrideStatus, oldLinkedEntityMainEntity, newLinkedEntityMainEntity);
-                    OperationWebserviceInDistributionSingleton.getInstance().createRelation(linkedEntity, obj);
+                    if(enableStore) OperationWebserviceInDistributionSingleton.getInstance().createRelation(linkedEntity, obj);
                 }
             } else {
                 obj = linkedEntity;

@@ -5,5 +5,6 @@ public enum RequestStatusType {
     ACCEPTED,
     PENDING,
     REJECTED,
-    NONE
+    NONE,
+    DEFAULT
 }

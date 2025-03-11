@@ -58,7 +58,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 obj.getMapping().add(relationToUpdate);
             }
             for(LinkedEntity mapping : obj.getMapping()){
-                Mapping mapping1 = (Mapping) RelationChecker.checkRelation(obj, previousObj, null, mapping, overrideStatus, Mapping.class);
+                Mapping mapping1 = (Mapping) RelationChecker.checkRelation(obj, previousObj, null, mapping, overrideStatus, Mapping.class, false);
                 if(mapping1!=null){
                     OperationMapping pi = new OperationMapping();
                     pi.setOperationInstance(edmobj);
@@ -74,7 +74,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 obj.getWebservice().add(relationToUpdate);
             }
             for(LinkedEntity webService : obj.getWebservice()){
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, webService, overrideStatus, Webservice.class);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, webService, overrideStatus, Webservice.class, false);
                 if(webservice!=null){
                     OperationWebservice pi = new OperationWebservice();
                     pi.setOperationInstance(edmobj);

@@ -114,7 +114,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 obj.getDataProduct().add(relationToUpdate);
             }
             for(LinkedEntity dataProduct : obj.getDataProduct()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class);
+                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
                 if(dataproduct!=null){
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDistributionInstance(edmobj);
@@ -130,7 +130,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 obj.getSupportedOperation().add(relationToUpdate);
             }
             for(LinkedEntity supportedOperation : obj.getSupportedOperation()) {
-                Operation operation = (Operation) RelationChecker.checkRelation(obj, previousObj, null, supportedOperation, overrideStatus, Operation.class);
+                Operation operation = (Operation) RelationChecker.checkRelation(obj, previousObj, null, supportedOperation, overrideStatus, Operation.class, true);
                 if(operation!=null){
                     OperationDistribution pi = new OperationDistribution();
                     pi.setDistributionInstance(edmobj);
@@ -146,7 +146,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 obj.getAccessService().add(relationToUpdate);
             }
             for(LinkedEntity accessService : obj.getAccessService()) {
-                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class);
+                Webservice webservice = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, accessService, overrideStatus, Webservice.class, false);
                 if(webservice!=null){
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setDistributionInstance(edmobj);

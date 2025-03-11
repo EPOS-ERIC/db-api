@@ -81,7 +81,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 obj.getAffiliation().add(relationToUpdate);
             }
             for(LinkedEntity organization : obj.getAffiliation()){
-                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class);
+                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class, false);
                 if(organization1!=null) {
                     OrganizationAffiliation pi = new OrganizationAffiliation();
                     pi.setPersonInstance(edmobj);
@@ -98,7 +98,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 obj.getContactPoint().add(relationToUpdate);
             }
             for(LinkedEntity contactpoint : obj.getContactPoint()){
-                Contactpoint contactpoint1 = (Contactpoint) RelationChecker.checkRelation(obj, previousObj, null, contactpoint, overrideStatus, Contactpoint.class);
+                Contactpoint contactpoint1 = (Contactpoint) RelationChecker.checkRelation(obj, previousObj, null, contactpoint, overrideStatus, Contactpoint.class, false);
                 if(contactpoint1!=null) {
                     PersonContactpoint pi = new PersonContactpoint();
                     pi.setPersonInstance(edmobj);
