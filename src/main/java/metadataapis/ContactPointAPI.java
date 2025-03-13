@@ -11,6 +11,8 @@ import org.epos.eposdatamodel.LinkedEntity;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
@@ -172,7 +174,9 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     @Override
     public org.epos.eposdatamodel.ContactPoint retrieve(String instanceId) {
         List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Contactpoint edmobj = elementList.get(0);
             org.epos.eposdatamodel.ContactPoint o = new org.epos.eposdatamodel.ContactPoint();
             o.setInstanceId(edmobj.getInstanceId());
@@ -182,63 +186,51 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
             for(Object contactpointElement : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),ContactpointElement.class)){
                 ContactpointElement ce = (ContactpointElement) contactpointElement;
-                if(ce.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
+                //if(ce.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     Element el = ce.getElementInstance();
                     if (el.getType().equals(ElementType.TELEPHONE.name())) o.addTelephone(el.getValue());
                     if (el.getType().equals(ElementType.EMAIL.name())) o.addEmail(el.getValue());
                     if (el.getType().equals(ElementType.LANGUAGE.name())) o.addLanguage(el.getValue());
-                }
+                //}
             }
 
             for(Object organizationContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),OrganizationContactpoint.class)){
                 OrganizationContactpoint item = (OrganizationContactpoint) organizationContactpoint;
-                if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
+                //if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     o.setOrganization(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId()));
-                }
+                //}
             }
 
             for(Object personContactpoint : getDbaccess().getOneFromDBBySpecificKey("contactpointInstance", edmobj.getInstanceId(),PersonContactpoint.class)){
                 PersonContactpoint item = (PersonContactpoint) personContactpoint;
-                if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
+                //if(item.getContactpointInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     o.setPerson(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getPersonInstance().getInstanceId()));
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.ContactPoint) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
+    }
+    @Override
+    public List<ContactPoint> retrieveBunch(List<String> entities) {
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Contactpoint.class));
+    }
+    @Override
+    public List<ContactPoint> retrieveAll() {
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Contactpoint.class));
+    }
+    @Override
+    public List<ContactPoint> retrieveAllWithStatus(StatusType status) {
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Contactpoint.class, status));
     }
 
-    @Override
-    public List<org.epos.eposdatamodel.ContactPoint> retrieveBunch(List<String> entities) {
-        List<Contactpoint> list = getDbaccess().getListFromDBByInstanceId(entities, Contactpoint.class);
-        List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
-    }
+    private List<ContactPoint> retrieveEntities(Function<Void, List<Contactpoint>> dbFetcher) {
+        List<Contactpoint> dbEntities = dbFetcher.apply(null);
 
-    @Override
-    public List<org.epos.eposdatamodel.ContactPoint> retrieveAll() {
-        List<Contactpoint> list = getDbaccess().getAllFromDB(Contactpoint.class);
-        List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
-    }
-
-    @Override
-    public List<org.epos.eposdatamodel.ContactPoint> retrieveAllWithStatus(StatusType status) {
-        List<Contactpoint> list = getDbaccess().getAllFromDBWithStatus(Contactpoint.class, status);
-        List<org.epos.eposdatamodel.ContactPoint> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

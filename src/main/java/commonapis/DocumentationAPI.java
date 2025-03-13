@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documentation> {
@@ -163,46 +164,22 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveBunch(List<String> entities) {
-        List<Element> list = getDbaccess().getListFromDBByInstanceId(entities, Element.class);
-
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Documentation>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
-
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Element.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAll() {
-        List<Element> list = getDbaccess().getAllFromDB(Element.class);
-
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Documentation>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
-
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Element.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAllWithStatus(StatusType status) {
-        List<Element> list = getDbaccess().getAllFromDBWithStatus(Element.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Element.class, status));
+    }
 
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Documentation>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
+    private List<org.epos.eposdatamodel.Documentation> retrieveEntities(Function<Void, List<Element>> dbFetcher) {
+        List<Element> dbEntities = dbFetcher.apply(null);
 
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }
 

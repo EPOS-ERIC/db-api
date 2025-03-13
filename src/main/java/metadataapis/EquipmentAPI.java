@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> {
@@ -186,7 +187,9 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
     @Override
     public org.epos.eposdatamodel.Equipment retrieve(String instanceId) {
         List<Equipment> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Equipment.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Equipment edmobj = elementList.get(0);
             org.epos.eposdatamodel.Equipment o = new org.epos.eposdatamodel.Equipment();
             o.setInstanceId(edmobj.getInstanceId());
@@ -207,61 +210,59 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
                 EquipmentCategory item = (EquipmentCategory) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment", edmobj.getInstanceId(),EquipmentIspartof.class)) {
                 EquipmentIspartof item = (EquipmentIspartof) object;
-                if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
                         o.addIsPartOf(retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
                     if(item.getResourceEntity().equals(EntityNames.EQUIPMENT.name())){
                         o.addIsPartOf(retrieveAPI(EntityNames.EQUIPMENT.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
                     }
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentSpatial.class)) {
                 EquipmentSpatial item = (EquipmentSpatial) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addSpatialExtentItem(le);
-                }
+                    // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentTemporal.class)) {
                 EquipmentTemporal item = (EquipmentTemporal) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
                     o.addTemporalExtent(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentElement.class)) {
                 EquipmentElement item = (EquipmentElement) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.PAGEURL.name())) o.setPageURL(el.getValue());
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.Equipment) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
 
     @Override
@@ -318,32 +319,23 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveBunch(List<String> entities) {
-        List<Equipment> list = getDbaccess().getListFromDBByInstanceId(entities, Equipment.class);
-        List<org.epos.eposdatamodel.Equipment> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Equipment.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveAll() {
-        List<Equipment> list = getDbaccess().getAllFromDB(Equipment.class);
-        List<org.epos.eposdatamodel.Equipment> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Equipment.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveAllWithStatus(StatusType status) {
-        List<Equipment> list = getDbaccess().getAllFromDBWithStatus(Equipment.class,status);
-        List<org.epos.eposdatamodel.Equipment> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Equipment.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.Equipment> retrieveEntities(Function<Void, List<Equipment>> dbFetcher) {
+        List<Equipment> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

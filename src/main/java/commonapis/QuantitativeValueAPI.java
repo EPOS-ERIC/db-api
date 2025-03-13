@@ -11,6 +11,7 @@ import usermanagementapis.UserGroupManagementAPI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.QuantitativeValue> {
@@ -90,33 +91,21 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveBunch(List<String> entities) {
-        // Retrieve a list of QuantitativeValue entities by instance IDs
-        List<Quantitativevalue> list = getDbaccess().getListFromDBByInstanceId(entities, Quantitativevalue.class);
-
-        // Use stream to process the list and retrieve the corresponding entities
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Quantitativevalue.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAll() {
-        // Retrieve all QuantitativeValue entities
-        List<Quantitativevalue> list = getDbaccess().getAllFromDB(Quantitativevalue.class);
-
-        // Use stream to process the list and retrieve the corresponding entities
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Quantitativevalue.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllWithStatus(StatusType status) {
-        // Retrieve all QuantitativeValue entities with a specific status
-        List<Quantitativevalue> list = getDbaccess().getAllFromDBWithStatus(Quantitativevalue.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Quantitativevalue.class, status));
+    }
 
-        // Use stream to process the list and retrieve the corresponding entities
-        return list.stream()
+    private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<Quantitativevalue>> dbFetcher) {
+        List<Quantitativevalue> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
                 .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }

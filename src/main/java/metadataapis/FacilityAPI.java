@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
@@ -197,7 +199,9 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     @Override
     public org.epos.eposdatamodel.Facility retrieve(String instanceId) {
         List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Facility edmobj = elementList.get(0);
             org.epos.eposdatamodel.Facility o = new org.epos.eposdatamodel.Facility();
             o.setInstanceId(edmobj.getInstanceId());
@@ -211,87 +215,75 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
                 FacilityCategory item = (FacilityCategory) object;
-                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
                 FacilityContactpoint item = (FacilityContactpoint) object;
-                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
                 FacilityAddress item = (FacilityAddress) object;
-                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(item.getAddressInstance().getInstanceId());
                     o.addAddress(le);
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
                 FacilityIspartof item = (FacilityIspartof) object;
-                if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
+                // if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getFacility2Instance().getInstanceId());
                     o.addIsPartOf(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
                 FacilitySpatial item = (FacilitySpatial) object;
-                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addIsPartOf(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityElement.class)) {
                 FacilityElement item = (FacilityElement) object;
-                if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.PAGEURL.name())) o.addPageURL(el.getValue());
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.Facility) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveBunch(List<String> entities) {
-        List<Facility> list = getDbaccess().getListFromDBByInstanceId(entities, Facility.class);
-        List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Facility.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAll() {
-        List<Facility> list = getDbaccess().getAllFromDB(Facility.class);
-        List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Facility.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAllWithStatus(StatusType status) {
-        List<Facility> list = getDbaccess().getAllFromDBWithStatus(Facility.class, status);
-        List<org.epos.eposdatamodel.Facility> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Facility.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<Facility>> dbFetcher) {
+        List<Facility> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

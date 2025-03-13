@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
@@ -121,7 +123,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     @Override
     public org.epos.eposdatamodel.Mapping retrieve(String instanceId) {
         List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Mapping edmobj = elementList.get(0);
             org.epos.eposdatamodel.Mapping o = new org.epos.eposdatamodel.Mapping();
             o.setInstanceId(edmobj.getInstanceId());
@@ -141,50 +145,40 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(),MappingElement.class)) {
                 MappingElement item = (MappingElement) object;
-                if(item.getMappingInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getMappingInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.PARAMVALUE.name())) {
                         o.addParamValue(el.getValue());
                     }
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.Mapping) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
-    }
 
+    }
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveBunch(List<String> entities) {
-        List<Mapping> list = getDbaccess().getListFromDBByInstanceId(entities, Mapping.class);
-        List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Mapping.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAll() {
-        List<Mapping> list = getDbaccess().getAllFromDB(Mapping.class);
-        List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Mapping.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAllWithStatus(StatusType status) {
-        List<Mapping> list = getDbaccess().getAllFromDBWithStatus(Mapping.class, status);
-        List<org.epos.eposdatamodel.Mapping> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Mapping.class, status));
     }
+
+    private List<org.epos.eposdatamodel.Mapping> retrieveEntities(Function<Void, List<Mapping>> dbFetcher) {
+        List<Mapping> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
+    }
+
 
 
     @Override

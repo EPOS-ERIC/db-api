@@ -11,6 +11,7 @@ import usermanagementapis.UserGroupManagementAPI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
@@ -116,33 +117,21 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveBunch(List<String> entities) {
-        // Retrieve a list of Spatial entities by their instance IDs
-        List<Spatial> list = getDbaccess().getListFromDBByInstanceId(entities, Spatial.class);
-
-        // Use streams for efficient processing of the list
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Spatial.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveAll() {
-        // Retrieve all Spatial entities
-        List<Spatial> list = getDbaccess().getAllFromDB(Spatial.class);
-
-        // Use streams for efficient processing of the list
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Spatial.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveAllWithStatus(StatusType status) {
-        // Retrieve all Spatial entities with a given status
-        List<Spatial> list = getDbaccess().getAllFromDBWithStatus(Spatial.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Spatial.class, status));
+    }
 
-        // Use streams for efficient processing of the list
-        return list.stream()
+    private List<org.epos.eposdatamodel.Location> retrieveEntities(Function<Void, List<Spatial>> dbFetcher) {
+        List<Spatial> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
                 .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }

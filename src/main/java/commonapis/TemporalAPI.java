@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime> {
@@ -112,34 +113,24 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunch(List<String> entities) {
-        List<Temporal> list = getDbaccess().getListFromDBByInstanceId(entities, Temporal.class);
-
-        // Using stream for efficient processing
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Temporal.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAll() {
-        List<Temporal> list = getDbaccess().getAllFromDB(Temporal.class);
-
-        // Using stream for efficient processing
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Temporal.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllWithStatus(StatusType status) {
-        List<Temporal> list = getDbaccess().getAllFromDBWithStatus(Temporal.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Temporal.class, status));
+    }
 
-        // Using stream for efficient processing
-        return list.stream()
+    private List<org.epos.eposdatamodel.PeriodOfTime> retrieveEntities(Function<Void, List<Temporal>> dbFetcher) {
+        List<Temporal> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
                 .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }
-
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Temporal> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Temporal.class);

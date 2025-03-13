@@ -3,6 +3,7 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import metadataapis.EntityNames;
 import model.*;
+import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import usermanagementapis.UserGroupManagementAPI;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
@@ -99,49 +101,24 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
         return true;
     }
-
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveBunch(List<String> entities) {
-        List<Address> list = getDbaccess().getListFromDBByInstanceId(entities, Address.class);
-
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Address>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
-
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Address.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAll() {
-        List<Address> list = getDbaccess().getAllFromDB(Address.class);
-
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Address>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
-
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Address.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAllWithStatus(StatusType status) {
-        List<Address> list = getDbaccess().getAllFromDBWithStatus(Address.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Address.class, status));
+    }
 
-        // Using CompletableFuture for parallel retrieval
-        List<CompletableFuture<org.epos.eposdatamodel.Address>> futures = list.stream()
-                .map(item -> CompletableFuture.supplyAsync(() -> retrieve(item.getInstanceId())))
-                .collect(Collectors.toList());
+    private List<org.epos.eposdatamodel.Address> retrieveEntities(Function<Void, List<Address>> dbFetcher) {
+        List<Address> dbEntities = dbFetcher.apply(null);
 
-        // Collecting results after all futures complete
-        return futures.stream()
-                .map(CompletableFuture::join)
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }
 

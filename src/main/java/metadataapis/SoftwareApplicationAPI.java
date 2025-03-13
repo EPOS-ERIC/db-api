@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
+import model.Person;
 import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
@@ -12,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApplication> {
 
@@ -160,7 +163,9 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     @Override
     public org.epos.eposdatamodel.SoftwareApplication retrieve(String instanceId) {
         List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Softwareapplication edmobj = elementList.get(0);
             org.epos.eposdatamodel.SoftwareApplication o = new org.epos.eposdatamodel.SoftwareApplication();
             o.setInstanceId(edmobj.getInstanceId());
@@ -180,81 +185,70 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationCategory.class)) {
                 SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
-                if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                // if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationContactpoint.class)) {
                 SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
-                if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationIdentifier.class)) {
                 SoftwareapplicationIdentifier item = (SoftwareapplicationIdentifier) object;
-                if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationParameter.class)) {
                 SoftwareapplicationParameter item = (SoftwareapplicationParameter) object;
-               if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getParameterInstance().getAction()!=null && item.getParameterInstance().getAction().equals("OBJECT"))
                         o.addInputParameter(retrieveAPI(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name()).retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
                     if(item.getParameterInstance().getAction()!=null && item.getParameterInstance().getAction().equals("RESULT"))
                         o.addOutputParameter(retrieveAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name()).retrieveLinkedEntity(item.getParameterInstance().getInstanceId()));
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwareapplicationInstance", edmobj.getInstanceId(),SoftwareapplicationOperation.class)) {
                 SoftwareapplicationOperation item = (SoftwareapplicationOperation) object;
-                if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwareapplicationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le =  retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addRelatedOperation(le);
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.SoftwareApplication) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
-    }
 
+    }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) {
-        List<Softwareapplication> list = getDbaccess().getListFromDBByInstanceId(entities, Softwareapplication.class);
-        List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Softwareapplication.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() {
-        List<Softwareapplication> list = getDbaccess().getAllFromDB(Softwareapplication.class);
-        List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Softwareapplication.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllWithStatus(StatusType status) {
-        List<Softwareapplication> list = getDbaccess().getAllFromDBWithStatus(Softwareapplication.class, status);
-        List<org.epos.eposdatamodel.SoftwareApplication> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Softwareapplication.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<Softwareapplication>> dbFetcher) {
+        List<Softwareapplication> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

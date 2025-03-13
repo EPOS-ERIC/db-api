@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareSourceCode> {
 
@@ -150,7 +152,9 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
     @Override
     public org.epos.eposdatamodel.SoftwareSourceCode retrieve(String instanceId) {
         List<Softwaresourcecode> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwaresourcecode.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Softwaresourcecode edmobj = elementList.get(0);
             org.epos.eposdatamodel.SoftwareSourceCode o = new org.epos.eposdatamodel.SoftwareSourceCode();
             o.setInstanceId(edmobj.getInstanceId());
@@ -168,71 +172,59 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeCategory.class)) {
                 SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
-                if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                //}
             }
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeContactpoint.class)) {
                 SoftwaresourcecodeContactpoint item = (SoftwaresourcecodeContactpoint) object;
-                if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeIdentifier.class)) {
                 SoftwaresourcecodeIdentifier item = (SoftwaresourcecodeIdentifier) object;
-                if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                // if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
-                }
+                // }
             }
 
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeElement.class)) {
                 SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
-                if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                // if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.PROGRAMMINGLANGUAGE.name())) o.addProgrammingLanguage(el.getValue());
-                }
+                // }
             }
 
             o = (org.epos.eposdatamodel.SoftwareSourceCode) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveBunch(List<String> entities) {
-        List<Softwaresourcecode> list = getDbaccess().getListFromDBByInstanceId(entities, Softwaresourcecode.class);
-        List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Softwaresourcecode.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAll() {
-        List<Softwaresourcecode> list = getDbaccess().getAllFromDB(Softwaresourcecode.class);
-        List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Softwaresourcecode.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAllWithStatus(StatusType status) {
-        List<Softwaresourcecode> list = getDbaccess().getAllFromDBWithStatus(Softwaresourcecode.class, status);
-        List<org.epos.eposdatamodel.SoftwareSourceCode> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Softwaresourcecode.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveEntities(Function<Void, List<Softwaresourcecode>> dbFetcher) {
+        List<Softwaresourcecode> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

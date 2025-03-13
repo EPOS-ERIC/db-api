@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.CategoryScheme> {
 
@@ -77,7 +79,9 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     public org.epos.eposdatamodel.CategoryScheme retrieve(String instanceId) {
 
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             CategoryScheme edmobj = elementList.get(0);
             org.epos.eposdatamodel.CategoryScheme o = new org.epos.eposdatamodel.CategoryScheme();
 
@@ -96,38 +100,26 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             o = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveBunch(List<String> entities) {
-        List<CategoryScheme> list = getDbaccess().getListFromDBByInstanceId(entities, CategoryScheme.class);
-        List<org.epos.eposdatamodel.CategoryScheme> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, CategoryScheme.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveAll() {
-        List<CategoryScheme> list = getDbaccess().getAllFromDB(CategoryScheme.class);
-        List<org.epos.eposdatamodel.CategoryScheme> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(CategoryScheme.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveAllWithStatus(StatusType status) {
-        List<CategoryScheme> list = getDbaccess().getAllFromDBWithStatus(CategoryScheme.class, status);
-        List<org.epos.eposdatamodel.CategoryScheme> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(CategoryScheme.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.CategoryScheme> retrieveEntities(Function<Void, List<CategoryScheme>> dbFetcher) {
+        List<CategoryScheme> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

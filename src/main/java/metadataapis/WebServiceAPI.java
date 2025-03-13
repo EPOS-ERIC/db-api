@@ -8,14 +8,13 @@ import model.Identifier;
 import model.Operation;
 import model.Organization;
 import org.epos.eposdatamodel.*;
-import org.epos.eposdatamodel.Distribution;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
-import usermanagementapis.UserGroupManagementAPI;
-import utilities.OperationWebserviceInDistributionSingleton;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService> {
 
@@ -269,7 +268,9 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     @Override
     public org.epos.eposdatamodel.WebService retrieve(String instanceId) {
         List<Webservice> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Webservice.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Webservice edmobj = elementList.get(0);
             org.epos.eposdatamodel.WebService o = new org.epos.eposdatamodel.WebService();
             o.setInstanceId(edmobj.getInstanceId());
@@ -292,18 +293,18 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceCategory.class)) {
                 WebserviceCategory item = (WebserviceCategory) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
                     o.addCategory(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceContactpoint.class)) {
                 WebserviceContactpoint item = (WebserviceContactpoint) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
-                }
+                //}
             }
 
             if (edmobj.getProvider() != null) {
@@ -312,42 +313,42 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceElement.class)) {
                 WebserviceElement item = (WebserviceElement) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.DOCUMENTATION.name())) o.addDocumentation(retrieveAPI(EntityNames.DOCUMENTATION.name()).retrieveLinkedEntity(el.getInstanceId()));
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceIdentifier.class)) {
                 WebserviceIdentifier item = (WebserviceIdentifier) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceSpatial.class)) {
                 WebserviceSpatial item = (WebserviceSpatial) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
                     o.addSpatialExtentItem(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceTemporal.class)) {
                 WebserviceTemporal item = (WebserviceTemporal) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
                     o.addTemporalExtent(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addSupportedOperation(le);
-                }
+                //}
             }
 
             /** TODO: RELATION **/
@@ -355,38 +356,26 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             o = (org.epos.eposdatamodel.WebService) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveBunch(List<String> entities) {
-        List<Webservice> list = getDbaccess().getListFromDBByInstanceId(entities, Webservice.class);
-        List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Webservice.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveAll() {
-        List<Webservice> list = getDbaccess().getAllFromDB(Webservice.class);
-        List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Webservice.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveAllWithStatus(StatusType status) {
-        List<Webservice> list = getDbaccess().getAllFromDBWithStatus(Webservice.class, status);
-        List<org.epos.eposdatamodel.WebService> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Webservice.class, status));
+    }
+
+    protected List<org.epos.eposdatamodel.WebService> retrieveEntities(Function<Void, List<Webservice>> dbFetcher) {
+        List<Webservice> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override

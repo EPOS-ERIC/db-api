@@ -3,10 +3,10 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
-import org.epos.eposdatamodel.DataProduct;
-import org.epos.eposdatamodel.EPOSDataModelEntity;
-import org.epos.eposdatamodel.Group;
-import org.epos.eposdatamodel.LinkedEntity;
+import model.Distribution;
+import model.Element;
+import model.Operation;
+import org.epos.eposdatamodel.*;
 import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
 import utilities.OperationWebserviceInDistributionSingleton;
@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribution> {
 
@@ -239,7 +241,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     @Override
     public org.epos.eposdatamodel.Distribution retrieve(String instanceId) {
         List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Distribution edmobj = elementList.get(0);
             org.epos.eposdatamodel.Distribution o = new org.epos.eposdatamodel.Distribution();
             o.setInstanceId(edmobj.getInstanceId());
@@ -259,9 +263,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDescription.class)) {
                 DistributionDescription item = (DistributionDescription) object;
-                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     o.addDescription(item.getDescription());
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionTitle.class)) {
@@ -273,74 +277,63 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
                 DistributionDataproduct item = (DistributionDataproduct) object;
-                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproductInstance().getInstanceId());
                     o.addDataproduct(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),WebserviceDistribution.class)) {
                 WebserviceDistribution item = (WebserviceDistribution) object;
-                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
                     o.addAccessService(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
                 OperationDistribution item = (OperationDistribution) object;
-                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                    System.out.println(item.getDistributionInstance().getInstanceId());
+                //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                    //System.out.println(item.getDistributionInstance().getInstanceId());
                     LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
                     o.addSupportedOperation(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionElement.class)) {
                 DistributionElement item = (DistributionElement) object;
-                if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.ACCESSURL.name())) o.addAccessURL(el.getValue());
                     if (el.getType().equals(ElementType.DOWNLOADURL.name())) o.addDownloadURL(el.getValue());
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveBunch(List<String> entities) {
-        List<Distribution> list = getDbaccess().getListFromDBByInstanceId(entities, Distribution.class);
-        List<org.epos.eposdatamodel.Distribution> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Distribution.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAll() {
-        List<Distribution> list = getDbaccess().getAllFromDB(Distribution.class);
-        List<org.epos.eposdatamodel.Distribution> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Distribution.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAllWithStatus(StatusType status) {
-        List<Distribution> list = getDbaccess().getAllFromDBWithStatus(Distribution.class, status);
-        List<org.epos.eposdatamodel.Distribution> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Distribution.class, status));
     }
+
+    private List<org.epos.eposdatamodel.Distribution> retrieveEntities(Function<Void, List<Distribution>> dbFetcher) {
+        List<Distribution> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

@@ -11,6 +11,7 @@ import usermanagementapis.UserGroupManagementAPI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApplicationParameter> {
@@ -98,30 +99,21 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
 
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveBunch(List<String> entities) {
-        List<Parameter> list = getDbaccess().getListFromDBByInstanceId(entities, Parameter.class);
-
-        // Using streams for batch processing
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Parameter.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAll() {
-        List<Parameter> list = getDbaccess().getAllFromDB(Parameter.class);
-
-        // Using streams for batch processing
-        return list.stream()
-                .map(item -> retrieve(item.getInstanceId()))
-                .collect(Collectors.toList());
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Parameter.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllWithStatus(StatusType status) {
-        List<Parameter> list = getDbaccess().getAllFromDBWithStatus(Parameter.class, status);
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Parameter.class, status));
+    }
 
-        // Using streams for batch processing
-        return list.stream()
+    private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveEntities(Function<Void, List<Parameter>> dbFetcher) {
+        List<Parameter> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
                 .map(item -> retrieve(item.getInstanceId()))
                 .collect(Collectors.toList());
     }

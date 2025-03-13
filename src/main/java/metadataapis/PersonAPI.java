@@ -10,6 +10,7 @@ import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
@@ -174,7 +175,9 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     @Override
     public org.epos.eposdatamodel.Person retrieve(String instanceId) {
         List<Person> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Person.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Person edmobj = elementList.get(0);
             org.epos.eposdatamodel.Person o = new org.epos.eposdatamodel.Person();
             o.setInstanceId(edmobj.getInstanceId());
@@ -183,10 +186,10 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonIdentifier.class)) {
                 PersonIdentifier item = (PersonIdentifier) object;
-                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
                     o.addIdentifier(le);
-                }
+                //}
             }
 
             o.setFamilyName(edmobj.getFamilyname());
@@ -199,11 +202,11 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonElement.class)) {
                 PersonElement item = (PersonElement) object;
-                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.TELEPHONE.name())) o.addTelephone(el.getValue());
                     if (el.getType().equals(ElementType.EMAIL.name())) o.addEmail(el.getValue());
-                }
+                //}
             }
 
             o.setQualifications(edmobj.getQualifications() != null ?
@@ -214,58 +217,45 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),OrganizationAffiliation.class)) {
                 OrganizationAffiliation item = (OrganizationAffiliation) object;
-                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId());
                     o.addAffiliation(le);
-                }
+                // }
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(),PersonContactpoint.class)) {
                 PersonContactpoint item = (PersonContactpoint) object;
-                if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getPersonInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
                     o.addContactPoint(le);
-                }
+                //}
             }
 
 
             o = (org.epos.eposdatamodel.Person) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.Person> retrieveBunch(List<String> entities) {
-        List<Person> list = getDbaccess().getListFromDBByInstanceId(entities, Person.class);
-        List<org.epos.eposdatamodel.Person> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Person.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Person> retrieveAll() {
-        List<Person> list = getDbaccess().getAllFromDB(Person.class);
-        List<org.epos.eposdatamodel.Person> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Person.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Person> retrieveAllWithStatus(StatusType status) {
-        List<Person> list = getDbaccess().getAllFromDBWithStatus(Person.class, status);
-        List<org.epos.eposdatamodel.Person> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Person.class, status));
     }
 
+    private List<org.epos.eposdatamodel.Person> retrieveEntities(Function<Void, List<Person>> dbFetcher) {
+        List<Person> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
+    }
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

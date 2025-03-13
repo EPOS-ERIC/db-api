@@ -10,6 +10,8 @@ import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> {
 
@@ -156,7 +158,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     @Override
     public org.epos.eposdatamodel.Operation retrieve(String instanceId) {
         List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList == null || elementList.isEmpty()) {
+            return null;
+        }
             Operation edmobj = elementList.get(0);
             org.epos.eposdatamodel.Operation o = new org.epos.eposdatamodel.Operation();
             o.setInstanceId(edmobj.getInstanceId());
@@ -167,63 +171,51 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
-                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
                     o.addWebservice(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationMapping.class)) {
                 OperationMapping item = (OperationMapping) object;
-                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.MAPPING.name()).retrieveLinkedEntity(item.getMappingInstance().getInstanceId());
                     o.addMapping(le);
-                }
+                //}
             }
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationElement.class)) {
                 OperationElement item = (OperationElement) object;
-                if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
                     if (el.getType().equals(ElementType.RETURNS.name())) o.addReturns(el.getValue());
-                }
+                //}
             }
 
             o = (org.epos.eposdatamodel.Operation) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
-        }
-        return null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveBunch(List<String> entities) {
-        List<Operation> list = getDbaccess().getListFromDBByInstanceId(entities, Operation.class);
-        List<org.epos.eposdatamodel.Operation> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Operation.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAll() {
-        List<Operation> list = getDbaccess().getAllFromDB(Operation.class);
-        List<org.epos.eposdatamodel.Operation> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDB(Operation.class));
     }
-
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAllWithStatus(StatusType status) {
-        List<Operation> list = getDbaccess().getAllFromDBWithStatus(Operation.class, status);
-        List<org.epos.eposdatamodel.Operation> returnList = new ArrayList<>();
-        list.parallelStream().forEach(item -> {
-            returnList.add(retrieve(item.getInstanceId()));
-        });
-        return returnList;
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Operation.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.Operation> retrieveEntities(Function<Void, List<Operation>> dbFetcher) {
+        List<Operation> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item.getInstanceId()))
+                .collect(Collectors.toList());
     }
 
     @Override
