@@ -212,12 +212,16 @@ public class UserGroupManagementAPI {
 
         System.out.println(group);
         System.out.println(user);
+
+        if(!metadataGroupUserList.isEmpty()) return true;
+
         MetadataGroupUser metadataGroupUser = new MetadataGroupUser();
-        metadataGroupUser.setId(!metadataGroupUserList.isEmpty() ? metadataGroupUserList.get(0).getId() : UUID.randomUUID().toString());
+        metadataGroupUser.setId(UUID.randomUUID().toString());
         metadataGroupUser.setGroup(group);
         metadataGroupUser.setAuthIdentifier(user);
         metadataGroupUser.setRequestStatus(requestStatusType.name());
         metadataGroupUser.setRole(role.name());
+
         return getDbaccess().updateObject(metadataGroupUser);
     }
 
@@ -244,8 +248,10 @@ public class UserGroupManagementAPI {
 
         List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBByUsingMultipleKeys(filters,AuthorizationGroup.class);
 
+        if(!authorizationGroupList.isEmpty()) return true;
+
         AuthorizationGroup authorizationGroup = new AuthorizationGroup();
-        authorizationGroup.setId(!authorizationGroupList.isEmpty() ? authorizationGroupList.get(0).getId() : UUID.randomUUID().toString());
+        authorizationGroup.setId(UUID.randomUUID().toString());
         authorizationGroup.setGroup((MetadataGroup) getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class).get(0));
         authorizationGroup.setMeta((EdmEntityId) getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class).get(0));
         return getDbaccess().updateObject(authorizationGroup);
