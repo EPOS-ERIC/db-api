@@ -46,6 +46,8 @@ public class LinkedEntityAPI {
         apiMap.put(EntityNames.DOCUMENTATION.name(), new DocumentationAPI(EntityNames.DOCUMENTATION.name(), Element.class));
         apiMap.put(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), new ParameterAPI(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), SoftwareApplicationInputParameter.class));
         apiMap.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), new ParameterAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), SoftwareApplicationOutputParameter.class));
+        apiMap.put(EntityNames.PAYLOAD.name(), new PayloadAPI(EntityNames.PAYLOAD.name(), Payload.class));
+        apiMap.put(EntityNames.OUTPUTMAPPING.name(), new OutputMappingAPI(EntityNames.OUTPUTMAPPING.name(), OutputMapping.class));
 
         edmClassMap.put(EntityNames.PERSON.name(), org.epos.eposdatamodel.Person.class);
         edmClassMap.put(EntityNames.MAPPING.name(), org.epos.eposdatamodel.Mapping.class);
@@ -70,6 +72,8 @@ public class LinkedEntityAPI {
         edmClassMap.put(EntityNames.DOCUMENTATION.name(), org.epos.eposdatamodel.Documentation.class);
         edmClassMap.put(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), org.epos.eposdatamodel.SoftwareApplicationInputParameter.class);
         edmClassMap.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), org.epos.eposdatamodel.SoftwareApplicationOutputParameter.class);
+        edmClassMap.put(EntityNames.PAYLOAD.name(), org.epos.eposdatamodel.Payload.class);
+        edmClassMap.put(EntityNames.OUTPUTMAPPING.name(), org.epos.eposdatamodel.OutputMapping.class);
     }
 
     public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus){

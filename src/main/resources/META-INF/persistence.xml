@@ -86,6 +86,7 @@
 		<class>model.OperationElementId</class>
 		<class>model.OperationMapping</class>
 		<class>model.OperationMappingId</class>
+		<class>model.OperationPayload</class>
 		<class>model.OperationWebservice</class>
 		<class>model.OperationWebserviceId</class>
 		<class>model.Organization</class>
@@ -100,7 +101,10 @@
 		<class>model.OrganizationMemberof</class>
 		<class>model.OrganizationMemberofId</class>
 		<class>model.OrganizationOwn</class>
+		<class>model.OutputMapping</class>
 		<class>model.Parameter</class>
+		<class>model.Payload</class>
+		<class>model.PayloadOutputMapping</class>
 		<class>model.Person</class>
 		<class>model.PersonContactpoint</class>
 		<class>model.PersonContactpointId</class>

@@ -86,6 +86,22 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             }
         }
 
+        if (obj.getPayload() != null) {
+            if(relationFromUpdate!=null && obj.getPayload().contains(relationFromUpdate)){
+                obj.getPayload().remove(relationFromUpdate);
+                obj.getPayload().add(relationToUpdate);
+            }
+            for(LinkedEntity payload : obj.getPayload()){
+                Payload payload1 = (Payload) RelationChecker.checkRelation(obj, previousObj, null, payload, overrideStatus, Payload.class, true);
+                if(payload1!=null){
+                    OperationPayload pi = new OperationPayload();
+                    pi.setOperationInstance(edmobj);
+                    pi.setPayloadInstance(payload1);
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
         /** RETURNS **/
         if(obj.getReturns()!=null){
             for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
@@ -174,6 +190,14 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
                     o.addWebservice(le);
+                //}
+            }
+
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationPayload.class)) {
+                OperationPayload item = (OperationPayload) object;
+                //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                LinkedEntity le = retrieveAPI(EntityNames.PAYLOAD.name()).retrieveLinkedEntity(item.getPayloadInstance().getInstanceId());
+                o.addPayload(le);
                 //}
             }
 

@@ -20,6 +20,8 @@ public enum EntityNames {
     EQUIPMENT,
     FACILITY,
     MAPPING,
+    OUTPUTMAPPING,
+    PAYLOAD,
     OPERATION,
     ORGANIZATION,
     PERSON,

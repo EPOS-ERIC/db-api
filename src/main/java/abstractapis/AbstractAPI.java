@@ -86,6 +86,8 @@ public abstract class AbstractAPI<T> {
         ENTITY_CLASSES.put(EntityNames.DOCUMENTATION.name(), Element.class);
         ENTITY_CLASSES.put(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), Parameter.class);
         ENTITY_CLASSES.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), Parameter.class);
+        ENTITY_CLASSES.put(EntityNames.OUTPUTMAPPING.name(), OutputMapping.class);
+        ENTITY_CLASSES.put(EntityNames.PAYLOAD.name(), Payload.class);
 
         // Map entity types to their respective API classes
         API_CLASSES.put(EntityNames.PERSON.name(), new PersonAPI(EntityNames.PERSON.name(), Person.class));
@@ -111,6 +113,8 @@ public abstract class AbstractAPI<T> {
         API_CLASSES.put(EntityNames.DOCUMENTATION.name(), new DocumentationAPI(EntityNames.DOCUMENTATION.name(), Element.class));
         API_CLASSES.put(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), new ParameterAPI(EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(), Parameter.class));
         API_CLASSES.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), new ParameterAPI(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), Parameter.class));
+        API_CLASSES.put(EntityNames.OUTPUTMAPPING.name(), new OutputMappingAPI(EntityNames.OUTPUTMAPPING.name(), OutputMapping.class));
+        API_CLASSES.put(EntityNames.PAYLOAD.name(), new PayloadAPI(EntityNames.PAYLOAD.name(), Payload.class));
     }
 
     public static AbstractAPI retrieveAPI(String entityType) {

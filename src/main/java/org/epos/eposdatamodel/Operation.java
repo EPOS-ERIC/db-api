@@ -51,6 +51,34 @@ public class Operation extends EPOSDataModelEntity {
             "  }", required = false)
     private List<LinkedEntity> webservice;
 
+    /**
+     * A variable-to-property mapping of the payload expected
+     **/
+    @Schema(name = "mapping", description = "A variable-to-property mapping of the IRI template.", example = "[{\n" +
+            "    \"entityType\": \"MAPPING\",\n" +
+            "    \"instanceId\": \"an UUID\",\n" +
+            "    \"metaId\": \"an UUID\",\n" +
+            "    \"uid\": \"an UUID\"\n" +
+            "  }]", required = false)
+    private List<LinkedEntity> payload;
+
+    public List<LinkedEntity> getPayload() {
+        return payload;
+    }
+
+    public void setPayload(List<LinkedEntity> payload) {
+        this.payload = payload;
+    }
+
+    public void addPayload(LinkedEntity payload) {
+        if (this.payload == null) {
+            ArrayList<LinkedEntity> tmpList = new ArrayList<>();
+            tmpList.add(payload);
+            this.setPayload(tmpList);
+        } else {
+            this.getPayload().add(payload);
+        }
+    }
 
     public void addMapping(LinkedEntity mapping) {
         if (this.mapping == null) {
@@ -184,6 +212,19 @@ public class Operation extends EPOSDataModelEntity {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Operation)) return false;
+        if (!super.equals(o)) return false;
+        Operation operation = (Operation) o;
+        return Objects.equals(method, operation.method) && Objects.equals(returns, operation.returns) && Objects.equals(template, operation.template) && Objects.equals(mapping, operation.mapping) && Objects.equals(webservice, operation.webservice) && Objects.equals(payload, operation.payload);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), method, returns, template, mapping, webservice, payload);
+    }
+
+    @Override
     public String toString() {
         return "Operation{" +
                 "method='" + method + '\'' +
@@ -191,20 +232,7 @@ public class Operation extends EPOSDataModelEntity {
                 ", template='" + template + '\'' +
                 ", mapping=" + mapping +
                 ", webservice=" + webservice +
-                "} " + super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        Operation operation = (Operation) o;
-        return Objects.equals(getMethod(), operation.getMethod()) && Objects.equals(getReturns(), operation.getReturns()) && Objects.equals(getTemplate(), operation.getTemplate()) && Objects.equals(getMapping(), operation.getMapping()) && Objects.equals(getWebservice(), operation.getWebservice());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), getMethod(), getReturns(), getTemplate(), getMapping(), getWebservice());
+                ", payload=" + payload +
+                '}';
     }
 }
