@@ -2,8 +2,6 @@ package org.epos.eposdatamodel;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -17,37 +15,37 @@ public class OutputMapping extends EPOSDataModelEntity {
      * This property contains a short string used to describe the meaning of the parameter.
      **/
     @Schema(name = "label", description = "This property contains a short string used to describe the meaning of the parameter.", example = "Parameter label", required = false)
-    private String label;
+    private String outputLabel;
 
     /**
      * This property contains the vocabulary term which indicates the semantic description of parameter.
      **/
     @Schema(name = "property", description = "This property contains the vocabulary term which indicates the semantic description of parameter.", example = "schema:endDate", required = false)
-    private String property;
+    private String outputProperty;
 
     /**
      * This property contains the type of parameter
      **/
     @Schema(name = "range", description = "This property contains the type of parameter", example = "string", required = false)
-    private String range;
+    private String outputRange;
 
     /**
      * This property contains true if the property is required, false otherwise.
      **/
     @Schema(name = "required", description = "This property contains true if the property is required, false otherwise.", example = "true", required = false)
-    private String required;
+    private String outputRequired;
 
     /**
      * This property contains the regular expression for testing values according to the parameters specification.
      **/
     @Schema(name = "valuePattern", description = "This property contains the regular expression for testing values according to the parameters specification.", example = "yyyy-MM-dd", required = false)
-    private String valuePattern;
+    private String outputValuePattern;
 
     /**
      * This property contains the name of the parameter as required by web service specifications.
      **/
     @Schema(name = "variable", description = "This property contains the name of the parameter as required by web service specifications.", example = "eventid", required = false)
-    private String variable;
+    private String outputVariable;
 
     /**
      * This property contains a short string used to describe the meaning of the parameter.
@@ -55,16 +53,16 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return label
      **/
 
-    public String getLabel() {
-        return label;
+    public String getOutputLabel() {
+        return outputLabel;
     }
 
-    public void setLabel(String label) {
-        this.label = label;
+    public void setOutputLabel(String outputLabel) {
+        this.outputLabel = outputLabel;
     }
 
     public OutputMapping property(String property) {
-        this.property = property;
+        this.outputProperty = property;
         return this;
     }
 
@@ -74,16 +72,16 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return property
      **/
 
-    public String getProperty() {
-        return property;
+    public String getOutputProperty() {
+        return outputProperty;
     }
 
-    public void setProperty(String property) {
-        this.property = property;
+    public void setOutputProperty(String outputProperty) {
+        this.outputProperty = outputProperty;
     }
 
     public OutputMapping range(String range) {
-        this.range = range;
+        this.outputRange = range;
         return this;
     }
 
@@ -93,16 +91,16 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return range
      **/
 
-    public String getRange() {
-        return range;
+    public String getOutputRange() {
+        return outputRange;
     }
 
-    public void setRange(String range) {
-        this.range = range;
+    public void setOutputRange(String outputRange) {
+        this.outputRange = outputRange;
     }
 
     public OutputMapping required(String required) {
-        this.required = required;
+        this.outputRequired = required;
         return this;
     }
 
@@ -112,16 +110,16 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return required
      **/
 
-    public String getRequired() {
-        return required;
+    public String getOutputRequired() {
+        return outputRequired;
     }
 
-    public void setRequired(String required) {
-        this.required = required;
+    public void setOutputRequired(String outputRequired) {
+        this.outputRequired = outputRequired;
     }
 
     public OutputMapping valuePattern(String valuePattern) {
-        this.valuePattern = valuePattern;
+        this.outputValuePattern = valuePattern;
         return this;
     }
 
@@ -131,16 +129,16 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return valuePattern
      **/
 
-    public String getValuePattern() {
-        return valuePattern;
+    public String getOutputValuePattern() {
+        return outputValuePattern;
     }
 
-    public void setValuePattern(String valuePattern) {
-        this.valuePattern = valuePattern;
+    public void setOutputValuePattern(String outputValuePattern) {
+        this.outputValuePattern = outputValuePattern;
     }
 
     public OutputMapping variable(String variable) {
-        this.variable = variable;
+        this.outputVariable = variable;
         return this;
     }
 
@@ -150,12 +148,12 @@ public class OutputMapping extends EPOSDataModelEntity {
      * @return variable
      **/
 
-    public String getVariable() {
-        return variable;
+    public String getOutputVariable() {
+        return outputVariable;
     }
 
-    public void setVariable(String variable) {
-        this.variable = variable;
+    public void setOutputVariable(String outputVariable) {
+        this.outputVariable = outputVariable;
     }
 
     @Override
@@ -163,23 +161,23 @@ public class OutputMapping extends EPOSDataModelEntity {
         if (!(o instanceof OutputMapping)) return false;
         if (!super.equals(o)) return false;
         OutputMapping that = (OutputMapping) o;
-        return Objects.equals(label, that.label) && Objects.equals(property, that.property) && Objects.equals(range, that.range) && Objects.equals(required, that.required) && Objects.equals(valuePattern, that.valuePattern) && Objects.equals(variable, that.variable);
+        return Objects.equals(outputLabel, that.outputLabel) && Objects.equals(outputProperty, that.outputProperty) && Objects.equals(outputRange, that.outputRange) && Objects.equals(outputRequired, that.outputRequired) && Objects.equals(outputValuePattern, that.outputValuePattern) && Objects.equals(outputVariable, that.outputVariable);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), label, property, range, required, valuePattern, variable);
+        return Objects.hash(super.hashCode(), outputLabel, outputProperty, outputRange, outputRequired, outputValuePattern, outputVariable);
     }
 
     @Override
     public String toString() {
         return "OutputMapping{" +
-                "label='" + label + '\'' +
-                ", property='" + property + '\'' +
-                ", range='" + range + '\'' +
-                ", required='" + required + '\'' +
-                ", valuePattern='" + valuePattern + '\'' +
-                ", variable='" + variable + '\'' +
+                "label='" + outputLabel + '\'' +
+                ", property='" + outputProperty + '\'' +
+                ", range='" + outputRange + '\'' +
+                ", required='" + outputRequired + '\'' +
+                ", valuePattern='" + outputValuePattern + '\'' +
+                ", variable='" + outputVariable + '\'' +
                 '}';
     }
 }

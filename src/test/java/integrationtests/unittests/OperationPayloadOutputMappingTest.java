@@ -2,16 +2,12 @@ package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
-import metadataapis.EntityNames;
-import metadataapis.OutputMappingAPI;
 import model.StatusType;
 import org.epos.eposdatamodel.*;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class OperationPayloadOutputMappingTest extends TestcontainersLifecycle {
 
@@ -22,11 +18,11 @@ public class OperationPayloadOutputMappingTest extends TestcontainersLifecycle {
 
         OutputMapping outputMapping = new OutputMapping();
         outputMapping.setUid("output_mapping");
-        outputMapping.setProperty("TEST");
-        outputMapping.setRange("TEST2");
-        outputMapping.setLabel("TEST3");
-        outputMapping.setRequired("TRUE");
-        outputMapping.setValuePattern("TEST4");
+        outputMapping.setOutputProperty("TEST");
+        outputMapping.setOutputRange("TEST2");
+        outputMapping.setOutputLabel("TEST3");
+        outputMapping.setOutputRequired("TRUE");
+        outputMapping.setOutputValuePattern("TEST4");
         outputMapping.setStatus(StatusType.DRAFT);
 
         LinkedEntity outputmappingLE = AbstractAPI.retrieveAPI("OUTPUTMAPPING").create(outputMapping,null,null,null);

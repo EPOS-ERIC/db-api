@@ -47,12 +47,12 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
         getDbaccess().updateObject(edmobj);
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
-        edmobj.setLabel(obj.getLabel());
-        edmobj.setValuepattern(obj.getValuePattern());
-        edmobj.setRequired(Boolean.parseBoolean(obj.getRequired()));
-        edmobj.setRange(obj.getRange());
-        edmobj.setProperty(obj.getProperty());
-        edmobj.setVariable(obj.getVariable());
+        edmobj.setLabel(obj.getOutputLabel());
+        edmobj.setValuepattern(obj.getOutputValuePattern());
+        edmobj.setRequired(Boolean.parseBoolean(obj.getOutputRequired()));
+        edmobj.setRange(obj.getOutputRange());
+        edmobj.setProperty(obj.getOutputProperty());
+        edmobj.setVariable(obj.getOutputVariable());
 
         getDbaccess().updateObject(edmobj);
 
@@ -90,12 +90,12 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
-            o.setLabel(edmobj.getLabel());
-            o.setValuePattern(edmobj.getValuepattern());
-            o.setRequired(Boolean.toString(edmobj.getRequired()));
-            o.setRange(edmobj.getRange());
-            o.setProperty(edmobj.getProperty());
-            o.setVariable(edmobj.getVariable());
+            o.setOutputLabel(edmobj.getLabel());
+            o.setOutputValuePattern(edmobj.getValuepattern());
+            o.setOutputRequired(Boolean.toString(edmobj.getRequired()));
+            o.setOutputRange(edmobj.getRange());
+            o.setOutputProperty(edmobj.getProperty());
+            o.setOutputVariable(edmobj.getVariable());
 
             o = (org.epos.eposdatamodel.OutputMapping) VersioningStatusAPI.retrieveVersion(o);
 
