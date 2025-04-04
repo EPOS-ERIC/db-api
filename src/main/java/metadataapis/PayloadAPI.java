@@ -25,7 +25,7 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
-        List<Operation> returnList = getDbaccess().getOneFromDB(
+        List<Payload> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
                 obj.getUid(),
@@ -92,32 +92,20 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
-            OperationElement item = (OperationElement) object;
-            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+        for(Object object : getDbaccess().getAllFromDB(PayloadOutputMapping.class)){
+            PayloadOutputMapping item = (PayloadOutputMapping) object;
+            if(item.getPayloadInstance().getInstanceId().equals(instanceId)){
                 dbaccess.deleteObject(item);
             }
         }
-        for(Object object : getDbaccess().getAllFromDB(OperationMapping.class)){
-            OperationMapping item = (OperationMapping) object;
-            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
+        for(Object object : getDbaccess().getAllFromDB(OperationPayload.class)){
+            OperationPayload item = (OperationPayload) object;
+            if(item.getPayloadInstance().getInstanceId().equals(instanceId)){
                 dbaccess.deleteObject(item);
             }
         }
-        for(Object object : getDbaccess().getAllFromDB(OperationDistribution.class)){
-            OperationDistribution item = (OperationDistribution) object;
-            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OperationWebservice.class)){
-            OperationWebservice item = (OperationWebservice) object;
-            if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
-            }
-        }
-        List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
-        for(Operation object : elementList){
+        List<Payload> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Payload.class);
+        for(Payload object : elementList){
             dbaccess.deleteObject(object);
         }
 
