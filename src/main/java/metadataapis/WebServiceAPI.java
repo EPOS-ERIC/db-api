@@ -351,12 +351,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstanceId", edmobj.getInstanceId(),WebserviceRelation.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("webservice", edmobj.getInstanceId(),WebserviceRelation.class)) {
                 WebserviceRelation item = (WebserviceRelation) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getEntityInstanceId());
-                    o.addSupportedOperation(le);
+                    o.addWebserviceRelation(le);
                 }
                 //}
         }
