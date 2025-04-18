@@ -186,8 +186,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             }
         }
 
-        if (obj.getRelation() != null) {
-            for(LinkedEntity relation : obj.getRelation()){
+        if (obj.getWebserviceRelation() != null) {
+            for(LinkedEntity relation : obj.getWebserviceRelation()){
                 WebserviceRelation pi = new WebserviceRelation();
                 pi.setWebservice(edmobj);
                 pi.setEntityInstanceId(relation.getInstanceId());
@@ -351,7 +351,15 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            /** TODO: RELATION **/
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstanceId", edmobj.getInstanceId(),WebserviceRelation.class)) {
+                WebserviceRelation item = (WebserviceRelation) object;
+                //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+                if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {
+                    LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getEntityInstanceId());
+                    o.addSupportedOperation(le);
+                }
+                //}
+        }
 
             o = (org.epos.eposdatamodel.WebService) VersioningStatusAPI.retrieveVersion(o);
 

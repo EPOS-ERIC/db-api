@@ -5,9 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import utilities.ParseLocalDateTime;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -174,7 +171,7 @@ public class WebService extends EPOSDataModelEntity {
             "    \"metaId\": \"an UUID\",\n" +
             "    \"uid\": \"an UUID\"\n" +
             "  }", required = false)
-    private List<LinkedEntity> relation;
+    private List<LinkedEntity> webserviceRelation;
 
 
     /**
@@ -184,13 +181,13 @@ public class WebService extends EPOSDataModelEntity {
     private String aaaiTypes;
     
 
-    public void addRelation(LinkedEntity relation) {
-        if (this.getRelation() == null) {
+    public void addWebserviceRelation(LinkedEntity relation) {
+        if (this.getWebserviceRelation() == null) {
             ArrayList<LinkedEntity> relationList = new ArrayList<>();
             relationList.add(relation);
-            this.setRelation(relationList);
+            this.setWebserviceRelation(relationList);
         } else {
-            this.getRelation().add(relation);
+            this.getWebserviceRelation().add(relation);
         }
     }
 
@@ -600,12 +597,12 @@ public class WebService extends EPOSDataModelEntity {
         return this;
     }
     
-    public List<LinkedEntity> getRelation() {
-        return relation;
+    public List<LinkedEntity> getWebserviceRelation() {
+        return webserviceRelation;
     }
 
-    public void setRelation(List<LinkedEntity> relation) {
-        this.relation = relation;
+    public void setWebserviceRelation(List<LinkedEntity> webserviceRelation) {
+        this.webserviceRelation = webserviceRelation;
     }
 
     @Override
@@ -614,12 +611,12 @@ public class WebService extends EPOSDataModelEntity {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         WebService that = (WebService) o;
-        return Objects.equals(identifier, that.identifier) && Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(dateModified, that.dateModified) && Objects.equals(datePublished, that.datePublished) && Objects.equals(description, that.description) && Objects.equals(documentation, that.documentation) && Objects.equals(entryPoint, that.entryPoint) && Objects.equals(keywords, that.keywords) && Objects.equals(license, that.license) && Objects.equals(name, that.name) && Objects.equals(provider, that.provider) && Objects.equals(spatialExtent, that.spatialExtent) && Objects.equals(supportedOperation, that.supportedOperation) && Objects.equals(temporalExtent, that.temporalExtent) && Objects.equals(distribution, that.distribution) && Objects.equals(relation, that.relation) && Objects.equals(aaaiTypes, that.aaaiTypes);
+        return Objects.equals(identifier, that.identifier) && Objects.equals(category, that.category) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(dateModified, that.dateModified) && Objects.equals(datePublished, that.datePublished) && Objects.equals(description, that.description) && Objects.equals(documentation, that.documentation) && Objects.equals(entryPoint, that.entryPoint) && Objects.equals(keywords, that.keywords) && Objects.equals(license, that.license) && Objects.equals(name, that.name) && Objects.equals(provider, that.provider) && Objects.equals(spatialExtent, that.spatialExtent) && Objects.equals(supportedOperation, that.supportedOperation) && Objects.equals(temporalExtent, that.temporalExtent) && Objects.equals(distribution, that.distribution) && Objects.equals(webserviceRelation, that.webserviceRelation) && Objects.equals(aaaiTypes, that.aaaiTypes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), identifier, category, contactPoint, dateModified, datePublished, description, documentation, entryPoint, keywords, license, name, provider, spatialExtent, supportedOperation, temporalExtent, distribution, relation, aaaiTypes);
+        return Objects.hash(super.hashCode(), identifier, category, contactPoint, dateModified, datePublished, description, documentation, entryPoint, keywords, license, name, provider, spatialExtent, supportedOperation, temporalExtent, distribution, webserviceRelation, aaaiTypes);
     }
 
     @Override
@@ -641,7 +638,7 @@ public class WebService extends EPOSDataModelEntity {
                 ", supportedOperation=" + supportedOperation +
                 ", temporalExtent=" + temporalExtent +
                 ", distribution=" + distribution +
-                ", relation=" + relation +
+                ", relation=" + webserviceRelation +
                 ", aaaiTypes='" + aaaiTypes + '\'' +
                 '}'+ super.toString();
     }
