@@ -292,7 +292,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     }
     @Override
     public List<org.epos.eposdatamodel.Organization> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Operation.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Organization.class, status));
     }
 
     private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<Organization>> dbFetcher) {
