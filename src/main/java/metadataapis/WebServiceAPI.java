@@ -195,7 +195,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             }
 
             for(LinkedEntity relation : obj.getWebserviceRelation()){
-                WebService webService = (WebService) RelationChecker.checkRelation(obj, previousObj, null, relation, overrideStatus, Facility.class, false);
+                Webservice webService = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, relation, overrideStatus, Webservice.class, false);
+                System.out.println(webService);
                 if(webService!=null) {
                     WebserviceRelation pi = new WebserviceRelation();
                     pi.setWebservice(edmobj);
@@ -364,10 +365,10 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for (Object object : dbaccess.getOneFromDBBySpecificKey("webservice", edmobj.getInstanceId(),WebserviceRelation.class)) {
                 WebserviceRelation item = (WebserviceRelation) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {
+                //if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getEntityInstanceId());
                     o.addWebserviceRelation(le);
-                }
+                //}
                 //}
         }
 
