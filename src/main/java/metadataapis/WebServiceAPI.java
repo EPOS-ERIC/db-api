@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import model.*;
 import model.Element;
+import model.Facility;
 import model.Identifier;
 import model.Operation;
 import model.Organization;
@@ -187,13 +188,22 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
 
         if (obj.getWebserviceRelation() != null) {
+
+            if(relationFromUpdate!=null && obj.getWebserviceRelation().contains(relationFromUpdate)){
+                obj.getWebserviceRelation().remove(relationFromUpdate);
+                obj.getWebserviceRelation().add(relationToUpdate);
+            }
+
             for(LinkedEntity relation : obj.getWebserviceRelation()){
-                WebserviceRelation pi = new WebserviceRelation();
-                pi.setWebservice(edmobj);
-                pi.setEntityInstanceId(relation.getInstanceId());
-                pi.setResourceEntity(EntityNames.valueOf(relation.getEntityType()).name());
-                pi.setWebserviceInstanceId(edmobj.getInstanceId());
-                dbaccess.updateObject(pi);
+                WebService webService = (WebService) RelationChecker.checkRelation(obj, previousObj, null, relation, overrideStatus, Facility.class, false);
+                if(webService!=null) {
+                    WebserviceRelation pi = new WebserviceRelation();
+                    pi.setWebservice(edmobj);
+                    pi.setEntityInstanceId(webService.getInstanceId());
+                    pi.setResourceEntity(EntityNames.WEBSERVICE.name());
+                    pi.setWebserviceInstanceId(edmobj.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
             }
         }
 
