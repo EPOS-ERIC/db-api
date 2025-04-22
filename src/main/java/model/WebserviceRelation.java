@@ -1,52 +1,39 @@
 package model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "webservice_relation")
 public class WebserviceRelation {
-    @Id
-    @jakarta.validation.constraints.Size(max = 100)
-    @Column(name = "webservice_instance_id", nullable = false, length = 100)
-    private String webserviceInstanceId;
+    @EmbeddedId
+    private WebserviceRelationId id;
 
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("webserviceInstanceId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
-    private Webservice webservice;
+    private Webservice webserviceInstance;
 
-    @jakarta.validation.constraints.Size(max = 100)
-    @jakarta.validation.constraints.NotNull
-    @Column(name = "entity_instance_id", nullable = false, length = 100)
-    private String entityInstanceId;
-
-    @jakarta.validation.constraints.Size(max = 100)
-    @jakarta.validation.constraints.NotNull
+    @Size(max = 100)
+    @NotNull
     @Column(name = "resource_entity", nullable = false, length = 100)
     private String resourceEntity;
 
-    public String getWebserviceInstanceId() {
-        return webserviceInstanceId;
+    public WebserviceRelationId getId() {
+        return id;
     }
 
-    public void setWebserviceInstanceId(String webserviceInstanceId) {
-        this.webserviceInstanceId = webserviceInstanceId;
+    public void setId(WebserviceRelationId id) {
+        this.id = id;
     }
 
-    public Webservice getWebservice() {
-        return webservice;
+    public Webservice getWebserviceInstance() {
+        return webserviceInstance;
     }
 
-    public void setWebservice(Webservice webservice) {
-        this.webservice = webservice;
-    }
-
-    public String getEntityInstanceId() {
-        return entityInstanceId;
-    }
-
-    public void setEntityInstanceId(String entityInstanceId) {
-        this.entityInstanceId = entityInstanceId;
+    public void setWebserviceInstance(Webservice webserviceInstance) {
+        this.webserviceInstance = webserviceInstance;
     }
 
     public String getResourceEntity() {

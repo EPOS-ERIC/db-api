@@ -189,20 +189,17 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
         if (obj.getWebserviceRelation() != null) {
 
-            if(relationFromUpdate!=null && obj.getWebserviceRelation().contains(relationFromUpdate)){
-                obj.getWebserviceRelation().remove(relationFromUpdate);
-                obj.getWebserviceRelation().add(relationToUpdate);
-            }
-
             for(LinkedEntity relation : obj.getWebserviceRelation()){
                 Webservice webService = (Webservice) RelationChecker.checkRelation(obj, previousObj, null, relation, overrideStatus, Webservice.class, false);
-                System.out.println(webService);
                 if(webService!=null) {
+                    WebserviceRelationId wid = new WebserviceRelationId();
+                    wid.setWebserviceInstanceId(edmobj.getInstanceId());
+                    wid.setEntityInstanceId(webService.getInstanceId());
+
                     WebserviceRelation pi = new WebserviceRelation();
-                    pi.setWebservice(edmobj);
-                    pi.setEntityInstanceId(webService.getInstanceId());
+                    pi.setId(wid);
+                    pi.setWebserviceInstance(edmobj);
                     pi.setResourceEntity(EntityNames.WEBSERVICE.name());
-                    pi.setWebserviceInstanceId(edmobj.getInstanceId());
                     dbaccess.updateObject(pi);
                 }
             }
@@ -252,7 +249,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceRelation.class)){
             WebserviceRelation item = (WebserviceRelation) object;
-            if(item.getWebservice().getInstanceId().equals(instanceId)){
+            if(item.getId().getWebserviceInstanceId().equals(instanceId)){
                 dbaccess.deleteObject(item);
             }
         }
@@ -362,11 +359,11 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webservice", edmobj.getInstanceId(),WebserviceRelation.class)) {
+            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceRelation.class)) {
                 WebserviceRelation item = (WebserviceRelation) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 //if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {
-                    LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getEntityInstanceId());
+                    LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getId().getEntityInstanceId());
                     o.addWebserviceRelation(le);
                 //}
                 //}
