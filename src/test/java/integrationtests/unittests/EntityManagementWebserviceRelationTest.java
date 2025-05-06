@@ -45,7 +45,7 @@ public class EntityManagementWebserviceRelationTest extends TestcontainersLifecy
 
         WebService retrievedWebservice = (WebService) AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name()).retrieve(webService2.getInstanceId());
 
-        System.out.println(retrievedWebservice);
+        System.out.println(retrievedWebservice.getWebserviceRelation());
 
         assertNotNull(retrievedWebservice);
     }

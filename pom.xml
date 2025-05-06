@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>3.1.32</version>
+	<version>3.1.33</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>

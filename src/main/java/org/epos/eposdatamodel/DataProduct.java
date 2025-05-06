@@ -686,15 +686,6 @@ public class DataProduct extends EPOSDataModelEntity {
         this.versionInfo = versionInfo;
     }
 
-    public String getHasQualityAnnotation() {
-        return hasQualityAnnotation;
-    }
-
-    public void setHasQualityAnnotation(String hasQualityAnnotation) {
-        this.hasQualityAnnotation = hasQualityAnnotation;
-    }
-
-
     public List<LinkedEntity> getContactPoint() {
         return contactPoint;
     }
@@ -751,13 +742,28 @@ public class DataProduct extends EPOSDataModelEntity {
         this.documentation = documentation;
     }
 
+    public void setKeywords(String keywords) {
+        this.keywords = keywords;
+    }
+
+    public void setSpatialExtent(List<LinkedEntity> spatialExtent) {
+        this.spatialExtent = spatialExtent;
+    }
+
     public String getQualityAssurance() {
         return qualityAssurance;
     }
 
-    public DataProduct setQualityAssurance(String qualityAssurance) {
+    public void setQualityAssurance(String qualityAssurance) {
         this.qualityAssurance = qualityAssurance;
-        return this;
+    }
+
+    public String getHasQualityAnnotation() {
+        return hasQualityAnnotation;
+    }
+
+    public void setHasQualityAnnotation(String hasQualityAnnotation) {
+        this.hasQualityAnnotation = hasQualityAnnotation;
     }
 
     @Override
