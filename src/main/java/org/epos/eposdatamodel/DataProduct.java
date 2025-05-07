@@ -594,7 +594,7 @@ public class DataProduct extends EPOSDataModelEntity {
         return spatialExtent;
     }
 
-    public void setSpatialExtent(ArrayList<LinkedEntity> spatialExtent) {
+    public void setSpatialExtent(List<LinkedEntity> spatialExtent) {
         this.spatialExtent = spatialExtent;
     }
 
@@ -744,10 +744,6 @@ public class DataProduct extends EPOSDataModelEntity {
 
     public void setKeywords(String keywords) {
         this.keywords = keywords;
-    }
-
-    public void setSpatialExtent(List<LinkedEntity> spatialExtent) {
-        this.spatialExtent = spatialExtent;
     }
 
     public String getQualityAssurance() {
