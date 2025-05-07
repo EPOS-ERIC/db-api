@@ -1,12 +1,12 @@
 package model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "metadata_user")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class MetadataUser {
     @Id
     @jakarta.validation.constraints.Size(max = 1024)

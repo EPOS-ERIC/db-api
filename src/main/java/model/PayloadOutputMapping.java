@@ -1,9 +1,12 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "payload_output_mapping")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class PayloadOutputMapping {
     @EmbeddedId
     private PayloadOutputMappingId id;

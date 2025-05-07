@@ -2,9 +2,12 @@ package model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "parameter")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class Parameter {
     @Id
     @Size(max = 100)

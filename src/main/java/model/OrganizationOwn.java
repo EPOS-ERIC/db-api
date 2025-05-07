@@ -1,9 +1,12 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "organization_owns")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class OrganizationOwn {
     @Id
     @jakarta.validation.constraints.Size(max = 100)

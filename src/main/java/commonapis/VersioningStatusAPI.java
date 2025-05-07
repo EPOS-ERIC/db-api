@@ -1,6 +1,7 @@
 package commonapis;
 
 import dao.EposDataModelDAO;
+import dao.EposDataModelDAOWithCache;
 import model.*;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
@@ -128,7 +129,7 @@ public class VersioningStatusAPI {
         return returnList.isEmpty() ? null : returnList.get(0);
     }
 
-    private static EposDataModelDAO<Versioningstatus> getDbaccess() {
-        return new EposDataModelDAO<>();
+    private static EposDataModelDAOWithCache<Versioningstatus> getDbaccess() {
+        return new EposDataModelDAOWithCache<>();
     }
 }

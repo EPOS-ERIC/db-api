@@ -1,12 +1,15 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "publication")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class Publication {
     @Id
     @jakarta.validation.constraints.Size(max = 100)

@@ -1,9 +1,12 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "metadata_group")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class MetadataGroup {
     @Id
     @jakarta.validation.constraints.Size(max = 100)

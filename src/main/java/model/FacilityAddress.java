@@ -1,9 +1,12 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "facility_address")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class FacilityAddress {
     @EmbeddedId
     private FacilityAddressId id;

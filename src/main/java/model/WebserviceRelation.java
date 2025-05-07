@@ -3,9 +3,12 @@ package model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "webservice_relation")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class WebserviceRelation {
     @EmbeddedId
     private WebserviceRelationId id;

@@ -1,9 +1,12 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "softwaresourcecode_identifier")
+@EntityListeners(CacheInvalidationListener.class)
+@Cacheable()
 public class SoftwaresourcecodeIdentifier {
     @EmbeddedId
     private SoftwaresourcecodeIdentifierId id;

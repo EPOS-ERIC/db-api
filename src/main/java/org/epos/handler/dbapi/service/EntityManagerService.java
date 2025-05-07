@@ -12,11 +12,14 @@ import java.util.HashMap;
 public class EntityManagerService {
 
     private static EntityManagerFactory instance;
+    private static DatabaseCacheService cacheService;
 
     private String persistenceName;
     private String poolMaxSize;
     private String maxConnectionLifetime;
     private String keepAliveTime;
+    private String cacheEnabled;
+    private String cacheRefreshInterval;
 
     private String connectionString;
     private String postgresqlHost;
@@ -25,11 +28,12 @@ public class EntityManagerService {
     private String postgresqlPassword;
 
     private EntityManagerService(EntityManagerServiceBuilder entityManagerServiceBuilder) {
-
         this.persistenceName = entityManagerServiceBuilder.persistenceName;
         this.poolMaxSize = entityManagerServiceBuilder.poolMaxSize;
         this.maxConnectionLifetime = entityManagerServiceBuilder.maxConnectionLifetime;
         this.keepAliveTime = entityManagerServiceBuilder.keepAliveTime;
+        this.cacheEnabled = entityManagerServiceBuilder.cacheEnabled;
+        this.cacheRefreshInterval = entityManagerServiceBuilder.cacheRefreshInterval;
 
         HikariConfig hikariConfig = new HikariConfig();
         HashMap<String, Object> properties = new HashMap<>();
@@ -40,7 +44,6 @@ public class EntityManagerService {
 
         hikariConfig.setDriverClassName("org.postgresql.Driver");
         hikariConfig.setPoolName("metadata_catalogue");
-        //hikariConfig.setConnectionTestQuery("SELECT 1");
         hikariConfig.setConnectionTimeout(1000);
         hikariConfig.setInitializationFailTimeout(9000);
 
@@ -53,8 +56,6 @@ public class EntityManagerService {
         this.postgresqlDBName = entityManagerServiceBuilder.postgresqlDBName;
         this.postgresqlUsername = entityManagerServiceBuilder.postgresqlUsername;
         this.postgresqlPassword = entityManagerServiceBuilder.postgresqlPassword;
-
-        //System.out.println(this.postgresqlHost);
 
         if (connectionString != null) {
             hikariConfig.setJdbcUrl(connectionString);
@@ -73,10 +74,34 @@ public class EntityManagerService {
             hikariConfig.setPassword(password);
         }
 
-
         DataSource hikariDataSource = new HikariDataSource(hikariConfig);
 
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
+
+        // Configure EclipseLink cache settings - simplified approach
+        if (Boolean.parseBoolean(cacheEnabled)) {
+            // Enable JPA shared cache mode
+            properties.put(PersistenceUnitProperties.SHARED_CACHE_MODE, "ENABLE_SELECTIVE");
+
+            // Set cache type and size
+            properties.put(PersistenceUnitProperties.CACHE_TYPE_DEFAULT, "SOFT");
+            properties.put(PersistenceUnitProperties.CACHE_SIZE_DEFAULT, "1000");
+
+            // Enable prepared statement caching
+            properties.put(PersistenceUnitProperties.CACHE_STATEMENTS, "true");
+            properties.put(PersistenceUnitProperties.CACHE_STATEMENTS_SIZE, "100");
+
+            // Don't use weaving at all to avoid issues
+            properties.put(PersistenceUnitProperties.WEAVING, "false");
+
+            // Initialize our custom cache service
+            cacheService = DatabaseCacheService.getInstance();
+
+            // Set the cache expiration time from configuration
+            long refreshInterval = Long.parseLong(cacheRefreshInterval);
+            cacheService.setCacheExpirationTime(refreshInterval);
+        }
+
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
     }
 
@@ -85,6 +110,8 @@ public class EntityManagerService {
         private String poolMaxSize;
         private String maxConnectionLifetime;
         private String keepAliveTime;
+        private String cacheEnabled;
+        private String cacheRefreshInterval;
 
         private String connectionString;
         private String postgresqlHost;
@@ -96,6 +123,8 @@ public class EntityManagerService {
         private final String CONNECTION_POOL_MAX_SIZE_DEFAULT = "10";
         private final String CONNECTION_MAX_LIFETIME_DEFAULT = "40000";
         private final String CONNECTION_TEST_IDLE_INTERVAL_TIME_DEFAULT = "30000";
+        private final String CACHE_ENABLED_DEFAULT = "true";
+        private final String CACHE_REFRESH_INTERVAL_DEFAULT = "60000"; // 1 minute default
 
         public EntityManagerServiceBuilder(){
             persistenceName = System.getenv("PERSISTENCE_NAME");
@@ -110,6 +139,11 @@ public class EntityManagerService {
             keepAliveTime = System.getenv("CONNECTION_TEST_IDLE_INTERVAL_TIME");
             keepAliveTime = keepAliveTime == null ? CONNECTION_TEST_IDLE_INTERVAL_TIME_DEFAULT : keepAliveTime;
 
+            cacheEnabled = System.getenv("CACHE_ENABLED");
+            cacheEnabled = cacheEnabled == null ? CACHE_ENABLED_DEFAULT : cacheEnabled;
+
+            cacheRefreshInterval = System.getenv("CACHE_REFRESH_INTERVAL");
+            cacheRefreshInterval = cacheRefreshInterval == null ? CACHE_REFRESH_INTERVAL_DEFAULT : cacheRefreshInterval;
 
             this.connectionString = System.getenv("POSTGRESQL_CONNECTION_STRING");
             this.postgresqlHost =  System.getenv("POSTGRESQL_HOST");
@@ -135,6 +169,16 @@ public class EntityManagerService {
 
         public EntityManagerServiceBuilder setKeepAliveTime(String keepAliveTime) {
             this.keepAliveTime = keepAliveTime;
+            return this;
+        }
+
+        public EntityManagerServiceBuilder setCacheEnabled(String cacheEnabled) {
+            this.cacheEnabled = cacheEnabled;
+            return this;
+        }
+
+        public EntityManagerServiceBuilder setCacheRefreshInterval(String cacheRefreshInterval) {
+            this.cacheRefreshInterval = cacheRefreshInterval;
             return this;
         }
 
@@ -166,7 +210,6 @@ public class EntityManagerService {
         public EntityManagerService build(){
             return new EntityManagerService(this);
         }
-
     }
 
     public static synchronized EntityManagerFactory getInstance() {
@@ -174,4 +217,7 @@ public class EntityManagerService {
         return null;
     }
 
+    public static DatabaseCacheService getCacheService() {
+        return cacheService;
+    }
 }
