@@ -85,11 +85,11 @@ public class EntityManagerService {
 
             // Set cache type and size
             properties.put(PersistenceUnitProperties.CACHE_TYPE_DEFAULT, "SOFT");
-            properties.put(PersistenceUnitProperties.CACHE_SIZE_DEFAULT, "1000");
+            properties.put(PersistenceUnitProperties.CACHE_SIZE_DEFAULT, "10000");
 
             // Enable prepared statement caching
             properties.put(PersistenceUnitProperties.CACHE_STATEMENTS, "true");
-            properties.put(PersistenceUnitProperties.CACHE_STATEMENTS_SIZE, "100");
+            properties.put(PersistenceUnitProperties.CACHE_STATEMENTS_SIZE, "10000");
 
             // Don't use weaving at all to avoid issues
             properties.put(PersistenceUnitProperties.WEAVING, "false");

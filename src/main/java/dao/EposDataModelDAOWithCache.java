@@ -10,6 +10,7 @@ import model.Versioningstatus;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.DatabaseCacheService;
 import org.epos.handler.dbapi.service.EntityManagerService;
+import org.epos.handler.dbapi.service.RabbitMQCacheInvalidationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,14 +19,29 @@ import java.util.logging.Logger;
 
 /**
  * Extension of the EposDataModelDAO class with caching capabilities.
- * This class maintains the same interface as EposDataModelDAO but adds caching.
+ * This class maintains the same interface as EposDataModelDAO but adds caching
+ * with RabbitMQ-based cache invalidation across microservices.
  */
 public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
 
     protected static Logger LOG = Logger.getGlobal();
     private final DatabaseCacheService cacheService;
+    private final RabbitMQCacheInvalidationManager invalidationManager;
+    private final boolean publishInvalidations;
 
+    /**
+     * Constructor that initializes cache and subscribes to invalidation events
+     */
     public EposDataModelDAOWithCache() {
+        this(true);
+    }
+
+    /**
+     * Constructor with option to enable/disable publishing invalidations
+     *
+     * @param publishInvalidations Whether this DAO should publish invalidation events
+     */
+    public EposDataModelDAOWithCache(boolean publishInvalidations) {
         super(); // Initialize the parent class
 
         // Initialize cache if not already done
@@ -37,6 +53,13 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
         }
 
         this.cacheService = EntityManagerService.getCacheService();
+        this.invalidationManager = RabbitMQCacheInvalidationManager.getInstance();
+        this.publishInvalidations = publishInvalidations;
+
+        // Always subscribe to invalidation events (even for read-only services)
+        this.invalidationManager.subscribeToInvalidationEvents();
+
+        LOG.info("Initialized DAO with caching and RabbitMQ invalidation. Publishing invalidations: " + publishInvalidations);
     }
 
     /**
@@ -54,18 +77,27 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
      */
     public void clearCache(Class<T> entityClass) {
         if (cacheService != null) {
-            cacheService.invalidateByEntityType(entityClass.getSimpleName());
-            LOG.info("Cache cleared for entity type: " + entityClass.getSimpleName());
+            String entityType = entityClass.getSimpleName();
+            cacheService.invalidateByEntityType(entityType);
+            LOG.info("Cache cleared for entity type: " + entityType);
+
+            // Publish invalidation event if enabled
+            if (publishInvalidations) {
+                publishInvalidationEvent(entityType);
+            }
         }
     }
 
     /**
-     * Clear all cache
+     * Clear all cache entries
      */
     public void clearAllCache() {
         if (cacheService != null) {
             cacheService.invalidateAll();
             LOG.info("All cache entries cleared");
+
+            // We don't publish invalidation events for clearAllCache
+            // as it would be too broad and inefficient
         }
     }
 
@@ -78,7 +110,13 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
 
         // Invalidate cache on successful operation
         if (result && entity != null && cacheService != null) {
-            cacheService.invalidateByEntityType(entity.getClass().getSimpleName());
+            String entityType = entity.getClass().getSimpleName();
+            cacheService.invalidateByEntityType(entityType);
+
+            // Publish invalidation event if enabled
+            if (publishInvalidations) {
+                publishInvalidationEvent(entityType);
+            }
         }
 
         return result;
@@ -90,7 +128,13 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
 
         // Invalidate cache on successful operation
         if (result && obj != null && cacheService != null) {
-            cacheService.invalidateByEntityType(obj.getClass().getSimpleName());
+            String entityType = obj.getClass().getSimpleName();
+            cacheService.invalidateByEntityType(entityType);
+
+            // Publish invalidation event if enabled
+            if (publishInvalidations) {
+                publishInvalidationEvent(entityType);
+            }
         }
 
         return result;
@@ -102,7 +146,13 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
 
         // Invalidate cache on successful operation
         if (result && obj != null && cacheService != null) {
-            cacheService.invalidateByEntityType(obj.getClass().getSimpleName());
+            String entityType = obj.getClass().getSimpleName();
+            cacheService.invalidateByEntityType(entityType);
+
+            // Publish invalidation event if enabled
+            if (publishInvalidations) {
+                publishInvalidationEvent(entityType);
+            }
         }
 
         return result;
@@ -114,10 +164,32 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
 
         // Invalidate cache on successful operation
         if (result && objList != null && !objList.isEmpty() && cacheService != null) {
-            cacheService.invalidateByEntityType(objList.get(0).getClass().getSimpleName());
+            String entityType = objList.get(0).getClass().getSimpleName();
+            cacheService.invalidateByEntityType(entityType);
+
+            // Publish invalidation event if enabled
+            if (publishInvalidations) {
+                publishInvalidationEvent(entityType);
+            }
         }
 
         return result;
+    }
+
+    /**
+     * Publish a cache invalidation event to other services
+     *
+     * @param entityType The entity type to invalidate
+     */
+    private void publishInvalidationEvent(String entityType) {
+        if (invalidationManager != null) {
+            invalidationManager.publishInvalidationEvent(entityType)
+                    .thenRun(() -> LOG.info("Published cache invalidation event for: " + entityType))
+                    .exceptionally(ex -> {
+                        LOG.severe("Failed to publish cache invalidation event: " + ex.getMessage());
+                        return null;
+                    });
+        }
     }
 
     /**
