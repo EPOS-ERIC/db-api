@@ -1,13 +1,14 @@
 package abstractapis;
 
 import dao.EposDataModelDAO;
+import dao.EposDataModelDAOWithCache;
 import org.epos.eposdatamodel.LinkedEntity;
 
 public abstract class AbstractRelationsAPI {
 
-    protected static EposDataModelDAO dbaccess = new EposDataModelDAO();
+    protected static EposDataModelDAOWithCache dbaccess = new EposDataModelDAOWithCache();
 
-    public static EposDataModelDAO getDbaccess(){
+    public static EposDataModelDAOWithCache getDbaccess(){
         return dbaccess;
     }
 
