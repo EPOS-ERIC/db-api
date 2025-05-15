@@ -33,7 +33,7 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
      * Constructor that initializes cache and subscribes to invalidation events
      */
     public EposDataModelDAOWithCache() {
-        this(true);
+        this(Boolean.parseBoolean(System.getenv("ENABLE_CACHE_INVALIDATION_PUBLISHING")));
     }
 
     /**
@@ -47,8 +47,8 @@ public class EposDataModelDAOWithCache<T> extends EposDataModelDAO<T> {
         // Initialize cache if not already done
         if (EntityManagerService.getInstance() == null) {
             new EntityManagerService.EntityManagerServiceBuilder()
-                    .setCacheEnabled("true")
-                    .setCacheRefreshInterval("60000") // 1 minute default
+                    .setCacheEnabled(System.getenv("CACHE_ENABLED"))
+                    .setCacheRefreshInterval(System.getenv("CACHE_REFRESH_INTERVAL")) // 1 minute default
                     .build();
         }
 
