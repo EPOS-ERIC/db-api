@@ -13,7 +13,7 @@ public class TestcontainersLifecycle {
 
     protected static Logger LOG = Logger.getGlobal();
     public static PostgreSQLContainer<?> METADATA_CATALOGUE = new PostgreSQLContainer<>(
-            DockerImageName.parse("epos/metadata-database-deploy-test:latest")
+            DockerImageName.parse("epos/metadata-database-deploy-test:multischema")
                     .asCompatibleSubstituteFor("postgres")
 
     ).withDatabaseName("metadata_catalogue").withUsername("postgres").withPassword("changeme").withExposedPorts(5432);

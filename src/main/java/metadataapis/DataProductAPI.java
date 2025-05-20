@@ -63,8 +63,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         edmobj.setVersioninfo(obj.getVersionInfo());
         edmobj.setDocumentation(obj.getDocumentation());
         edmobj.setQualityassurance(obj.getQualityAssurance());
-        edmobj.setHasQualityAnnotation(obj.getHasQualityAnnotation());
-        edmobj.setQualityassurance(obj.getQualityAssurance());
         edmobj.setAccessright(obj.getAccessRight());
 
         if (obj.getCreated() != null)
@@ -392,7 +390,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         o.setUid(edmobj.getUid());
         o.setType(edmobj.getType());
         o.setAccrualPeriodicity(edmobj.getAccrualperiodicity());
-        o.setHasQualityAnnotation(edmobj.getHasQualityAnnotation());
         o.setCreated(
                 edmobj.getCreated()
         );
@@ -406,7 +403,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         o.setVersionInfo(edmobj.getVersioninfo());
         o.setDocumentation(edmobj.getDocumentation());
         o.setQualityAssurance(edmobj.getQualityassurance());
-        o.setHasQualityAnnotation(edmobj.getHasQualityAnnotation());
         o.setAccessRight(edmobj.getAccessright());
 
         if(edmobj.getKeywords()!=null && !edmobj.getKeywords().isBlank())

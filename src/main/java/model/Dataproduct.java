@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "dataproduct")
+@Table(name = "dataproduct", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class Dataproduct {
@@ -68,10 +68,6 @@ public class Dataproduct {
     @jakarta.validation.constraints.Size(max = 1024)
     @Column(name = "qualityassurance", length = 1024)
     private String qualityassurance;
-
-    @jakarta.validation.constraints.Size(max = 1024)
-    @Column(name = "has_quality_annotation", length = 1024)
-    private String hasQualityAnnotation;
 
     public String getInstanceId() {
         return instanceId;
@@ -191,14 +187,6 @@ public class Dataproduct {
 
     public void setQualityassurance(String qualityassurance) {
         this.qualityassurance = qualityassurance;
-    }
-
-    public String getHasQualityAnnotation() {
-        return hasQualityAnnotation;
-    }
-
-    public void setHasQualityAnnotation(String hasQualityAnnotation) {
-        this.hasQualityAnnotation = hasQualityAnnotation;
     }
 
 }

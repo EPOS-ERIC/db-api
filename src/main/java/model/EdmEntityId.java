@@ -6,7 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "edm_entity_id")
+@Table(name = "edm_entity_id", schema = "metadata_catalogue")
 public class EdmEntityId {
     @Id
     @jakarta.validation.constraints.Size(max = 100)

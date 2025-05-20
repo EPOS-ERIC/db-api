@@ -6,7 +6,7 @@ import org.epos.handler.dbapi.service.CacheInvalidationListener;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "versioningstatus")
+@Table(name = "versioningstatus", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class Versioningstatus {
