@@ -61,6 +61,29 @@ public class Softwaresourcecode {
     @Column(name = "mainentityofpage", length = 1024)
     private String mainentityofpage;
 
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "softwarestatus", length = 1024)
+    private String softwareStatus;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "spatial", length = 1024)
+    private String spatial;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "temporal", length = 1024)
+    private String temporal;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "filesize", length = 1024)
+    private String filesize;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "timerequired", length = 1024)
+    private String timerequired;
+
+    @Column(name = "softwarerequirements")
+    private String softwarerequirements;
+
     public String getInstanceId() {
         return instanceId;
     }
@@ -165,4 +188,51 @@ public class Softwaresourcecode {
         this.mainentityofpage = mainentityofpage;
     }
 
+    public String getSoftwareStatus() {
+        return softwareStatus;
+    }
+
+    public void setSoftwareStatus(String softwareStatus) {
+        this.softwareStatus = softwareStatus;
+    }
+
+    public String getSpatial() {
+        return spatial;
+    }
+
+    public void setSpatial(String spatial) {
+        this.spatial = spatial;
+    }
+
+    public String getTemporal() {
+        return temporal;
+    }
+
+    public void setTemporal(String temporal) {
+        this.temporal = temporal;
+    }
+
+    public String getFilesize() {
+        return filesize;
+    }
+
+    public void setFilesize(String filesize) {
+        this.filesize = filesize;
+    }
+
+    public String getTimerequired() {
+        return timerequired;
+    }
+
+    public void setTimerequired(String timerequired) {
+        this.timerequired = timerequired;
+    }
+
+    public String getSoftwarerequirements() {
+        return softwarerequirements;
+    }
+
+    public void setSoftwarerequirements(String softwarerequirements) {
+        this.softwarerequirements = softwarerequirements;
+    }
 }

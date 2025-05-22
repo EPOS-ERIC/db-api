@@ -23,7 +23,6 @@ public class DataProductDeepTest extends TestcontainersLifecycle {
         classes.add(dataProduct);
         dataProduct.setUid("https://www.epos-eu.org/epos-dcat-ap/Seismology/Dataset/001");
         dataProduct.setQualityAssurance("TEST QUALITY ASSURANCE");
-        dataProduct.setHasQualityAnnotation("TEST HAS QUALITY ANNOTATION");
 
         Identifier identifier1 = new Identifier();
         classes.add(identifier1);

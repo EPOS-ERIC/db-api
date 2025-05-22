@@ -68,6 +68,10 @@ public class Mapping {
     @Column(name = "multiple_values", length = 1024)
     private String multipleValues;
 
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "healthcheckvalue", length = 1024)
+    private String healthcheckvalue;
+
     @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "ismappingof", length = 100)
     private String ismappingof;
@@ -190,6 +194,14 @@ public class Mapping {
 
     public void setMultipleValues(String multipleValues) {
         this.multipleValues = multipleValues;
+    }
+
+    public String getHealthcheckvalue() {
+        return healthcheckvalue;
+    }
+
+    public void setHealthcheckvalue(String healthcheckvalue) {
+        this.healthcheckvalue = healthcheckvalue;
     }
 
     public String getIsmappingof() {

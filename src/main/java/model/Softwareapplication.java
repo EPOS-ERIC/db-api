@@ -61,6 +61,39 @@ public class Softwareapplication {
     @Column(name = "mainentityofpage", length = 1024)
     private String mainentityofpage;
 
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "softwarestatus", length = 1024)
+    private String softwareStatus;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "spatial", length = 1024)
+    private String spatial;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "temporal", length = 1024)
+    private String temporal;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "filesize", length = 1024)
+    private String fileSize;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "timerequired", length = 1024)
+    private String timeRequired;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "processorrequirements", length = 1024)
+    private String processorRequirements;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "memoryRequirements", length = 1024)
+    private String memoryrequirements;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "storagerequirements", length = 1024)
+    private String storageRequirements;
+
+
     public String getInstanceId() {
         return instanceId;
     }
@@ -165,4 +198,67 @@ public class Softwareapplication {
         this.mainentityofpage = mainentityofpage;
     }
 
+    public String getSoftwareStatus() {
+        return softwareStatus;
+    }
+
+    public void setSoftwareStatus(String softwareStatus) {
+        this.softwareStatus = softwareStatus;
+    }
+
+    public String getSpatial() {
+        return spatial;
+    }
+
+    public void setSpatial(String spatial) {
+        this.spatial = spatial;
+    }
+
+    public String getTemporal() {
+        return temporal;
+    }
+
+    public void setTemporal(String temporal) {
+        this.temporal = temporal;
+    }
+
+    public String getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(String fileSize) {
+        this.fileSize = fileSize;
+    }
+
+    public String getTimeRequired() {
+        return timeRequired;
+    }
+
+    public void setTimeRequired(String timeRequired) {
+        this.timeRequired = timeRequired;
+    }
+
+    public String getProcessorRequirements() {
+        return processorRequirements;
+    }
+
+    public void setProcessorRequirements(String processorRequirements) {
+        this.processorRequirements = processorRequirements;
+    }
+
+    public String getMemoryrequirements() {
+        return memoryrequirements;
+    }
+
+    public void setMemoryrequirements(String memoryrequirements) {
+        this.memoryrequirements = memoryrequirements;
+    }
+
+    public String getStorageRequirements() {
+        return storageRequirements;
+    }
+
+    public void setStorageRequirements(String storageRequirements) {
+        this.storageRequirements = storageRequirements;
+    }
 }

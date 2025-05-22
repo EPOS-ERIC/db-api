@@ -102,6 +102,24 @@ public class Distribution extends EPOSDataModelEntity {
     private String dataPolicy;
 
     /**
+     * This property refers to the Data Policy URI.
+     */
+    @Schema(name = "byteSize", description = "This property refers to the byteSize.", example = "byteSize", required = false)
+    private String byteSize;
+
+    /**
+     * This property refers to the Data Policy URI.
+     */
+    @Schema(name = "mediaType", description = "This property refers to the mediaType URI.", example = "URL to mediaType", required = false)
+    private String mediaType;
+
+    /**
+     * This property refers to the Data Policy URI.
+     */
+    @Schema(name = "maturity", description = "This property refers to the maturity.", example = "maturity", required = false)
+    private String maturity;
+
+    /**
      * Reverse reference to the related dataproduct.
      */
     @Schema(name = "dataProduct", description = "Reverse reference to the related dataproduct.", example = "[{\n" +
@@ -408,13 +426,49 @@ public class Distribution extends EPOSDataModelEntity {
         }
     }
 
+    public String getByteSize() {
+        return byteSize;
+    }
+
+    public void setByteSize(String byteSize) {
+        this.byteSize = byteSize;
+    }
+
+    public String getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
+
+    public String getMaturity() {
+        return maturity;
+    }
+
+    public void setMaturity(String maturity) {
+        this.maturity = maturity;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        Distribution that = (Distribution) o;
+        return Objects.equals(accessURL, that.accessURL) && Objects.equals(accessService, that.accessService) && Objects.equals(supportedOperation, that.supportedOperation) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(format, that.format) && Objects.equals(issued, that.issued) && Objects.equals(licence, that.licence) && Objects.equals(modified, that.modified) && Objects.equals(title, that.title) && Objects.equals(type, that.type) && Objects.equals(dataPolicy, that.dataPolicy) && Objects.equals(byteSize, that.byteSize) && Objects.equals(mediaType, that.mediaType) && Objects.equals(maturity, that.maturity) && Objects.equals(dataProduct, that.dataProduct);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), accessURL, accessService, supportedOperation, description, downloadURL, format, issued, licence, modified, title, type, dataPolicy, byteSize, mediaType, maturity, dataProduct);
+    }
 
     @Override
     public String toString() {
         return "Distribution{" +
-                "accessService=" + accessService +
-                "supportedOperation=" + supportedOperation +
                 "accessURL=" + accessURL +
+                ", accessService=" + accessService +
+                ", supportedOperation=" + supportedOperation +
                 ", description=" + description +
                 ", downloadURL=" + downloadURL +
                 ", format='" + format + '\'' +
@@ -424,21 +478,10 @@ public class Distribution extends EPOSDataModelEntity {
                 ", title=" + title +
                 ", type='" + type + '\'' +
                 ", dataPolicy='" + dataPolicy + '\'' +
+                ", byteSize='" + byteSize + '\'' +
+                ", mediaType='" + mediaType + '\'' +
+                ", maturity='" + maturity + '\'' +
                 ", dataProduct=" + dataProduct +
-                "} " + super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        Distribution that = (Distribution) o;
-        return Objects.equals(accessURL, that.accessURL) && Objects.equals(accessService, that.accessService) && Objects.equals(supportedOperation, that.supportedOperation) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(format, that.format) && Objects.equals(issued, that.issued) && Objects.equals(licence, that.licence) && Objects.equals(modified, that.modified) && Objects.equals(title, that.title) && Objects.equals(type, that.type) && Objects.equals(dataPolicy, that.dataPolicy) && Objects.equals(dataProduct, that.dataProduct);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), accessURL, accessService, supportedOperation, description, downloadURL, format, issued, licence, modified, title, type, dataPolicy, dataProduct);
+                '}';
     }
 }

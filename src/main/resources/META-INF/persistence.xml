@@ -5,6 +5,8 @@
     <persistence-unit name="EPOSDataModel">
 
 		<class>model.Address</class>
+		<class>model.Attribution</class>
+		<class>model.AttributionRole</class>
 		<class>model.AuthorizationGroup</class>
 		<class>model.Category</class>
 		<class>model.CategoryHastopconcept</class>
@@ -16,11 +18,15 @@
 		<class>model.ContactpointElement</class>
 		<class>model.ContactpointElementId</class>
 		<class>model.Dataproduct</class>
+		<class>model.DataproductAttribution</class>
+		<class>model.DataproductAttributionId</class>
 		<class>model.DataproductCategory</class>
 		<class>model.DataproductCategoryId</class>
 		<class>model.DataproductContactpoint</class>
 		<class>model.DataproductContactpointId</class>
 		<class>model.DataproductDescription</class>
+		<class>model.DataproductElement</class>
+		<class>model.DataproductElementId</class>
 		<class>model.DataproductHaspart</class>
 		<class>model.DataproductHaspartId</class>
 		<class>model.DataproductIdentifier</class>
@@ -31,6 +37,8 @@
 		<class>model.DataproductPublisher</class>
 		<class>model.DataproductPublisherId</class>
 		<class>model.DataproductRelation</class>
+		<class>model.DataproductSource</class>
+		<class>model.DataproductSourceId</class>
 		<class>model.DataproductSpatial</class>
 		<class>model.DataproductSpatialId</class>
 		<class>model.DataproductTemporal</class>
@@ -112,16 +120,12 @@
 		<class>model.PersonElementId</class>
 		<class>model.PersonIdentifier</class>
 		<class>model.PersonIdentifierId</class>
-		<class>model.Plugin</class>
-		<class>model.PluginRelation</class>
-		<class>model.ProcessingUnit</class>
 		<class>model.Publication</class>
 		<class>model.PublicationCategory</class>
 		<class>model.PublicationCategoryId</class>
 		<class>model.PublicationContributor</class>
 		<class>model.PublicationContributorId</class>
 		<class>model.Quantitativevalue</class>
-		<class>model.ResourceItem</class>
 		<class>model.Service</class>
 		<class>model.ServiceCategory</class>
 		<class>model.ServiceCategoryId</class>
@@ -135,24 +139,41 @@
 		<class>model.ServiceTemporal</class>
 		<class>model.ServiceTemporalId</class>
 		<class>model.Softwareapplication</class>
+		<class>model.SoftwareapplicationAuthor</class>
 		<class>model.SoftwareapplicationCategory</class>
 		<class>model.SoftwareapplicationCategoryId</class>
+		<class>model.SoftwareapplicationElement</class>
+		<class>model.SoftwareapplicationElementId</class>
 		<class>model.SoftwareapplicationContactpoint</class>
 		<class>model.SoftwareapplicationContactpointId</class>
+		<class>model.SoftwareapplicationContributor</class>
+		<class>model.SoftwareapplicationCreator</class>
+		<class>model.SoftwareapplicationFunder</class>
 		<class>model.SoftwareapplicationIdentifier</class>
 		<class>model.SoftwareapplicationIdentifierId</class>
+		<class>model.SoftwareapplicationMaintainer</class>
 		<class>model.SoftwareapplicationOperation</class>
 		<class>model.SoftwareapplicationOperationId</class>
 		<class>model.SoftwareapplicationParameter</class>
+		<class>model.SoftwareapplicationParameterId</class>
+		<class>model.SoftwareapplicationProvider</class>
+		<class>model.SoftwareapplicationPublisher</class>
 		<class>model.Softwaresourcecode</class>
+		<class>model.SoftwaresourcecodeAuthor</class>
 		<class>model.SoftwaresourcecodeCategory</class>
 		<class>model.SoftwaresourcecodeCategoryId</class>
 		<class>model.SoftwaresourcecodeContactpoint</class>
 		<class>model.SoftwaresourcecodeContactpointId</class>
+		<class>model.SoftwaresourcecodeContributor</class>
+		<class>model.SoftwaresourcecodeCreator</class>
 		<class>model.SoftwaresourcecodeElement</class>
 		<class>model.SoftwaresourcecodeElementId</class>
+		<class>model.SoftwaresourcecodeFunder</class>
 		<class>model.SoftwaresourcecodeIdentifier</class>
 		<class>model.SoftwaresourcecodeIdentifierId</class>
+		<class>model.SoftwaresourcecodeMaintainer</class>
+		<class>model.SoftwaresourcecodeProvider</class>
+		<class>model.SoftwaresourcecodePublisher</class>
 		<class>model.Spatial</class>
 		<class>model.Temporal</class>
 		<class>model.Versioningstatus</class>

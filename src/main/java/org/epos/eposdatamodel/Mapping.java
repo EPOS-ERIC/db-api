@@ -86,6 +86,12 @@ public class Mapping extends EPOSDataModelEntity {
     @Schema(name = "readOnlyValue", description = "This property is a boolean property which if is marked as true means that the parameters need to be set but it isn't showed on the gui and the user cannot interact with it", example = "true", required = false)
     private String readOnlyValue;
 
+    /**
+     * This property contains the name of the parameter as required by web service specifications.
+     **/
+    @Schema(name = "healthCheckVariable", description = "This property contains the healthCheckVariable of the parameter as required by web service specifications for monitoring.", example = "eventid", required = false)
+    private String healthCheckVariable;
+
 
     public void addParamValue(String paramValue) {
         if (this.getParamValue() == null) {
@@ -312,6 +318,27 @@ public class Mapping extends EPOSDataModelEntity {
         this.readOnlyValue = readOnlyValue;
     }
 
+    public String getHealthCheckVariable() {
+        return healthCheckVariable;
+    }
+
+    public void setHealthCheckVariable(String healthCheckVariable) {
+        this.healthCheckVariable = healthCheckVariable;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        Mapping mapping = (Mapping) o;
+        return Objects.equals(defaultValue, mapping.defaultValue) && Objects.equals(label, mapping.label) && Objects.equals(maxValue, mapping.maxValue) && Objects.equals(minValue, mapping.minValue) && Objects.equals(paramValue, mapping.paramValue) && Objects.equals(property, mapping.property) && Objects.equals(range, mapping.range) && Objects.equals(required, mapping.required) && Objects.equals(valuePattern, mapping.valuePattern) && Objects.equals(variable, mapping.variable) && Objects.equals(multipleValues, mapping.multipleValues) && Objects.equals(readOnlyValue, mapping.readOnlyValue) && Objects.equals(healthCheckVariable, mapping.healthCheckVariable);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), defaultValue, label, maxValue, minValue, paramValue, property, range, required, valuePattern, variable, multipleValues, readOnlyValue, healthCheckVariable);
+    }
+
     @Override
     public String toString() {
         return "Mapping{" +
@@ -327,19 +354,7 @@ public class Mapping extends EPOSDataModelEntity {
                 ", variable='" + variable + '\'' +
                 ", multipleValues='" + multipleValues + '\'' +
                 ", readOnlyValue='" + readOnlyValue + '\'' +
-                '}'+ super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Mapping mapping = (Mapping) o;
-        return Objects.equals(getDefaultValue(), mapping.getDefaultValue()) && Objects.equals(getLabel(), mapping.getLabel()) && Objects.equals(getMaxValue(), mapping.getMaxValue()) && Objects.equals(getMinValue(), mapping.getMinValue()) && Objects.equals(getParamValue(), mapping.getParamValue()) && Objects.equals(getProperty(), mapping.getProperty()) && Objects.equals(getRange(), mapping.getRange()) && Objects.equals(getRequired(), mapping.getRequired()) && Objects.equals(getValuePattern(), mapping.getValuePattern()) && Objects.equals(getVariable(), mapping.getVariable()) && Objects.equals(getMultipleValues(), mapping.getMultipleValues()) && Objects.equals(getReadOnlyValue(), mapping.getReadOnlyValue());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(getDefaultValue(), getLabel(), getMaxValue(), getMinValue(), getParamValue(), getProperty(), getRange(), getRequired(), getValuePattern(), getVariable(), getMultipleValues(), getReadOnlyValue());
+                ", healthCheckVariable='" + healthCheckVariable + '\'' +
+                '}';
     }
 }

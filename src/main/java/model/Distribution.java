@@ -50,6 +50,19 @@ public class Distribution {
     @Column(name = "datapolicy", length = 1024)
     private String datapolicy;
 
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "mediatype", length = 1024)
+    private String mediaType;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "maturity", length = 1024)
+    private String maturity;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "bytesize", length = 1024)
+    private String byteSize;
+
+
     public String getInstanceId() {
         return instanceId;
     }
@@ -130,4 +143,27 @@ public class Distribution {
         this.datapolicy = datapolicy;
     }
 
+    public String getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
+
+    public String getMaturity() {
+        return maturity;
+    }
+
+    public void setMaturity(String maturity) {
+        this.maturity = maturity;
+    }
+
+    public String getByteSize() {
+        return byteSize;
+    }
+
+    public void setByteSize(String byteSize) {
+        this.byteSize = byteSize;
+    }
 }

@@ -43,6 +43,17 @@ public class DataProduct extends EPOSDataModelEntity {
     private List<LinkedEntity> category;
 
     /**
+     * This property refers to a category of the Data Product. A Data Product may be associated with multiple categories.
+     **/
+    @Schema(name = "qualifiedAttribution", description = "This property refers to a qualifiedAttribution of the Data Product. A Data Product may be associated with multiple categories.", example = "[{\n" +
+            "    \"entityType\": \"ATTRIBUTION\",\n" +
+            "    \"instanceId\": \"an UUID\",\n" +
+            "    \"metaId\": \"an UUID\",\n" +
+            "    \"uid\": \"an UUID\"\n" +
+            "  }]", required = false)
+    private List<LinkedEntity> qualifiedAttribution;
+
+    /**
      * This property contains contact information (i.e. Role) that can be used for sending comments about the Data Product.
      */
     @Schema(name = "contactPoint", description = "This property contains contact information (i.e. Role) that can be used for sending comments about the Data Product.", example = "[{\n" +
@@ -86,6 +97,18 @@ public class DataProduct extends EPOSDataModelEntity {
             "    \"uid\": \"an UUID\"\n" +
             "  }]", required = false)
     private List<LinkedEntity> distribution;
+
+    /**
+     * This property refers to a related Data Product that is part of the described Data Product.
+     */
+    @Schema(name = "source", description = "This property refers to a source Data Product that is part of the described Data Product.", example = "[{\n" +
+            "    \"entityType\": \"DATAPRODUCT\",\n" +
+            "    \"instanceId\": \"an UUID\",\n" +
+            "    \"metaId\": \"an UUID\",\n" +
+            "    \"uid\": \"an UUID\"\n" +
+            "  }]", required = false)
+    private List<LinkedEntity> source;
+
 
     /**
      * This property refers to a related Data Product that is part of the described Data Product.
@@ -178,6 +201,24 @@ public class DataProduct extends EPOSDataModelEntity {
     private List<LinkedEntity> temporalExtent;
 
     /**
+     * TODO: description
+     **/
+    @Schema(name = "referencedBy", description = "", required = false)
+    private List<String> referencedBy;
+
+    /**
+     * TODO: description
+     **/
+    @Schema(name = "landingPage", description = "", required = false)
+    private List<String> landingPage;
+
+    /**
+     * TODO: description
+     **/
+    @Schema(name = "variableMeasured", description = "", required = false)
+    private List<String> variableMeasured;
+
+    /**
      * This property contains a name given to the Data Product. This property can be repeated for parallel language versions of the name.
      **/
     @Schema(name = "title", description = "This property contains a name given to the Data Product. This property can be repeated for parallel language versions of the name.", example = "[\"Some DataProduct name\"]", required = false)
@@ -207,11 +248,6 @@ public class DataProduct extends EPOSDataModelEntity {
     @Schema(name = "qualityAssurance", description = "This property refers to the URI which make available information about quality assurance of the Data Product.", example = "URL to quality assurance", required = false)
     private String qualityAssurance;
 
-    /**
-     * probabily an useless property
-     */
-    @Schema(name = "hasQualityAnnotation", description = "This property refers to the URI which make available information about quality assurance of the Data Product.", example = "URL to quality assurance", required = false)
-    private String hasQualityAnnotation;
 
     public void addSpatialExtent(LinkedEntity spatialExtent) {
         if (this.getSpatialExtent() == null) {
@@ -322,6 +358,59 @@ public class DataProduct extends EPOSDataModelEntity {
             this.getHasPart().add(hasPart);
         }
     }
+
+    public void addSource(LinkedEntity source) {
+        if (this.getSource() == null) {
+            ArrayList<LinkedEntity> sourceList = new ArrayList<>();
+            sourceList.add(source);
+            this.setSource(sourceList);
+        } else {
+            this.getSource().add(source);
+        }
+    }
+
+    public void addQualifiedAttribution(LinkedEntity qualifiedAttribution) {
+        if (this.getQualifiedAttribution() == null) {
+            ArrayList<LinkedEntity> qualifiedAttributionList = new ArrayList<>();
+            qualifiedAttributionList.add(qualifiedAttribution);
+            this.setQualifiedAttribution(qualifiedAttributionList);
+        } else {
+            this.getQualifiedAttribution().add(qualifiedAttribution);
+        }
+    }
+
+
+    public void addReferencedBy(String reference) {
+        if (this.getReferencedBy() == null) {
+            ArrayList<String> referenceList = new ArrayList<>();
+            referenceList.add(reference);
+            this.setReferencedBy(referenceList);
+        } else {
+            this.getReferencedBy().add(reference);
+        }
+    }
+
+    public void addLandingPage(String landingPage) {
+        if (this.getLandingPage() == null) {
+            ArrayList<String> landingPageList = new ArrayList<>();
+            landingPageList.add(landingPage);
+            this.setLandingPage(landingPageList);
+        } else {
+            this.getLandingPage().add(landingPage);
+        }
+    }
+
+    public void addVariableMeasured(String variableMeasured) {
+        if (this.getVariableMeasured() == null) {
+            ArrayList<String> variableMeasuredList = new ArrayList<>();
+            variableMeasuredList.add(variableMeasured);
+            this.setVariableMeasured(variableMeasuredList);
+        } else {
+            this.getVariableMeasured().add(variableMeasured);
+        }
+    }
+
+
 
     public void addProvenance(String provenance) {
         if (this.getProvenance() == null) {
@@ -509,6 +598,7 @@ public class DataProduct extends EPOSDataModelEntity {
         }
     }
 
+
     /**
      * This property contains a keyword or tag describing the Data Product. Multiple entries in a keywords list are typically delimited by commas.
      *
@@ -603,13 +693,6 @@ public class DataProduct extends EPOSDataModelEntity {
         return this;
     }
 
-    public DataProduct addTemporalExtentItem(LinkedEntity temporalExtentItem) {
-        if (this.temporalExtent == null) {
-            this.temporalExtent = new ArrayList<>();
-        }
-        this.temporalExtent.add(temporalExtentItem);
-        return this;
-    }
 
     /**
      * This property refers to a temporal period (i.e. startDate, endDate) that the Data Product covers.
@@ -710,6 +793,14 @@ public class DataProduct extends EPOSDataModelEntity {
         this.hasPart = hasPart;
     }
 
+    public List<LinkedEntity> getSource() {
+        return source;
+    }
+
+    public void setSource(List<LinkedEntity> source) {
+        this.source = source;
+    }
+
     public List<LinkedEntity> getIsPartOf() {
         return isPartOf;
     }
@@ -754,25 +845,65 @@ public class DataProduct extends EPOSDataModelEntity {
         this.qualityAssurance = qualityAssurance;
     }
 
-    public String getHasQualityAnnotation() {
-        return hasQualityAnnotation;
+    public List<String> getReferencedBy() {
+        return referencedBy;
     }
 
-    public void setHasQualityAnnotation(String hasQualityAnnotation) {
-        this.hasQualityAnnotation = hasQualityAnnotation;
+    public void setReferencedBy(List<String> referencedBy) {
+        this.referencedBy = referencedBy;
+    }
+
+    public List<String> getLandingPage() {
+        return landingPage;
+    }
+
+    public void setLandingPage(List<String> landingPage) {
+        this.landingPage = landingPage;
+    }
+
+    public List<String> getVariableMeasured() {
+        return variableMeasured;
+    }
+
+    public void setVariableMeasured(List<String> variableMeasured) {
+        this.variableMeasured = variableMeasured;
+    }
+
+    public List<LinkedEntity> getQualifiedAttribution() {
+        return qualifiedAttribution;
+    }
+
+    public void setQualifiedAttribution(List<LinkedEntity> qualifiedAttribution) {
+        this.qualifiedAttribution = qualifiedAttribution;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        DataProduct that = (DataProduct) o;
+        return Objects.equals(accessRight, that.accessRight) && Objects.equals(accrualPeriodicity, that.accrualPeriodicity) && Objects.equals(category, that.category) && Objects.equals(qualifiedAttribution, that.qualifiedAttribution) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(created, that.created) && Objects.equals(identifier, that.identifier) && Objects.equals(description, that.description) && Objects.equals(distribution, that.distribution) && Objects.equals(source, that.source) && Objects.equals(hasPart, that.hasPart) && Objects.equals(isPartOf, that.isPartOf) && Objects.equals(issued, that.issued) && Objects.equals(keywords, that.keywords) && Objects.equals(modified, that.modified) && Objects.equals(provenance, that.provenance) && Objects.equals(publisher, that.publisher) && Objects.equals(relation, that.relation) && Objects.equals(spatialExtent, that.spatialExtent) && Objects.equals(temporalExtent, that.temporalExtent) && Objects.equals(referencedBy, that.referencedBy) && Objects.equals(landingPage, that.landingPage) && Objects.equals(variableMeasured, that.variableMeasured) && Objects.equals(title, that.title) && Objects.equals(type, that.type) && Objects.equals(versionInfo, that.versionInfo) && Objects.equals(documentation, that.documentation) && Objects.equals(qualityAssurance, that.qualityAssurance);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), accessRight, accrualPeriodicity, category, qualifiedAttribution, contactPoint, created, identifier, description, distribution, source, hasPart, isPartOf, issued, keywords, modified, provenance, publisher, relation, spatialExtent, temporalExtent, referencedBy, landingPage, variableMeasured, title, type, versionInfo, documentation, qualityAssurance);
     }
 
     @Override
     public String toString() {
-        return "DataProduct{ accessRight='" + accessRight + '\'' +
+        return "DataProduct{" +
+                "accessRight='" + accessRight + '\'' +
                 ", accrualPeriodicity='" + accrualPeriodicity + '\'' +
                 ", category=" + category +
+                ", qualifiedAttribution=" + qualifiedAttribution +
                 ", contactPoint=" + contactPoint +
                 ", created=" + created +
+                ", identifier=" + identifier +
                 ", description=" + description +
                 ", distribution=" + distribution +
+                ", source=" + source +
                 ", hasPart=" + hasPart +
-                ", identifier=" + identifier +
                 ", isPartOf=" + isPartOf +
                 ", issued=" + issued +
                 ", keywords='" + keywords + '\'' +
@@ -782,26 +913,14 @@ public class DataProduct extends EPOSDataModelEntity {
                 ", relation=" + relation +
                 ", spatialExtent=" + spatialExtent +
                 ", temporalExtent=" + temporalExtent +
+                ", referencedBy=" + referencedBy +
+                ", landingPage=" + landingPage +
+                ", variableMeasured=" + variableMeasured +
                 ", title=" + title +
                 ", type='" + type + '\'' +
                 ", versionInfo='" + versionInfo + '\'' +
                 ", documentation='" + documentation + '\'' +
                 ", qualityAssurance='" + qualityAssurance + '\'' +
-                ", hasQualityAnnotation='" + hasQualityAnnotation + '\'' +
-                "} " + super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        DataProduct that = (DataProduct) o;
-        return Objects.equals(getAccessRight(), that.getAccessRight()) && Objects.equals(getAccrualPeriodicity(), that.getAccrualPeriodicity()) && Objects.equals(getCategory(), that.getCategory()) && Objects.equals(getContactPoint(), that.getContactPoint()) && Objects.equals(getCreated(), that.getCreated()) && Objects.equals(getDescription(), that.getDescription()) && Objects.equals(getDistribution(), that.getDistribution()) && Objects.equals(getHasPart(), that.getHasPart()) && Objects.equals(getIdentifier(), that.getIdentifier()) && Objects.equals(getIsPartOf(), that.getIsPartOf()) && Objects.equals(getIssued(), that.getIssued()) && Objects.equals(getKeywords(), that.getKeywords()) && Objects.equals(getModified(), that.getModified()) && Objects.equals(getProvenance(), that.getProvenance()) && Objects.equals(getPublisher(), that.getPublisher()) && Objects.equals(getRelation(), that.getRelation()) && Objects.equals(getSpatialExtent(), that.getSpatialExtent()) && Objects.equals(getTemporalExtent(), that.getTemporalExtent()) && Objects.equals(getTitle(), that.getTitle()) && Objects.equals(getType(), that.getType()) && Objects.equals(getVersionInfo(), that.getVersionInfo()) && Objects.equals(getDocumentation(), that.getDocumentation()) && Objects.equals(qualityAssurance, that.qualityAssurance) && Objects.equals(getHasQualityAnnotation(), that.getHasQualityAnnotation());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), getAccessRight(), getAccrualPeriodicity(), getCategory(), getContactPoint(), getCreated(), getDescription(), getDistribution(), getHasPart(), getIdentifier(), getIsPartOf(), getIssued(), getKeywords(), getModified(), getProvenance(), getPublisher(), getRelation(), getSpatialExtent(), getTemporalExtent(), getTitle(), getType(), getVersionInfo(), getDocumentation(), qualityAssurance, getHasQualityAnnotation());
+                '}';
     }
 }
