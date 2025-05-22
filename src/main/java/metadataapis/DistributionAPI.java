@@ -60,6 +60,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         edmobj.setLicense(obj.getLicence());
         edmobj.setType(obj.getType());
         edmobj.setDatapolicy(obj.getDataPolicy());
+        edmobj.setByteSize(obj.getByteSize());
+        edmobj.setMaturity(obj.getMaturity());
+        edmobj.setMediaType(obj.getMediaType());
 
         if (obj.getModified() != null)
             edmobj.setModified(obj.getModified());
@@ -260,6 +263,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     edmobj.getModified()
             );
             o.setType(edmobj.getType());
+            o.setByteSize(edmobj.getByteSize());
+            o.setMaturity(edmobj.getMaturity());
+            o.setMediaType(edmobj.getMediaType());
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDescription.class)) {
                 DistributionDescription item = (DistributionDescription) object;

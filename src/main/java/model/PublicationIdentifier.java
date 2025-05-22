@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "publication_identifier")
+@Table(name = "publication_identifier", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class PublicationIdentifier {

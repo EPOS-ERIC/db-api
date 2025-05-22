@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "webservice_distribution")
+@Table(name = "webservice_distribution", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class WebserviceDistribution {

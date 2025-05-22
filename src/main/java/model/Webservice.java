@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "webservice")
+@Table(name = "webservice", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class Webservice {

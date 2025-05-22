@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "operation_payload")
+@Table(name = "operation_payload", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class OperationPayload {

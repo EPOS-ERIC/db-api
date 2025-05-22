@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "authorization_group")
+@Table(name = "authorization_group", schema = "usergroup_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class AuthorizationGroup {

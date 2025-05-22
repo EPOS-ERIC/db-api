@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "parameter")
+@Table(name = "parameter", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class Parameter {

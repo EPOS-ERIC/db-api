@@ -62,6 +62,11 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         edmobj.setRuntimeplatform(obj.getRuntimePlatform());
         edmobj.setSoftwareversion(obj.getSoftwareVersion());
         edmobj.setCoderepository(obj.getCodeRepository());
+        edmobj.setSoftwareStatus(obj.getSoftwareStatus());
+        edmobj.setSpatial(obj.getSpatial());
+        edmobj.setTemporal(obj.getTemporal());
+        edmobj.setFilesize(obj.getSize());
+        edmobj.setTimerequired(obj.getTimeRequired());
 
         /** CATEGORY **/
         if (obj.getCategory() != null)
@@ -92,6 +97,106 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
                 createInnerElement(ElementType.PROGRAMMINGLANGUAGE, returns, edmobj, overrideStatus);
             }
         }
+
+
+        if (obj.getAuthor() != null) {
+            for(LinkedEntity owns : obj.getAuthor()) {
+                if (owns != null){
+                    SoftwaresourcecodeAuthor pi = new SoftwaresourcecodeAuthor();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getContributor() != null) {
+            for(LinkedEntity owns : obj.getContributor()) {
+                if (owns != null){
+                    SoftwaresourcecodeContributor pi = new SoftwaresourcecodeContributor();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getFunder() != null) {
+            for(LinkedEntity owns : obj.getFunder()) {
+                if (owns != null){
+                    SoftwaresourcecodeFunder pi = new SoftwaresourcecodeFunder();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getMaintainer() != null) {
+            for(LinkedEntity owns : obj.getMaintainer()) {
+                if (owns != null){
+                    SoftwaresourcecodeMaintainer pi = new SoftwaresourcecodeMaintainer();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getProvider() != null) {
+            for(LinkedEntity owns : obj.getProvider()) {
+                if (owns != null){
+                    SoftwaresourcecodeProvider pi = new SoftwaresourcecodeProvider();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getPublisher() != null) {
+            for(LinkedEntity owns : obj.getPublisher()) {
+                if (owns != null){
+                    SoftwaresourcecodePublisher pi = new SoftwaresourcecodePublisher();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+        if (obj.getCreator() != null) {
+            for(LinkedEntity owns : obj.getCreator()) {
+                if (owns != null){
+                    SoftwaresourcecodeCreator pi = new SoftwaresourcecodeCreator();
+                    pi.setSoftwaresourcecode(edmobj);
+                    pi.setSoftwaresourcecodeInstanceId(edmobj.getInstanceId());
+                    pi.setResourceEntity(owns.getEntityType());
+                    pi.setEntityInstanceId(owns.getInstanceId());
+                    dbaccess.updateObject(pi);
+                }
+            }
+        }
+
+
+        if (obj.getCitation() != null) {
+            for(String citation : obj.getCitation()) {
+                createInnerElement(ElementType.CITATION, citation, edmobj, overrideStatus);
+            }
+        }
+
 
         getDbaccess().updateObject(edmobj);
 
@@ -141,6 +246,64 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
                 dbaccess.deleteObject(item);
             }
         }
+
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeAuthor.class)){
+            SoftwaresourcecodeAuthor item = (SoftwaresourcecodeAuthor) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeContributor.class)){
+            SoftwaresourcecodeContributor item = (SoftwaresourcecodeContributor) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeFunder.class)){
+            SoftwaresourcecodeFunder item = (SoftwaresourcecodeFunder) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeMaintainer.class)){
+            SoftwaresourcecodeMaintainer item = (SoftwaresourcecodeMaintainer) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeProvider.class)){
+            SoftwaresourcecodeProvider item = (SoftwaresourcecodeProvider) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodePublisher.class)){
+            SoftwaresourcecodePublisher item = (SoftwaresourcecodePublisher) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeCreator.class)){
+            SoftwaresourcecodeCreator item = (SoftwaresourcecodeCreator) object;
+            if(item.getSoftwaresourcecode().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+
+        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
+            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
+            if(item.getElementInstance().getInstanceId().equals(instanceId)){
+                dbaccess.deleteObject(item);
+            }
+        }
+        
         List<Softwaresourcecode> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwaresourcecode.class);
         for(Softwaresourcecode object : elementList){
             dbaccess.deleteObject(object);
@@ -169,6 +332,11 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
             o.setRuntimePlatform(edmobj.getRuntimeplatform());
             o.setSoftwareVersion(edmobj.getSoftwareversion());
             o.setCodeRepository(edmobj.getCoderepository());
+            o.setSoftwareStatus(edmobj.getSoftwareStatus());
+            o.setSpatial(edmobj.getSpatial());
+            o.setTemporal(edmobj.getTemporal());
+            o.setSize(edmobj.getFilesize());
+            o.setTimeRequired(edmobj.getTimerequired());
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeCategory.class)) {
                 SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
@@ -202,7 +370,86 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
                 // }
             }
 
-            o = (org.epos.eposdatamodel.SoftwareSourceCode) VersioningStatusAPI.retrieveVersion(o);
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeAuthor.class)) {
+            SoftwaresourcecodeAuthor item = (SoftwaresourcecodeAuthor) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addAuthor(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addAuthor(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeContributor.class)) {
+            SoftwaresourcecodeContributor item = (SoftwaresourcecodeContributor) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addContributor(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addContributor(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeFunder.class)) {
+            SoftwaresourcecodeFunder item = (SoftwaresourcecodeFunder) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addFunder(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addFunder(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeMaintainer.class)) {
+            SoftwaresourcecodeMaintainer item = (SoftwaresourcecodeMaintainer) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addMaintainer(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addMaintainer(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeProvider.class)) {
+            SoftwaresourcecodeProvider item = (SoftwaresourcecodeProvider) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addProvider(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addProvider(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodePublisher.class)) {
+            SoftwaresourcecodePublisher item = (SoftwaresourcecodePublisher) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addPublisher(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addPublisher(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecode", edmobj.getInstanceId(),SoftwaresourcecodeCreator.class)) {
+            SoftwaresourcecodeCreator item = (SoftwaresourcecodeCreator) object;
+            if(item.getResourceEntity().equals(EntityNames.PERSON.name())){
+                o.addCreator(retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+            if(item.getResourceEntity().equals(EntityNames.ORGANIZATION.name())){
+                o.addCreator(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getEntityInstanceId()));
+            }
+        }
+
+        for (Object object : dbaccess.getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeElement.class)) {
+            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
+            //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
+            Element el = item.getElementInstance();
+            if (el.getType().equals(ElementType.CITATION.name())) o.addCitation(el.getValue());
+            //}
+        }
+
+        o = (org.epos.eposdatamodel.SoftwareSourceCode) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
     }

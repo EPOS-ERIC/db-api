@@ -62,6 +62,8 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         edmobj.setRange(obj.getRange());
         edmobj.setProperty(obj.getProperty());
         edmobj.setVariable(obj.getVariable());
+        edmobj.setHealthcheckvalue(obj.getHealthCheckVariable());
+
 
         /** PARAM VALUE **/
         if(obj.getParamValue()!=null){
@@ -142,6 +144,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             o.setRange(edmobj.getRange());
             o.setProperty(edmobj.getProperty());
             o.setVariable(edmobj.getVariable());
+            o.setHealthCheckVariable(edmobj.getHealthcheckvalue());
 
             for (Object object : dbaccess.getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(),MappingElement.class)) {
                 MappingElement item = (MappingElement) object;

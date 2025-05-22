@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "webservice_relation")
+@Table(name = "webservice_relation", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class WebserviceRelation {

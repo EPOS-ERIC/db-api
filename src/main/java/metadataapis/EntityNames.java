@@ -1,7 +1,7 @@
 package metadataapis;
 
 public enum EntityNames {
-
+    ATTRIBUTION,
     ADDRESS,
     DOCUMENTATION,
     ELEMENT,

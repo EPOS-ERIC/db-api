@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
-@Table(name = "mapping")
+@Table(name = "mapping", schema = "metadata_catalogue")
 @EntityListeners(CacheInvalidationListener.class)
 @Cacheable()
 public class Mapping {
@@ -67,6 +67,10 @@ public class Mapping {
     @jakarta.validation.constraints.Size(max = 1024)
     @Column(name = "multiple_values", length = 1024)
     private String multipleValues;
+
+    @jakarta.validation.constraints.Size(max = 1024)
+    @Column(name = "healthcheckvalue", length = 1024)
+    private String healthcheckvalue;
 
     @jakarta.validation.constraints.Size(max = 100)
     @Column(name = "ismappingof", length = 100)
@@ -190,6 +194,14 @@ public class Mapping {
 
     public void setMultipleValues(String multipleValues) {
         this.multipleValues = multipleValues;
+    }
+
+    public String getHealthcheckvalue() {
+        return healthcheckvalue;
+    }
+
+    public void setHealthcheckvalue(String healthcheckvalue) {
+        this.healthcheckvalue = healthcheckvalue;
     }
 
     public String getIsmappingof() {
