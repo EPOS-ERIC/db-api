@@ -3,6 +3,7 @@ package org.epos.handler.dbapi.service;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -14,7 +15,7 @@ import java.util.logging.Logger;
 
 /**
  * A robust cache invalidation manager that uses RabbitMQ to publish and subscribe to cache invalidation events
- * with automatic reconnection and retry capabilities
+ * with automatic reconnection, retry capabilities, and graceful degradation when RabbitMQ is not available
  */
 public class RabbitMQCacheInvalidationManager {
 
@@ -32,6 +33,7 @@ public class RabbitMQCacheInvalidationManager {
     private final String password;
     private final String vhost;
     private final int port;
+    private final boolean enabled;
 
     // Connection management
     private volatile Connection connection;
@@ -40,15 +42,18 @@ public class RabbitMQCacheInvalidationManager {
     private final AtomicBoolean isConnected = new AtomicBoolean(false);
     private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
     private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
+    private final AtomicBoolean isInitialized = new AtomicBoolean(false);
 
     // Retry and reconnection
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final int maxRetries;
     private final long retryDelayMs;
     private final long reconnectDelayMs;
+    private final String uniqueQueueName;
 
     private RabbitMQCacheInvalidationManager() {
         // Load RabbitMQ connection properties from environment variables
+        this.enabled = Boolean.parseBoolean(System.getenv().getOrDefault("RABBITMQ_ENABLED", "true"));
         this.host = System.getenv().getOrDefault("BROKER_HOST", "localhost");
         this.username = System.getenv().getOrDefault("BROKER_USERNAME", "guest");
         this.password = System.getenv().getOrDefault("BROKER_PASSWORD", "guest");
@@ -58,8 +63,19 @@ public class RabbitMQCacheInvalidationManager {
         this.retryDelayMs = Long.parseLong(System.getenv().getOrDefault("BROKER_RETRY_DELAY_MS", "5000"));
         this.reconnectDelayMs = Long.parseLong(System.getenv().getOrDefault("BROKER_RECONNECT_DELAY_MS", "10000"));
 
-        // Initialize connection
-        initializeConnection();
+        // Create unique queue name to avoid conflicts
+        String serviceName = System.getenv().getOrDefault("SERVICE_NAME", "unknown");
+        String instanceId = System.getenv().getOrDefault("SERVICE_INSTANCE_ID", UUID.randomUUID().toString().substring(0, 8));
+        this.uniqueQueueName = QUEUE_NAME_PREFIX + "-" + serviceName + "-" + instanceId;
+
+        // Only initialize if RabbitMQ is enabled
+        if (enabled) {
+            LOGGER.info("RabbitMQ cache invalidation is ENABLED. Attempting to initialize connection...");
+            initializeConnectionAsync();
+        } else {
+            LOGGER.info("RabbitMQ cache invalidation is DISABLED. Cache invalidation will work only locally.");
+            isInitialized.set(true);
+        }
 
         // Register shutdown hook to close resources
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
@@ -77,14 +93,30 @@ public class RabbitMQCacheInvalidationManager {
     }
 
     /**
+     * Initialize connection to RabbitMQ asynchronously to avoid blocking startup
+     */
+    private void initializeConnectionAsync() {
+        scheduler.execute(() -> {
+            try {
+                initializeConnection();
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to initialize RabbitMQ connection during startup: " + e.getMessage());
+                scheduleReconnection();
+            }
+        });
+    }
+
+    /**
      * Initialize connection to RabbitMQ with retry logic
      */
     private void initializeConnection() {
-        if (isShuttingDown.get()) {
+        if (isShuttingDown.get() || !enabled) {
             return;
         }
 
         try {
+            LOGGER.info("Connecting to RabbitMQ at " + host + ":" + port + " with vhost: " + vhost);
+
             ConnectionFactory factory = new ConnectionFactory();
             factory.setHost(host);
             factory.setPort(port);
@@ -98,7 +130,7 @@ public class RabbitMQCacheInvalidationManager {
             factory.setRequestedHeartbeat(30);
             factory.setConnectionTimeout(10000);
 
-            // Create connection
+            // Create connection with timeout
             connection = factory.newConnection();
 
             // Add connection recovery listeners
@@ -134,11 +166,13 @@ public class RabbitMQCacheInvalidationManager {
             initializeChannels();
 
             isConnected.set(true);
+            isInitialized.set(true);
             LOGGER.info("Successfully connected to RabbitMQ broker at " + host + ":" + port);
 
         } catch (IOException | TimeoutException e) {
-            LOGGER.log(Level.SEVERE, "Failed to connect to RabbitMQ: " + e.getMessage(), e);
+            LOGGER.log(Level.WARNING, "Failed to connect to RabbitMQ: " + e.getMessage());
             isConnected.set(false);
+            isInitialized.set(true); // Set as initialized even if failed, to avoid blocking
             scheduleReconnection();
         }
     }
@@ -186,7 +220,7 @@ public class RabbitMQCacheInvalidationManager {
      * Schedule reconnection attempt
      */
     private void scheduleReconnection() {
-        if (isShuttingDown.get()) {
+        if (isShuttingDown.get() || !enabled) {
             return;
         }
 
@@ -200,6 +234,11 @@ public class RabbitMQCacheInvalidationManager {
      * Subscribe to cache invalidation events with automatic queue creation
      */
     public void subscribeToInvalidationEvents() {
+        if (!enabled) {
+            LOGGER.fine("RabbitMQ is disabled, skipping subscription to invalidation events");
+            return;
+        }
+
         if (!isConnected.get() || isSubscribed.get() || isShuttingDown.get()) {
             if (!isConnected.get()) {
                 LOGGER.warning("Cannot subscribe: not connected to RabbitMQ");
@@ -208,14 +247,12 @@ public class RabbitMQCacheInvalidationManager {
         }
 
         try {
-            String queueName = QUEUE_NAME_PREFIX + "-" + System.getProperty("service.name", "unknown");
-
-            // Declare queue as exclusive to this service instance
-            subscribeChannel.queueDeclare(queueName, false, true, true, null);
-            subscribeChannel.queueBind(queueName, EXCHANGE_NAME, ROUTING_KEY);
+            // Declare queue as auto-delete and non-exclusive to avoid conflicts
+            subscribeChannel.queueDeclare(uniqueQueueName, false, false, true, null);
+            subscribeChannel.queueBind(uniqueQueueName, EXCHANGE_NAME, ROUTING_KEY);
 
             // Set up consumer with error handling
-            subscribeChannel.basicConsume(queueName, true, new DefaultConsumer(subscribeChannel) {
+            subscribeChannel.basicConsume(uniqueQueueName, true, new DefaultConsumer(subscribeChannel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope,
                                            AMQP.BasicProperties properties, byte[] body) throws IOException {
@@ -239,15 +276,21 @@ public class RabbitMQCacheInvalidationManager {
             });
 
             isSubscribed.set(true);
-            LOGGER.info("Subscribed to cache invalidation events on exchange: " + EXCHANGE_NAME + ", queue: " + queueName);
+            LOGGER.info("Subscribed to cache invalidation events on exchange: " + EXCHANGE_NAME + ", queue: " + uniqueQueueName);
 
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Failed to subscribe to cache invalidation events: " + e.getMessage(), e);
+            LOGGER.log(Level.WARNING, "Failed to subscribe to cache invalidation events: " + e.getMessage());
             isSubscribed.set(false);
 
-            // Retry subscription after delay
-            if (!isShuttingDown.get()) {
-                scheduler.schedule(() -> subscribeToInvalidationEvents(), retryDelayMs, TimeUnit.MILLISECONDS);
+            // Don't retry immediately if it's a resource lock error
+            if (e.getMessage() != null && e.getMessage().contains("RESOURCE_LOCKED")) {
+                LOGGER.warning("Queue is locked, will retry subscription after longer delay");
+                scheduler.schedule(() -> subscribeToInvalidationEvents(), reconnectDelayMs * 2, TimeUnit.MILLISECONDS);
+            } else {
+                // Retry subscription after delay
+                if (!isShuttingDown.get()) {
+                    scheduler.schedule(() -> subscribeToInvalidationEvents(), retryDelayMs, TimeUnit.MILLISECONDS);
+                }
             }
         }
     }
@@ -267,6 +310,12 @@ public class RabbitMQCacheInvalidationManager {
      */
     private CompletableFuture<Void> publishInvalidationEvent(String entityType, int retryCount) {
         CompletableFuture<Void> future = new CompletableFuture<>();
+
+        if (!enabled) {
+            LOGGER.fine("RabbitMQ is disabled, skipping invalidation event publication for: " + entityType);
+            future.complete(null);
+            return future;
+        }
 
         if (isShuttingDown.get()) {
             future.completeExceptionally(new IllegalStateException("Service is shutting down"));
@@ -288,7 +337,8 @@ public class RabbitMQCacheInvalidationManager {
                         retryDelayMs, TimeUnit.MILLISECONDS);
                 return future;
             } else {
-                future.completeExceptionally(new IllegalStateException("Not connected to RabbitMQ after " + maxRetries + " retries"));
+                LOGGER.warning("Not connected to RabbitMQ after " + maxRetries + " retries, invalidation event for " + entityType + " will be local only");
+                future.complete(null); // Complete successfully but with local invalidation only
                 return future;
             }
         }
@@ -312,7 +362,7 @@ public class RabbitMQCacheInvalidationManager {
             LOGGER.fine("Successfully published cache invalidation event for: " + entityType);
 
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to publish cache invalidation event (attempt " + (retryCount + 1) + "): " + e.getMessage(), e);
+            LOGGER.log(Level.WARNING, "Failed to publish cache invalidation event (attempt " + (retryCount + 1) + "): " + e.getMessage());
 
             if (retryCount < maxRetries) {
                 // Schedule retry
@@ -327,7 +377,8 @@ public class RabbitMQCacheInvalidationManager {
                                         }),
                         retryDelayMs, TimeUnit.MILLISECONDS);
             } else {
-                future.completeExceptionally(e);
+                LOGGER.warning("Failed to publish invalidation event after " + maxRetries + " retries, continuing with local invalidation only");
+                future.complete(null); // Complete successfully with local invalidation only
             }
         }
 
@@ -360,24 +411,41 @@ public class RabbitMQCacheInvalidationManager {
      * Check if the manager is connected to RabbitMQ
      */
     public boolean isConnected() {
-        return isConnected.get() && connection != null && connection.isOpen();
+        return enabled && isConnected.get() && connection != null && connection.isOpen();
+    }
+
+    /**
+     * Check if RabbitMQ is enabled
+     */
+    public boolean isEnabled() {
+        return enabled;
     }
 
     /**
      * Check if subscribed to invalidation events
      */
     public boolean isSubscribed() {
-        return isSubscribed.get();
+        return enabled && isSubscribed.get();
+    }
+
+    /**
+     * Check if the manager has been initialized (even if connection failed)
+     */
+    public boolean isInitialized() {
+        return isInitialized.get();
     }
 
     /**
      * Get connection statistics
      */
     public String getConnectionInfo() {
+        if (!enabled) {
+            return "RabbitMQ disabled";
+        }
         if (connection != null && connection.isOpen()) {
-            return String.format("Connected to %s:%d (vhost: %s)", host, port, vhost);
+            return String.format("Connected to %s:%d (vhost: %s, queue: %s)", host, port, vhost, uniqueQueueName);
         } else {
-            return "Disconnected";
+            return String.format("Disconnected (target: %s:%d)", host, port);
         }
     }
 

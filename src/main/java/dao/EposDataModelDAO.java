@@ -15,6 +15,7 @@ import org.epos.handler.dbapi.service.RabbitMQCacheInvalidationManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -37,13 +38,34 @@ public class EposDataModelDAO<T> {
                     .build();
         }
         this.cacheService = EntityManagerService.getCacheService();
-        this.invalidationManager = RabbitMQCacheInvalidationManager.getInstance();
         this.publishInvalidations = publishInvalidations;
 
-        // Subscribe to invalidation events
-        if (this.invalidationManager != null) {
-            this.invalidationManager.subscribeToInvalidationEvents();
+        // Initialize RabbitMQ manager but don't fail if it's not available
+        RabbitMQCacheInvalidationManager tempManager = null;
+        try {
+            tempManager = RabbitMQCacheInvalidationManager.getInstance();
+
+            // Only subscribe if RabbitMQ is enabled and we want to receive invalidations
+            if (tempManager.isEnabled()) {
+                // Subscribe to invalidation events in a separate thread to avoid blocking
+                RabbitMQCacheInvalidationManager finalTempManager = tempManager;
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        // Wait a bit for the manager to initialize
+                        Thread.sleep(1000);
+                        finalTempManager.subscribeToInvalidationEvents();
+                    } catch (Exception e) {
+                        LOG.warning("Failed to subscribe to invalidation events: " + e.getMessage());
+                    }
+                });
+            } else {
+                LOG.info("RabbitMQ invalidation manager is disabled - cache invalidation will be local only");
+            }
+        } catch (Exception e) {
+            LOG.warning("Failed to initialize RabbitMQ invalidation manager: " + e.getMessage() + " - cache invalidation will be local only");
         }
+
+        this.invalidationManager = tempManager;
     }
 
     /**
@@ -522,14 +544,16 @@ public class EposDataModelDAO<T> {
             LOG.info("Cache invalidated for entity type: " + entityType);
         }
 
-        // Publish invalidation event if enabled
-        if (publishInvalidations && invalidationManager != null) {
+        // Publish invalidation event if enabled and RabbitMQ is available
+        if (publishInvalidations && invalidationManager != null && invalidationManager.isEnabled()) {
             invalidationManager.publishInvalidationEvent(entityType)
-                    .thenRun(() -> LOG.info("Published cache invalidation event for: " + entityType))
+                    .thenRun(() -> LOG.fine("Published cache invalidation event for: " + entityType))
                     .exceptionally(ex -> {
-                        LOG.severe("Failed to publish cache invalidation event: " + ex.getMessage());
+                        LOG.warning("Failed to publish cache invalidation event for " + entityType + ": " + ex.getMessage());
                         return null;
                     });
+        } else if (publishInvalidations) {
+            LOG.fine("RabbitMQ invalidation publishing is disabled or unavailable - cache invalidation was local only for: " + entityType);
         }
     }
 
