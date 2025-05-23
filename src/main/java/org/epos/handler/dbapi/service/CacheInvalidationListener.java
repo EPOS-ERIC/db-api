@@ -3,10 +3,10 @@ package org.epos.handler.dbapi.service;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
-import jakarta.persistence.PreRemove;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,6 +21,7 @@ import java.util.logging.Logger;
  * - Async publishing with error handling
  * - Configurable through environment variables
  * - Support for related entity invalidation
+ * - Deduplication to prevent multiple invalidations for the same entity
  */
 public class CacheInvalidationListener {
     private static final Logger LOGGER = Logger.getLogger(CacheInvalidationListener.class.getName());
@@ -33,6 +34,11 @@ public class CacheInvalidationListener {
     private static final boolean publishInvalidations = isPublishingEnabled();
     private static final boolean invalidateRelatedEntities = isRelatedInvalidationEnabled();
     private static final long publishTimeout = getPublishTimeout();
+    private static final boolean deduplicationEnabled = isDeduplicationEnabled();
+    private static final long deduplicationWindowMs = getDeduplicationWindow();
+
+    // Deduplication cache to prevent multiple invalidations for the same entity
+    private static final ConcurrentHashMap<String, Long> recentInvalidations = new ConcurrentHashMap<>();
 
     /**
      * Check if invalidation publishing is enabled based on environment variable
@@ -48,6 +54,22 @@ public class CacheInvalidationListener {
     private static boolean isRelatedInvalidationEnabled() {
         String relatedEnv = System.getenv("ENABLE_RELATED_ENTITY_INVALIDATION");
         return relatedEnv == null || Boolean.parseBoolean(relatedEnv);
+    }
+
+    /**
+     * Check if deduplication is enabled
+     */
+    private static boolean isDeduplicationEnabled() {
+        String dedupEnv = System.getenv("ENABLE_CACHE_INVALIDATION_DEDUPLICATION");
+        return dedupEnv == null || Boolean.parseBoolean(dedupEnv);
+    }
+
+    /**
+     * Get deduplication window in milliseconds
+     */
+    private static long getDeduplicationWindow() {
+        String windowEnv = System.getenv("CACHE_INVALIDATION_DEDUPLICATION_WINDOW_MS");
+        return windowEnv != null ? Long.parseLong(windowEnv) : 1000L; // 1 second default
     }
 
     /**
@@ -74,7 +96,7 @@ public class CacheInvalidationListener {
     }
 
     /**
-     * Main cache invalidation method with enhanced features
+     * Main cache invalidation method with enhanced features and deduplication
      */
     private void invalidateCache(Object entity, String operation) {
         if (entity == null) {
@@ -82,9 +104,21 @@ public class CacheInvalidationListener {
         }
 
         String entityType = entity.getClass().getSimpleName();
+
+        // Check for deduplication
+        if (deduplicationEnabled && isRecentlyInvalidated(entityType)) {
+            LOGGER.fine("Skipping cache invalidation for " + entityType + " - recently invalidated");
+            return;
+        }
+
         LOGGER.fine(operation + " operation detected on entity: " + entityType);
 
         try {
+            // Mark as recently invalidated
+            if (deduplicationEnabled) {
+                markAsRecentlyInvalidated(entityType);
+            }
+
             // Local cache invalidation
             invalidateLocalCache(entityType);
 
@@ -94,13 +128,54 @@ public class CacheInvalidationListener {
             }
 
             // Publish invalidation event to other services if enabled
-            if (publishInvalidations && invalidationManager != null) {
+            if (publishInvalidations && invalidationManager != null && invalidationManager.isEnabled()) {
                 publishInvalidationEventAsync(entityType, operation);
             }
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during cache invalidation for entity: " + entityType, e);
         }
+    }
+
+    /**
+     * Check if an entity type was recently invalidated
+     */
+    private boolean isRecentlyInvalidated(String entityType) {
+        Long lastInvalidation = recentInvalidations.get(entityType);
+        if (lastInvalidation == null) {
+            return false;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        boolean isRecent = (currentTime - lastInvalidation) < deduplicationWindowMs;
+
+        // Clean up old entries
+        if (!isRecent) {
+            recentInvalidations.remove(entityType);
+        }
+
+        return isRecent;
+    }
+
+    /**
+     * Mark an entity type as recently invalidated
+     */
+    private void markAsRecentlyInvalidated(String entityType) {
+        recentInvalidations.put(entityType, System.currentTimeMillis());
+
+        // Cleanup old entries periodically (keep map size reasonable)
+        if (recentInvalidations.size() > 1000) {
+            cleanupOldInvalidations();
+        }
+    }
+
+    /**
+     * Clean up old invalidation entries
+     */
+    private void cleanupOldInvalidations() {
+        long currentTime = System.currentTimeMillis();
+        recentInvalidations.entrySet().removeIf(entry ->
+                (currentTime - entry.getValue()) > deduplicationWindowMs);
     }
 
     /**
@@ -134,11 +209,12 @@ public class CacheInvalidationListener {
                         Object relatedEntity = field.get(entity);
                         if (relatedEntity != null) {
                             String relatedEntityType = getEntityType(relatedEntity);
-                            if (relatedEntityType != null) {
+                            if (relatedEntityType != null && !isRecentlyInvalidated(relatedEntityType)) {
+                                markAsRecentlyInvalidated(relatedEntityType);
                                 invalidateLocalCache(relatedEntityType);
 
                                 // Publish related entity invalidation
-                                if (publishInvalidations && invalidationManager != null) {
+                                if (publishInvalidations && invalidationManager != null && invalidationManager.isEnabled()) {
                                     publishInvalidationEventAsync(relatedEntityType, "RELATED");
                                 }
                             }
@@ -183,7 +259,7 @@ public class CacheInvalidationListener {
                     if (ex instanceof java.util.concurrent.TimeoutException) {
                         LOGGER.warning("Timeout publishing cache invalidation event for: " + entityType + " (operation: " + operation + ")");
                     } else {
-                        LOGGER.log(Level.SEVERE, "Failed to publish cache invalidation event for: " + entityType + " (operation: " + operation + ")", ex);
+                        LOGGER.log(Level.WARNING, "Failed to publish cache invalidation event for: " + entityType + " (operation: " + operation + "): " + ex.getMessage());
                     }
                     return null;
                 });
@@ -193,16 +269,26 @@ public class CacheInvalidationListener {
      * Manual cache invalidation method for programmatic use
      */
     public static void invalidateEntityCache(String entityType) {
+        // Check deduplication
+        if (deduplicationEnabled && instance.isRecentlyInvalidated(entityType)) {
+            LOGGER.fine("Skipping manual cache invalidation for " + entityType + " - recently invalidated");
+            return;
+        }
+
+        if (deduplicationEnabled) {
+            instance.markAsRecentlyInvalidated(entityType);
+        }
+
         if (cacheService != null) {
             cacheService.invalidateByEntityType(entityType);
             LOGGER.info("Manually invalidated cache for entity type: " + entityType);
         }
 
-        if (publishInvalidations && invalidationManager != null) {
+        if (publishInvalidations && invalidationManager != null && invalidationManager.isEnabled()) {
             invalidationManager.publishInvalidationEvent(entityType)
                     .thenRun(() -> LOGGER.info("Published manual cache invalidation event for: " + entityType))
                     .exceptionally(ex -> {
-                        LOGGER.log(Level.SEVERE, "Failed to publish manual cache invalidation event: " + ex.getMessage(), ex);
+                        LOGGER.log(Level.WARNING, "Failed to publish manual cache invalidation event: " + ex.getMessage());
                         return null;
                     });
         }
@@ -231,4 +317,27 @@ public class CacheInvalidationListener {
     public static boolean isInvalidationManagerHealthy() {
         return invalidationManager != null && invalidationManager.isConnected();
     }
+
+    /**
+     * Get deduplication statistics
+     */
+    public static java.util.Map<String, Object> getDeduplicationStatistics() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("enabled", deduplicationEnabled);
+        stats.put("windowMs", deduplicationWindowMs);
+        stats.put("currentTrackedEntities", recentInvalidations.size());
+        stats.put("recentInvalidations", new java.util.HashMap<>(recentInvalidations));
+        return stats;
+    }
+
+    /**
+     * Clear deduplication cache (for testing purposes)
+     */
+    public static void clearDeduplicationCache() {
+        recentInvalidations.clear();
+        LOGGER.info("Deduplication cache cleared");
+    }
+
+    // Singleton instance for accessing non-static methods
+    private static final CacheInvalidationListener instance = new CacheInvalidationListener();
 }

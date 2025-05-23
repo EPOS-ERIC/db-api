@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Root;
 import model.StatusType;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.handler.dbapi.service.CacheInvalidationListener;
 import org.epos.handler.dbapi.service.DatabaseCacheService;
 import org.epos.handler.dbapi.service.EntityManagerService;
 import org.epos.handler.dbapi.service.RabbitMQCacheInvalidationManager;
@@ -79,8 +80,8 @@ public class EposDataModelDAO<T> {
             em.persist(entity);
             em.getTransaction().commit();
 
-            // Invalidate cache for this entity type
-            invalidateCacheForEntityType(entity.getClass().getSimpleName());
+            // Note: Cache invalidation is handled by CacheInvalidationListener
+            // No need for manual invalidation here to avoid duplicates
 
             return true;
         } catch (Exception exception) {
@@ -431,8 +432,8 @@ public class EposDataModelDAO<T> {
             em.merge(obj);
             em.getTransaction().commit();
 
-            // Invalidate cache for this entity type
-            invalidateCacheForEntityType(obj.getClass().getSimpleName());
+            // Note: Cache invalidation is handled by CacheInvalidationListener
+            // No need for manual invalidation here to avoid duplicates
 
             return true;
         } catch (Exception exception) {
@@ -468,8 +469,8 @@ public class EposDataModelDAO<T> {
 
             em.getTransaction().commit();
 
-            // Invalidate cache for this entity type
-            invalidateCacheForEntityType(obj.getClass().getSimpleName());
+            // Note: Cache invalidation is handled by CacheInvalidationListener
+            // No need for manual invalidation here to avoid duplicates
 
             return true;
         } catch (Exception exception) {
@@ -507,8 +508,8 @@ public class EposDataModelDAO<T> {
 
             em.getTransaction().commit();
 
-            // Invalidate cache for this entity type
-            invalidateCacheForEntityType(objList.get(0).getClass().getSimpleName());
+            // Note: Cache invalidation is handled by CacheInvalidationListener
+            // No need for manual invalidation here to avoid duplicates
 
             return true;
         } catch (Exception exception) {
@@ -536,25 +537,11 @@ public class EposDataModelDAO<T> {
     }
 
     /**
-     * Invalidate cache for a specific entity type
+     * Invalidate cache for a specific entity type (manual invalidation)
      */
     private void invalidateCacheForEntityType(String entityType) {
-        if (cacheService != null) {
-            cacheService.invalidateByEntityType(entityType);
-            LOG.info("Cache invalidated for entity type: " + entityType);
-        }
-
-        // Publish invalidation event if enabled and RabbitMQ is available
-        if (publishInvalidations && invalidationManager != null && invalidationManager.isEnabled()) {
-            invalidationManager.publishInvalidationEvent(entityType)
-                    .thenRun(() -> LOG.fine("Published cache invalidation event for: " + entityType))
-                    .exceptionally(ex -> {
-                        LOG.warning("Failed to publish cache invalidation event for " + entityType + ": " + ex.getMessage());
-                        return null;
-                    });
-        } else if (publishInvalidations) {
-            LOG.fine("RabbitMQ invalidation publishing is disabled or unavailable - cache invalidation was local only for: " + entityType);
-        }
+        // Use the listener's method which includes deduplication
+        CacheInvalidationListener.invalidateEntityCache(entityType);
     }
 
     /**
