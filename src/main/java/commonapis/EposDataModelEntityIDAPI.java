@@ -1,13 +1,12 @@
 package commonapis;
 
 import dao.EposDataModelDAO;
-import dao.EposDataModelDAOWithCache;
 import model.EdmEntityId;
 
 public class EposDataModelEntityIDAPI {
 
-    private static EposDataModelDAOWithCache<EdmEntityId> getDbaccess() {
-        return new EposDataModelDAOWithCache();
+    private static EposDataModelDAO<EdmEntityId> getDbaccess() {
+        return new EposDataModelDAO();
     }
 
     public static Boolean addEntityToEDMEntityID(String metaId, String entityName){

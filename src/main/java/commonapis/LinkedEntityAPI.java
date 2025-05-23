@@ -2,7 +2,6 @@ package commonapis;
 
 import abstractapis.AbstractAPI;
 import dao.EposDataModelDAO;
-import dao.EposDataModelDAOWithCache;
 import metadataapis.*;
 import model.*;
 import model.Versioningstatus;
@@ -136,7 +135,7 @@ public class LinkedEntityAPI {
         return null;
     }
 
-    private static EposDataModelDAOWithCache getDbaccess() {
-        return new EposDataModelDAOWithCache();
+    private static EposDataModelDAO getDbaccess() {
+        return new EposDataModelDAO();
     }
 }

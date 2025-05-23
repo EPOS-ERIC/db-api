@@ -1,12 +1,9 @@
 package commonapis;
 
 import dao.EposDataModelDAO;
-import dao.EposDataModelDAOWithCache;
 import model.*;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
-import org.epos.eposdatamodel.Group;
-import usermanagementapis.UserGroupManagementAPI;
 
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -129,7 +126,7 @@ public class VersioningStatusAPI {
         return returnList.isEmpty() ? null : returnList.get(0);
     }
 
-    private static EposDataModelDAOWithCache<Versioningstatus> getDbaccess() {
-        return new EposDataModelDAOWithCache<>();
+    private static EposDataModelDAO<Versioningstatus> getDbaccess() {
+        return new EposDataModelDAO<>();
     }
 }

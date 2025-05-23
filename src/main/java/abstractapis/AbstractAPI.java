@@ -2,7 +2,6 @@ package abstractapis;
 
 import commonapis.*;
 import dao.EposDataModelDAO;
-import dao.EposDataModelDAOWithCache;
 import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -10,21 +9,20 @@ import org.epos.eposdatamodel.LinkedEntity;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public abstract class AbstractAPI<T> {
 
     protected Class<?> edmClass;
     protected String entityName;
 
-    protected EposDataModelDAOWithCache dbaccess = new EposDataModelDAOWithCache();
+    protected EposDataModelDAO dbaccess = new EposDataModelDAO();
 
     public AbstractAPI(String entityName, Class<?> edmClass) {
         this.edmClass = edmClass;
         this.entityName = entityName;
     }
 
-    public EposDataModelDAOWithCache getDbaccess() {
+    public EposDataModelDAO getDbaccess() {
         return dbaccess;
     }
 
