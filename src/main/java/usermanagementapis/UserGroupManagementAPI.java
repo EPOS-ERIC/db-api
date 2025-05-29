@@ -232,7 +232,7 @@ public class UserGroupManagementAPI {
 
         for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
             if(metadataGroupUser.getGroup().getId().equals(groupId) &&
-            metadataGroupUser.getAuthIdentifier().getAuthIdentifier().equals(userId)){
+                    metadataGroupUser.getAuthIdentifier().getAuthIdentifier().equals(userId)){
                 return getDbaccess().deleteObject(metadataGroupUser);
             }
         }
@@ -274,7 +274,7 @@ public class UserGroupManagementAPI {
     public static List<String> retrieveShortGroupsFromMetaId(String metaId){
 
         List<String> groups = new ArrayList<>();
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class);
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class);
         authorizationGroupList.forEach(authorizationGroup -> groups.add(authorizationGroup.getGroup().getId()));
         return groups;
     }

@@ -1,12 +1,9 @@
 package model;
 
 import jakarta.persistence.*;
-import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "facility_ispartof", schema = "metadata_catalogue")
-@EntityListeners(CacheInvalidationListener.class)
-@Cacheable()
 public class FacilityIspartof {
     @EmbeddedId
     private FacilityIspartofId id;

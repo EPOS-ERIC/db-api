@@ -1,14 +1,11 @@
 package model;
 
 import jakarta.persistence.*;
-import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "versioningstatus", schema = "metadata_catalogue")
-@EntityListeners(CacheInvalidationListener.class)
-@Cacheable()
 public class Versioningstatus {
     @Id
     @jakarta.validation.constraints.Size(max = 100)

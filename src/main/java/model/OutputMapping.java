@@ -2,12 +2,9 @@ package model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
-import org.epos.handler.dbapi.service.CacheInvalidationListener;
 
 @Entity
 @Table(name = "output_mapping", schema = "metadata_catalogue")
-@EntityListeners(CacheInvalidationListener.class)
-@Cacheable()
 public class OutputMapping {
     @Id
     @Size(max = 100)

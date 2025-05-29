@@ -1,6 +1,7 @@
 package abstractapis;
 
 import dao.EposDataModelDAO;
+import org.epos.eposdatamodel.LinkedEntity;
 
 public abstract class AbstractRelationsAPI {
 

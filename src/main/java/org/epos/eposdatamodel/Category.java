@@ -61,6 +61,17 @@ public class Category extends EPOSDataModelEntity {
             "  }]", required = false)
     private List<LinkedEntity> narrower;
 
+    /**
+     * The CATEGORY used as top concept
+     */
+    @Schema(name = "topConcept", description = "The CATEGORY used as top concept", example = "[{\n" +
+            "    \"entityType\": \"CATEGORY\",\n" +
+            "    \"instanceId\": \"an UUID\",\n" +
+            "    \"metaId\": \"an UUID\",\n" +
+            "    \"uid\": \"an UUID\"\n" +
+            "  }]", required = false)
+    private List<LinkedEntity> topConcept;
+
 
     public String getDescription() {
         return description;
@@ -119,7 +130,7 @@ public class Category extends EPOSDataModelEntity {
             this.getNarrower().add(narrower);
         }
     }
-	
+
 	public void addBroader(LinkedEntity broader) {
         if (this.getBroader() == null) {
             ArrayList<LinkedEntity> broaders = new ArrayList<>();
@@ -130,27 +141,18 @@ public class Category extends EPOSDataModelEntity {
         }
     }
 
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = super.hashCode();
-		result = prime * result + Objects.hash(broader, description, inScheme, name, narrower, uid);
-		return result;
-	}
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        Category category = (Category) o;
+        return Objects.equals(description, category.description) && Objects.equals(inScheme, category.inScheme) && Objects.equals(name, category.name) && Objects.equals(uid, category.uid) && Objects.equals(broader, category.broader) && Objects.equals(narrower, category.narrower) && Objects.equals(topConcept, category.topConcept);
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (!super.equals(obj))
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Category other = (Category) obj;
-		return Objects.equals(broader, other.broader) && Objects.equals(description, other.description)
-				&& Objects.equals(inScheme, other.inScheme) && Objects.equals(name, other.name)
-				&& Objects.equals(narrower, other.narrower) && Objects.equals(uid, other.uid);
-	}
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), description, inScheme, name, uid, broader, narrower, topConcept);
+    }
 
     @Override
     public String toString() {
@@ -161,6 +163,7 @@ public class Category extends EPOSDataModelEntity {
                 ", uid='" + uid + '\'' +
                 ", broader=" + broader +
                 ", narrower=" + narrower +
-                '}'+ super.toString();
+                ", topConcept=" + topConcept +
+                '}';
     }
 }
