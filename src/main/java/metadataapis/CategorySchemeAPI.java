@@ -127,6 +127,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
                     topConcepts.add(retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
                 }
             }
+            o.setTopConcepts(topConcepts);
 
             o = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.retrieveVersion(o);
 
