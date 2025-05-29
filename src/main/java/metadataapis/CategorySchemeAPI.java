@@ -119,15 +119,12 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             o.setColor(edmobj.getColor());
             o.setOrderitemnumber(edmobj.getOrderitemnumber());
 
-            ArrayList<LinkedEntity> topConcepts = new ArrayList<>();
-
             for(Object categoryHastopconcept : dbaccess.getAllFromDB(CategoryHastopconcept.class)){
                 CategoryHastopconcept item = (CategoryHastopconcept) categoryHastopconcept;
                 if(item.getCategorySchemeInstance().getInstanceId().equals(edmobj.getInstanceId())){
-                    topConcepts.add(retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
+                    o.addTopConcepts(AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
                 }
             }
-            o.setTopConcepts(topConcepts);
 
             o = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.retrieveVersion(o);
 
