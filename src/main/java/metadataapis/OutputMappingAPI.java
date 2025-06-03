@@ -49,7 +49,7 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
         edmobj.setLabel(obj.getOutputLabel());
         edmobj.setValuepattern(obj.getOutputValuePattern());
-        edmobj.setRequired(Boolean.parseBoolean(obj.getOutputRequired()));
+        edmobj.setRequired(obj.getOutputRequired()!=null? Boolean.parseBoolean(obj.getOutputRequired()) : null);
         edmobj.setRange(obj.getOutputRange());
         edmobj.setProperty(obj.getOutputProperty());
         edmobj.setVariable(obj.getOutputVariable());
