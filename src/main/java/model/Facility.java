@@ -1,6 +1,7 @@
 package model;
 
 import jakarta.persistence.*;
+import org.epos.eposdatamodel.LinkedEntity;
 
 @Entity
 @Table(name = "facility", schema = "metadata_catalogue")
