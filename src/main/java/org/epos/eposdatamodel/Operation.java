@@ -51,6 +51,16 @@ public class Operation extends EPOSDataModelEntity {
             "  }", required = false)
     private List<LinkedEntity> webservice;
 
+    private LinkedEntity iriTemplate;
+
+    public LinkedEntity getIriTemplate() {
+        return iriTemplate;
+    }
+
+    public void setIriTemplate(LinkedEntity iriTemplate) {
+        this.iriTemplate = iriTemplate;
+    }
+
     /**
      * A variable-to-property mapping of the payload expected
      **/

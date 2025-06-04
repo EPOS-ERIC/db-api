@@ -52,6 +52,7 @@ public class EntityManagementFacilityTest extends TestcontainersLifecycle {
         facility.addPageURL("PAGE URL");
         facility.setIdentifier("identifier");
         facility.setTitle("name");
+        facility.setType("type");
         facility.addRelation(le4);
         facility.addIsPartOf(le4);
         facility.addSpatialExtentItem(le5);
