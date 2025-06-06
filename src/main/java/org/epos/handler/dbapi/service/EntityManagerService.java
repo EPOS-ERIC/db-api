@@ -8,15 +8,21 @@ import org.eclipse.persistence.config.PersistenceUnitProperties;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
 
 public class EntityManagerService {
 
+    private static final Logger LOG = Logger.getLogger(EntityManagerService.class.getName());
+
     private static EntityManagerFactory instance;
+    private HikariDataSource hikariDataSource;
 
     private String persistenceName;
     private String poolMaxSize;
     private String maxConnectionLifetime;
     private String keepAliveTime;
+    private String leakDetectionThreshold;
 
     private String connectionString;
     private String postgresqlHost;
@@ -24,29 +30,40 @@ public class EntityManagerService {
     private String postgresqlUsername;
     private String postgresqlPassword;
 
+
     private EntityManagerService(EntityManagerServiceBuilder entityManagerServiceBuilder) {
 
         this.persistenceName = entityManagerServiceBuilder.persistenceName;
         this.poolMaxSize = entityManagerServiceBuilder.poolMaxSize;
         this.maxConnectionLifetime = entityManagerServiceBuilder.maxConnectionLifetime;
         this.keepAliveTime = entityManagerServiceBuilder.keepAliveTime;
+        this.leakDetectionThreshold = entityManagerServiceBuilder.leakDetectionThreshold;
 
         HikariConfig hikariConfig = new HikariConfig();
         HashMap<String, Object> properties = new HashMap<>();
         hikariConfig.setMaximumPoolSize(Integer.parseInt(poolMaxSize));
         hikariConfig.setMaxLifetime(Long.parseLong(maxConnectionLifetime));
         hikariConfig.setKeepaliveTime(Long.parseLong(keepAliveTime));
+        hikariConfig.setLeakDetectionThreshold(Long.parseLong(leakDetectionThreshold));
+        hikariConfig.setConnectionTimeout(30000);
+
         hikariConfig.setAutoCommit(false);
 
         hikariConfig.setDriverClassName("org.postgresql.Driver");
         hikariConfig.setPoolName("metadata_catalogue");
-        //hikariConfig.setConnectionTestQuery("SELECT 1");
         hikariConfig.setConnectionTimeout(1000);
         hikariConfig.setInitializationFailTimeout(9000);
 
+        // PostgreSQL specific optimizations
         hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
         hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
         hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
+        hikariConfig.addDataSourceProperty("rewriteBatchedStatements", "true");
+
+        // Connection validation
+        hikariConfig.setConnectionTestQuery("SELECT 1");
+        hikariConfig.setValidationTimeout(5000);
 
         this.connectionString = entityManagerServiceBuilder.connectionString;
         this.postgresqlHost = entityManagerServiceBuilder.postgresqlHost;
@@ -74,10 +91,41 @@ public class EntityManagerService {
         }
 
 
-        DataSource hikariDataSource = new HikariDataSource(hikariConfig);
+        hikariDataSource = new HikariDataSource(hikariConfig);
 
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
+    }
+
+    // Enhanced monitoring methods
+    public Map<String, Object> getDetailedPoolStats() {
+        Map<String, Object> stats = new HashMap<>();
+        if (hikariDataSource != null) {
+            try {
+                stats.put("activeConnections", hikariDataSource.getHikariPoolMXBean().getActiveConnections());
+                stats.put("idleConnections", hikariDataSource.getHikariPoolMXBean().getIdleConnections());
+                stats.put("totalConnections", hikariDataSource.getHikariPoolMXBean().getTotalConnections());
+                stats.put("threadsAwaitingConnection", hikariDataSource.getHikariPoolMXBean().getThreadsAwaitingConnection());
+                stats.put("poolName", hikariDataSource.getPoolName());
+                stats.put("maximumPoolSize", hikariDataSource.getMaximumPoolSize());
+                stats.put("minimumIdle", hikariDataSource.getMinimumIdle());
+            } catch (Exception e) {
+                LOG.warning("Error getting pool statistics: " + e.getMessage());
+                stats.put("error", e.getMessage());
+            }
+        }
+        return stats;
+    }
+
+    public boolean isHealthy() {
+        try {
+            if (hikariDataSource != null && !hikariDataSource.isClosed()) {
+                return hikariDataSource.getHikariPoolMXBean().getThreadsAwaitingConnection() < 5;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static class EntityManagerServiceBuilder {
@@ -85,6 +133,7 @@ public class EntityManagerService {
         private String poolMaxSize;
         private String maxConnectionLifetime;
         private String keepAliveTime;
+        private String leakDetectionThreshold;
 
         private String connectionString;
         private String postgresqlHost;
@@ -94,8 +143,9 @@ public class EntityManagerService {
 
         private final String PERSISTENCE_NAME_DEFAULT = "EPOSDataModel";
         private final String CONNECTION_POOL_MAX_SIZE_DEFAULT = "10";
-        private final String CONNECTION_MAX_LIFETIME_DEFAULT = "40000";
-        private final String CONNECTION_TEST_IDLE_INTERVAL_TIME_DEFAULT = "30000";
+        private final String CONNECTION_MAX_LIFETIME_DEFAULT = "1800000";
+        private final String CONNECTION_TEST_IDLE_INTERVAL_TIME_DEFAULT = "600000";
+        private final String CONNECTION_LEAK_DETECTION_THRESHOLD = "600000";
 
         public EntityManagerServiceBuilder(){
             persistenceName = System.getenv("PERSISTENCE_NAME");
@@ -109,6 +159,9 @@ public class EntityManagerService {
 
             keepAliveTime = System.getenv("CONNECTION_TEST_IDLE_INTERVAL_TIME");
             keepAliveTime = keepAliveTime == null ? CONNECTION_TEST_IDLE_INTERVAL_TIME_DEFAULT : keepAliveTime;
+
+            leakDetectionThreshold = System.getenv("CONNECTION_LEAK_DETECTION_THRESHOLD");
+            leakDetectionThreshold = leakDetectionThreshold == null ? CONNECTION_LEAK_DETECTION_THRESHOLD : leakDetectionThreshold;
 
 
             this.connectionString = System.getenv("POSTGRESQL_CONNECTION_STRING");
@@ -172,6 +225,16 @@ public class EntityManagerService {
     public static synchronized EntityManagerFactory getInstance() {
         if (instance != null) return instance;
         return null;
+    }
+
+    public void close() {
+        if (instance != null && instance.isOpen()) {
+            instance.close();
+        }
+        if (hikariDataSource != null && !hikariDataSource.isClosed()) {
+            hikariDataSource.close();
+        }
+        LOG.info("Enhanced EntityManagerService closed");
     }
 
 }

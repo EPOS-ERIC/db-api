@@ -193,5 +193,39 @@
 		<class>model.WebserviceSpatialId</class>
 		<class>model.WebserviceTemporal</class>
 		<class>model.WebserviceTemporalId</class>
+
+		<properties>
+
+			<!-- ================= ECLIPSELINK PERFORMANCE TUNING ================= -->
+
+			<!-- Batch writing for better performance -->
+			<property name="eclipselink.jdbc.batch-writing" value="JDBC"/>
+			<property name="eclipselink.jdbc.batch-writing.size" value="25"/>
+
+			<!-- Connection pooling optimization -->
+			<property name="eclipselink.connection-pool.default.connection-creation-failure-policy" value="retry"/>
+			<property name="eclipselink.connection-pool.default.fail-on-wait" value="false"/>
+
+			<!-- Cache settings -->
+			<property name="eclipselink.cache.shared.default" value="true"/>
+			<property name="eclipselink.cache.type.default" value="SoftWeak"/>
+			<property name="eclipselink.cache.size.default" value="1000"/>
+
+			<!-- Query optimization -->
+			<property name="eclipselink.query-results-cache" value="true"/>
+			<property name="eclipselink.query-results-cache.size" value="500"/>
+
+			<!-- Logging (WARNING level for production) -->
+			<property name="eclipselink.logging.level" value="WARNING"/>
+			<property name="eclipselink.logging.parameters" value="false"/>
+
+			<!-- Performance monitoring -->
+			<property name="eclipselink.jpa.performance-monitor" value="QueryMonitor"/>
+
+			<!-- DDL generation (set to 'none' for production) -->
+			<property name="eclipselink.ddl-generation" value="none"/>
+			<property name="eclipselink.validate-existence" value="false"/>
+
+		</properties>
 	</persistence-unit>
 </persistence>

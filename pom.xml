@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>3.3.11</version>
+	<version>3.4.0</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
@@ -13,6 +13,10 @@
 		<java.version>11</java.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
+
+		<caffeine.version>3.1.8</caffeine.version>
+		<logback.version>1.5.13</logback.version>
+		<micrometer.version>1.12.4</micrometer.version>
 	</properties>
 
 	<developers>
@@ -98,7 +102,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- END JAVA DOC -->
+			<!-- END JAVADOC -->
 
 			<!-- SOURCE -->
 			<plugin>
@@ -173,7 +177,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
-			<version>3.3.0</version>
+			<version>3.5.0</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -209,7 +213,7 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>junit-jupiter</artifactId>
-			<version>1.19.8</version>
+			<version>1.21.1</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -220,12 +224,12 @@
 			<scope>test</scope>
 		</dependency>
 
-
 		<dependency>
 			<groupId>jakarta.validation</groupId>
 			<artifactId>jakarta.validation-api</artifactId>
 			<version>3.0.2</version>
 		</dependency>
+
 		<!-- https://mvnrepository.com/artifact/org.springframework.data/spring-data-commons -->
 		<dependency>
 			<groupId>org.springframework.data</groupId>
@@ -233,10 +237,27 @@
 			<version>3.3.5</version>
 		</dependency>
 
+		<!-- Caffeine Cache - High-performance caching -->
 		<dependency>
-			<groupId>com.rabbitmq</groupId>
-			<artifactId>amqp-client</artifactId>
-			<version>5.18.0</version>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+			<version>${caffeine.version}</version>
+		</dependency>
+
+		<!-- Logback for better logging performance -->
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+
+
+		<!-- Micrometer for metrics (optional) -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-core</artifactId>
+			<version>${micrometer.version}</version>
+			<optional>true</optional>
 		</dependency>
 
     </dependencies>

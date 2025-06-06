@@ -16,7 +16,7 @@ public abstract class AbstractAPI<T> {
     protected Class<?> edmClass;
     protected String entityName;
 
-    protected EposDataModelDAO dbaccess = new EposDataModelDAO();
+    protected EposDataModelDAO dbaccess = EposDataModelDAO.getInstance();
 
     public AbstractAPI(String entityName, Class<?> edmClass) {
         this.edmClass = edmClass;
