@@ -136,6 +136,6 @@ public class LinkedEntityAPI {
     }
 
     private static EposDataModelDAO getDbaccess() {
-        return new EposDataModelDAO();
+        return EposDataModelDAO.getInstance();
     }
 }

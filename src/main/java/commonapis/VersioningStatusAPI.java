@@ -110,7 +110,7 @@ public class VersioningStatusAPI {
         obj.setVersion(vs.getVersion());
         obj.setStatus(StatusType.valueOf(vs.getStatus()));
 
-        getDbaccess().updateObject(vs);
+        //getDbaccess().updateObject(vs);
         return obj;
     }
 
@@ -127,6 +127,6 @@ public class VersioningStatusAPI {
     }
 
     private static EposDataModelDAO<Versioningstatus> getDbaccess() {
-        return new EposDataModelDAO<>();
+        return EposDataModelDAO.getInstance();
     }
 }

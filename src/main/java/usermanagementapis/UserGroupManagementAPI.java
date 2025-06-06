@@ -329,7 +329,7 @@ public class UserGroupManagementAPI {
 
 
     private static EposDataModelDAO getDbaccess() {
-        return new EposDataModelDAO();
+        return EposDataModelDAO.getInstance();
     }
 
 

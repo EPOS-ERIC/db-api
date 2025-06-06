@@ -6,7 +6,7 @@ import model.EdmEntityId;
 public class EposDataModelEntityIDAPI {
 
     private static EposDataModelDAO<EdmEntityId> getDbaccess() {
-        return new EposDataModelDAO();
+        return EposDataModelDAO.getInstance();
     }
 
     public static Boolean addEntityToEDMEntityID(String metaId, String entityName){
