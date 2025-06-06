@@ -432,7 +432,6 @@ public class EposDataModelDAO<T> {
 
     /**
      * Optimized batch delete
-     * REPLACES: deleteListOfObjects(List<T> obj)
      */
     public Boolean deleteListOfObjects(List<T> objects) {
         if (objects == null || objects.isEmpty()) {

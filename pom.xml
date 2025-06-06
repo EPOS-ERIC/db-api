@@ -15,7 +15,7 @@
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 
 		<caffeine.version>3.1.8</caffeine.version>
-		<logback.version>1.5.13</logback.version>
+		<logback.version>1.4.14</logback.version>
 		<micrometer.version>1.12.4</micrometer.version>
 	</properties>
 
@@ -102,7 +102,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- END JAVADOC -->
+			<!-- END JAVA DOC -->
 
 			<!-- SOURCE -->
 			<plugin>
@@ -177,7 +177,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
-			<version>3.5.0</version>
+			<version>3.3.0</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -213,7 +213,7 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>junit-jupiter</artifactId>
-			<version>1.21.1</version>
+			<version>1.19.8</version>
 			<scope>test</scope>
 		</dependency>
 

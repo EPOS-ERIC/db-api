@@ -2543,3 +2543,60 @@
 2025-06-06 09:28:48 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Start completed.
 2025-06-06 09:28:49 [main] INFO  t.epos/metadata-database-deploy-test:latest - Creating container for image: epos/metadata-database-deploy-test:latest
 2025-06-06 09:28:49 [main] INFO  t.epos/metadata-database-deploy-test:latest - Container epos/metadata-database-deploy-test:latest is starting: 1e69db84364ab9d2115b8db31a0544ad20a1c8bd0671175f1f8ab27d0b3531b6
+2025-06-06 09:34:19 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+2025-06-06 09:34:19 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+2025-06-06 09:34:19 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 1.21.1
+2025-06-06 09:34:19 [main] INFO  o.t.d.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+2025-06-06 09:34:19 [main] INFO  o.t.d.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+2025-06-06 09:34:19 [main] INFO  o.testcontainers.DockerClientFactory - Docker host IP address is localhost
+2025-06-06 09:34:19 [main] INFO  o.testcontainers.DockerClientFactory - Connected to docker: 
+  Server Version: 28.2.0
+  API Version: 1.50
+  Operating System: EndeavourOS
+  Total Memory: 63744 MB
+2025-06-06 09:34:19 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Creating container for image: testcontainers/ryuk:0.11.0
+2025-06-06 09:34:19 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 is starting: 29e978d58f17f7bff6d498f3f94defd4c472bbb07dba09639bc81e82a8400153
+2025-06-06 09:34:20 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 started in PT0.442816956S
+2025-06-06 09:34:20 [main] INFO  o.t.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+2025-06-06 09:34:20 [main] INFO  o.testcontainers.DockerClientFactory - Checking the system...
+2025-06-06 09:34:20 [main] INFO  o.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+2025-06-06 09:34:20 [main] INFO  t.epos/metadata-database-deploy-test:latest - Creating container for image: epos/metadata-database-deploy-test:latest
+2025-06-06 09:34:20 [main] INFO  t.epos/metadata-database-deploy-test:latest - Container epos/metadata-database-deploy-test:latest is starting: 232129ca60c59addb8af69f4f594d6fca91f30d71eff8b8caf38dc9badbcfb33
+2025-06-06 09:39:52 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+2025-06-06 09:39:52 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+2025-06-06 09:39:52 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 1.21.1
+2025-06-06 09:39:52 [main] INFO  o.t.d.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+2025-06-06 09:39:53 [main] INFO  o.t.d.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+2025-06-06 09:39:53 [main] INFO  o.testcontainers.DockerClientFactory - Docker host IP address is localhost
+2025-06-06 09:39:53 [main] INFO  o.testcontainers.DockerClientFactory - Connected to docker: 
+  Server Version: 28.2.0
+  API Version: 1.50
+  Operating System: EndeavourOS
+  Total Memory: 63744 MB
+2025-06-06 09:39:53 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Creating container for image: testcontainers/ryuk:0.11.0
+2025-06-06 09:39:53 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 is starting: 72e63d99d603f0a0709bf901c3deaa6b6adaac1b80475311a839a0977aa1421b
+2025-06-06 09:39:53 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 started in PT0.348240982S
+2025-06-06 09:39:53 [main] INFO  o.t.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+2025-06-06 09:39:53 [main] INFO  o.testcontainers.DockerClientFactory - Checking the system...
+2025-06-06 09:39:53 [main] INFO  o.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+2025-06-06 09:39:53 [main] INFO  t.epos/metadata-database-deploy-test:latest - Creating container for image: epos/metadata-database-deploy-test:latest
+2025-06-06 09:39:53 [main] INFO  t.epos/metadata-database-deploy-test:latest - Container epos/metadata-database-deploy-test:latest is starting: 88ab0d58e971a4368255e0066507f05ccccaea15081d8b5040e26dbfe2488a4b
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+2025-06-06 09:42:42 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 1.21.1
+2025-06-06 09:42:42 [main] INFO  o.t.d.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+2025-06-06 09:42:42 [main] INFO  o.t.d.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.DockerClientFactory - Docker host IP address is localhost
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.DockerClientFactory - Connected to docker: 
+  Server Version: 28.2.0
+  API Version: 1.50
+  Operating System: EndeavourOS
+  Total Memory: 63744 MB
+2025-06-06 09:42:42 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Creating container for image: testcontainers/ryuk:0.11.0
+2025-06-06 09:42:42 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 is starting: 05901f33e1b9162341c028a121e498bc7cdddbf6a7c0b514b80c0986ec93fbc6
+2025-06-06 09:42:42 [main] INFO  tc.testcontainers/ryuk:0.11.0 - Container testcontainers/ryuk:0.11.0 started in PT0.233278924S
+2025-06-06 09:42:42 [main] INFO  o.t.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.DockerClientFactory - Checking the system...
+2025-06-06 09:42:42 [main] INFO  o.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+2025-06-06 09:42:42 [main] INFO  t.epos/metadata-database-deploy-test:latest - Creating container for image: epos/metadata-database-deploy-test:latest
+2025-06-06 09:42:42 [main] INFO  t.epos/metadata-database-deploy-test:latest - Container epos/metadata-database-deploy-test:latest is starting: 61316d3b9d8dbed2d0c04aa5d9b38c13441c9a01a89042774d12a154ee528ff9
