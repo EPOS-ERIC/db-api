@@ -19,11 +19,11 @@ public class AttributionRole {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "version_id")
     private Versioningstatus version;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "attribution_instance_id")
     private Attribution attributionInstance;
 

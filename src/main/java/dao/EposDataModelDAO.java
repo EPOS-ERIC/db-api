@@ -181,7 +181,7 @@ public class EposDataModelDAO<T> {
             os.flush();
             os.close();
             int responseCode = con.getResponseCode();
-            LOG.info("POST Response Code :: " + responseCode);
+            //LOG.info("POST Response Code :: " + responseCode);
 
             if (responseCode == HttpURLConnection.HTTP_OK) { //success
                 BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
@@ -194,12 +194,12 @@ public class EposDataModelDAO<T> {
                 in.close();
 
                 // print result
-                LOG.info("Sent invalidation to "+ inputURL +" successfully");
+                //LOG.info("Sent invalidation to "+ inputURL +" successfully");
             } else {
                 LOG.info("POST request for "+ inputURL+" did not work.");
             }
         } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Sending invalidation to "+ inputURL +" unsuccessful, cause: "+e.getMessage());
+            LOG.log(Level.WARNING, "Sending invalidation to "+ inputURL +" unsuccessful, cause: "+e.getMessage());
         }
 
     }

@@ -9,12 +9,12 @@ public class OperationDistribution {
     private OperationDistributionId id;
 
     @MapsId("distributionInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "distribution_instance_id", nullable = false)
     private Distribution distributionInstance;
 
     @MapsId("operationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "operation_instance_id", nullable = false)
     private Operation operationInstance;
 

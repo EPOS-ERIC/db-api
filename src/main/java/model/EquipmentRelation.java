@@ -11,7 +11,7 @@ public class EquipmentRelation {
     private String equipmentInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "equipment_instance_id", nullable = false)
     private Equipment equipment;
 

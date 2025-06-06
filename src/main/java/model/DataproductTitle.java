@@ -18,7 +18,7 @@ public class DataproductTitle {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "version_id")
     private model.Versioningstatus version;
 
@@ -31,7 +31,7 @@ public class DataproductTitle {
     private String lang;
 
     @jakarta.validation.constraints.NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproductInstance;
 

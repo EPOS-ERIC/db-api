@@ -9,12 +9,12 @@ public class OperationElement {
     private OperationElementId id;
 
     @MapsId("operationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "operation_instance_id", nullable = false)
     private Operation operationInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private Element elementInstance;
 

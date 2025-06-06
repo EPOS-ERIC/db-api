@@ -9,12 +9,12 @@ public class PersonElement {
     private PersonElementId id;
 
     @MapsId("personInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "person_instance_id", nullable = false)
     private Person personInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private Element elementInstance;
 

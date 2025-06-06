@@ -9,12 +9,12 @@ public class CategoryIspartof {
     private CategoryIspartofId id;
 
     @MapsId("category1InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "category1_instance_id", nullable = false)
     private Category category1Instance;
 
     @MapsId("category2InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "category2_instance_id", nullable = false)
     private Category category2Instance;
 

@@ -9,12 +9,12 @@ public class PublicationIdentifier {
     private PublicationIdentifierId id;
 
     @MapsId("publicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "publication_instance_id", nullable = false)
     private Publication publicationInstance;
 
     @MapsId("identifierInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "identifier_instance_id", nullable = false)
     private Identifier identifierInstance;
 

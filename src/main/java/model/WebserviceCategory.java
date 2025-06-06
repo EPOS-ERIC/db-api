@@ -9,12 +9,12 @@ public class WebserviceCategory {
     private WebserviceCategoryId id;
 
     @MapsId("webserviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
     private Webservice webserviceInstance;
 
     @MapsId("categoryInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "category_instance_id", nullable = false)
     private Category categoryInstance;
 

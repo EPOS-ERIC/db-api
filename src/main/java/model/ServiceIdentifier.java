@@ -9,12 +9,12 @@ public class ServiceIdentifier {
     private ServiceIdentifierId id;
 
     @MapsId("serviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "service_instance_id", nullable = false)
     private Service serviceInstance;
 
     @MapsId("identifierInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "identifier_instance_id", nullable = false)
     private Identifier identifierInstance;
 

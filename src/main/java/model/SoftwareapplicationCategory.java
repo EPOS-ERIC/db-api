@@ -9,12 +9,12 @@ public class SoftwareapplicationCategory {
     private SoftwareapplicationCategoryId id;
 
     @MapsId("softwareapplicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplicationInstance;
 
     @MapsId("categoryInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "category_instance_id", nullable = false)
     private Category categoryInstance;
 

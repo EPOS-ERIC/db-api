@@ -9,12 +9,12 @@ public class FacilitySpatial {
     private FacilitySpatialId id;
 
     @MapsId("facilityInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "facility_instance_id", nullable = false)
     private Facility facilityInstance;
 
     @MapsId("spatialInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "spatial_instance_id", nullable = false)
     private model.Spatial spatialInstance;
 

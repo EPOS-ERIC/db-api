@@ -18,7 +18,7 @@ public class Organization {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "version_id")
     private model.Versioningstatus version;
 
@@ -34,7 +34,7 @@ public class Organization {
     @Column(name = "leicode", length = 1024)
     private String leicode;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "address_id")
     private Address address;
 

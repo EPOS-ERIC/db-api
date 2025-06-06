@@ -9,12 +9,12 @@ public class EquipmentContactpoint {
     private EquipmentContactpointId id;
 
     @MapsId("equipmentInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "equipment_instance_id", nullable = false)
     private Equipment equipmentInstance;
 
     @MapsId("contactpointInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "contactpoint_instance_id", nullable = false)
     private Contactpoint contactpointInstance;
 

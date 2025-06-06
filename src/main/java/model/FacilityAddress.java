@@ -9,12 +9,12 @@ public class FacilityAddress {
     private FacilityAddressId id;
 
     @MapsId("facilityInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "facility_instance_id", nullable = false)
     private Facility facilityInstance;
 
     @MapsId("addressInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "address_instance_id", nullable = false)
     private Address addressInstance;
 

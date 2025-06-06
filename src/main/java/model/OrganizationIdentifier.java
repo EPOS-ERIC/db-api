@@ -9,12 +9,12 @@ public class OrganizationIdentifier {
     private OrganizationIdentifierId id;
 
     @MapsId("organizationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "organization_instance_id", nullable = false)
     private Organization organizationInstance;
 
     @MapsId("identifierInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "identifier_instance_id", nullable = false)
     private Identifier identifierInstance;
 

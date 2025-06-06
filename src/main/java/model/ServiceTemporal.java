@@ -9,12 +9,12 @@ public class ServiceTemporal {
     private ServiceTemporalId id;
 
     @MapsId("serviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "service_instance_id", nullable = false)
     private Service serviceInstance;
 
     @MapsId("temporalInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "temporal_instance_id", nullable = false)
     private model.Temporal temporalInstance;
 

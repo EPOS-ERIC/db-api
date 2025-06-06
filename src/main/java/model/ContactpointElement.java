@@ -9,12 +9,12 @@ public class ContactpointElement {
     private ContactpointElementId id;
 
     @MapsId("contactpointInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "contactpoint_instance_id", nullable = false)
     private Contactpoint contactpointInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private model.Element elementInstance;
 

@@ -18,7 +18,7 @@ public class Equipment {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "version_id")
     private model.Versioningstatus version;
 
@@ -38,7 +38,7 @@ public class Equipment {
     @Column(name = "type", length = 1024)
     private String type;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "creator")
     private model.Organization creator;
 

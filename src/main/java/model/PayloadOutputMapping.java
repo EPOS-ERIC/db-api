@@ -9,12 +9,12 @@ public class PayloadOutputMapping {
     private PayloadOutputMappingId id;
 
     @MapsId("payloadInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "payload_instance_id", nullable = false)
     private Payload payloadInstance;
 
     @MapsId("outputMappingInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "output_mapping_instance_id", nullable = false)
     private OutputMapping outputMappingInstance;
 

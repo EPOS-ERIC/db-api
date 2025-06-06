@@ -10,11 +10,11 @@ public class AuthorizationGroup {
     @Column(name = "id", nullable = false, length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id")
     private model.MetadataGroup group;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "meta_id")
     private model.EdmEntityId meta;
 

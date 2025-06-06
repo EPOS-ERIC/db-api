@@ -9,12 +9,12 @@ public class DistributionDataproduct {
     private DistributionDataproductId id;
 
     @MapsId("dataproductInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproductInstance;
 
     @MapsId("distributionInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "distribution_instance_id", nullable = false)
     private Distribution distributionInstance;
 

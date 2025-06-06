@@ -13,7 +13,7 @@ public class SoftwaresourcecodeFunder {
     private String softwaresourcecodeInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
     private Softwaresourcecode softwaresourcecode;
 

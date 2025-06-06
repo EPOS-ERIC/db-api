@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>3.4.1</version>
+	<version>3.4.2</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
@@ -119,6 +119,25 @@
 				</executions>
 			</plugin>
 			<!-- END SOURCE -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>weave</id>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>org.eclipse.persistence.tools.weaving.jpa.StaticWeave</mainClass>
+							<commandlineArgs>-loglevel FINE ${project.build.outputDirectory} ${project.build.outputDirectory}</commandlineArgs>
+							<classpathScope>compile</classpathScope>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 
 		</plugins>
 	</build>

@@ -20,7 +20,7 @@ public class Webservice {
     @Column(name = "uid", length = 1024)
     private String uid;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "version_id")
     private Versioningstatus version;
 

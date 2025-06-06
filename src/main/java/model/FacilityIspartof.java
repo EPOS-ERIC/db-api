@@ -9,12 +9,12 @@ public class FacilityIspartof {
     private FacilityIspartofId id;
 
     @MapsId("facility1InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "facility1_instance_id", nullable = false)
     private Facility facility1Instance;
 
     @MapsId("facility2InstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "facility2_instance_id", nullable = false)
     private Facility facility2Instance;
 

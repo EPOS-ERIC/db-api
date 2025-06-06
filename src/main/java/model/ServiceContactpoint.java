@@ -9,12 +9,12 @@ public class ServiceContactpoint {
     private ServiceContactpointId id;
 
     @MapsId("serviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "service_instance_id", nullable = false)
     private Service serviceInstance;
 
     @MapsId("contactpointInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "contactpoint_instance_id", nullable = false)
     private Contactpoint contactpointInstance;
 

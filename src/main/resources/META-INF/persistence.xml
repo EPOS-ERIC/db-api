@@ -226,6 +226,11 @@
 			<property name="eclipselink.ddl-generation" value="none"/>
 			<property name="eclipselink.validate-existence" value="false"/>
 
+			<property name="eclipselink.weaving" value="static"/>
+			<property name="eclipselink.weaving.EAGER" value="true"/>
+			<property name="eclipselink.weaving.changetracking" value="true"/>
+			<property name="eclipselink.weaving.fetchgroups" value="true"/>
+
 		</properties>
 	</persistence-unit>
 </persistence>

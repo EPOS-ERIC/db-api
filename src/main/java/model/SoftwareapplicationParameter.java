@@ -9,12 +9,12 @@ public class SoftwareapplicationParameter {
     private SoftwareapplicationParameterId id;
 
     @MapsId("softwareapplicationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplicationInstance;
 
     @MapsId("parameterInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "parameter_instance_id", nullable = false)
     private Parameter parameterInstance;
 

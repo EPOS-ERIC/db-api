@@ -11,7 +11,7 @@ public class DataproductRelation {
     private String dataproductInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproduct;
 

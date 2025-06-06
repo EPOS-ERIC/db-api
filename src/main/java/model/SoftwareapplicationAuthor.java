@@ -13,7 +13,7 @@ public class SoftwareapplicationAuthor {
     private String softwareapplicationInstanceId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplication;
 

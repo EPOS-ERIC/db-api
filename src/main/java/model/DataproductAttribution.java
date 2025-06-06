@@ -9,12 +9,12 @@ public class DataproductAttribution {
     private DataproductAttributionId id;
 
     @MapsId("dataproductInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproductInstance;
 
     @MapsId("attributionInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "attribution_instance_id", nullable = false)
     private Attribution attributionInstance;
 

@@ -9,12 +9,12 @@ public class DataproductElement {
     private DataproductElementId id;
 
     @MapsId("dataproductInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "dataproduct_instance_id", nullable = false)
     private Dataproduct dataproductInstance;
 
     @MapsId("elementInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "element_instance_id", nullable = false)
     private Element elementInstance;
 

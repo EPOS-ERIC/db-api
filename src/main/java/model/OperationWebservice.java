@@ -9,12 +9,12 @@ public class OperationWebservice {
     private OperationWebserviceId id;
 
     @MapsId("webserviceInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "webservice_instance_id", nullable = false)
     private model.Webservice webserviceInstance;
 
     @MapsId("operationInstanceId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "operation_instance_id", nullable = false)
     private Operation operationInstance;
 
