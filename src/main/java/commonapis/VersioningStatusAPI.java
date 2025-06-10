@@ -14,7 +14,7 @@ import java.util.UUID;
 import static model.StatusType.DRAFT;
 
 public class VersioningStatusAPI {
-    
+
     public static EPOSDataModelEntity checkVersion(EPOSDataModelEntity obj, StatusType overrideStatus) {
         List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
@@ -35,34 +35,68 @@ public class VersioningStatusAPI {
 
                 if (obj.getStatus().equals(DRAFT)) {
                     if (!edmobj.getStatus().equals(DRAFT.name())) {
-                        edmobj.setStatus(obj.getStatus().toString());
-                        edmobj.setInstanceChangeId(edmobj.getInstanceId());
+                        // Creating a new version - need to create new entity, not update existing
+                        Versioningstatus newVersionEntity = new Versioningstatus();
+
+                        // Set up the new version
+                        newVersionEntity.setStatus(obj.getStatus().toString());
+                        newVersionEntity.setInstanceChangeId(edmobj.getInstanceId()); // Reference to previous version
                         obj.setInstanceChangedId(edmobj.getInstanceId());
 
-                        edmobj.setInstanceId(UUID.randomUUID().toString());
-                        obj.setInstanceId(edmobj.getInstanceId());
+                        // Generate new IDs for the new version
+                        String newInstanceId = UUID.randomUUID().toString();
+                        String newVersionId = UUID.randomUUID().toString();
 
-                        edmobj.setVersionId(UUID.randomUUID().toString());
-                        obj.setVersionId(edmobj.getVersionId());
+                        newVersionEntity.setInstanceId(newInstanceId);
+                        obj.setInstanceId(newInstanceId);
+
+                        newVersionEntity.setVersionId(newVersionId);
+                        obj.setVersionId(newVersionId);
+
+                        // Copy other fields
+                        newVersionEntity.setMetaId(edmobj.getMetaId()); // Keep same metaId
+                        newVersionEntity.setUid(edmobj.getUid()); // Keep same uid
+                        newVersionEntity.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+                        newVersionEntity.setChangeComment(obj.getChangeComment());
+                        newVersionEntity.setEditorId(obj.getEditorId());
+                        newVersionEntity.setProvenance(obj.getFileProvenance());
+                        newVersionEntity.setVersion(obj.getVersion());
+
+                        // Create the new entity instead of updating existing
+                        getDbaccess().createObject(newVersionEntity);
+
                     } else {
+                        // Same status (DRAFT), just update existing entity without changing primary keys
                         edmobj.setStatus(obj.getStatus().toString());
                         obj.setInstanceChangedId(edmobj.getInstanceChangeId());
                         obj.setInstanceId(edmobj.getInstanceId());
                         obj.setVersionId(edmobj.getVersionId());
+
+                        // Update other fields
+                        edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+                        edmobj.setChangeComment(obj.getChangeComment());
+                        edmobj.setEditorId(obj.getEditorId());
+                        edmobj.setProvenance(obj.getFileProvenance());
+                        edmobj.setVersion(obj.getVersion());
+
+                        getDbaccess().updateObject(edmobj);
                     }
                 } else {
+                    // Different status, but not DRAFT - update existing without changing primary keys
                     edmobj.setStatus(obj.getStatus().toString());
+                    edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+                    edmobj.setChangeComment(obj.getChangeComment());
+                    edmobj.setEditorId(obj.getEditorId());
+                    edmobj.setProvenance(obj.getFileProvenance());
+                    edmobj.setVersion(obj.getVersion());
+
+                    getDbaccess().updateObject(edmobj);
                 }
             }
-            edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
-            edmobj.setChangeComment(obj.getChangeComment());
-            edmobj.setEditorId(obj.getEditorId());
-            edmobj.setProvenance(obj.getFileProvenance());
-            edmobj.setVersion(obj.getVersion());
-            getDbaccess().updateObject(edmobj);
 
             return obj;
         } else {
+            // No existing version found - create new one
             if (overrideStatus != null) {
                 obj.setStatus(overrideStatus);
             }
@@ -84,7 +118,7 @@ public class VersioningStatusAPI {
             edmobj.setProvenance(obj.getFileProvenance());
             edmobj.setVersion(obj.getVersion());
 
-            getDbaccess().updateObject(edmobj);
+            getDbaccess().createObject(edmobj); // Use createObject for new entities
 
             return obj;
         }
@@ -110,7 +144,7 @@ public class VersioningStatusAPI {
         obj.setVersion(vs.getVersion());
         obj.setStatus(StatusType.valueOf(vs.getStatus()));
 
-        //getDbaccess().updateObject(vs);
+        //getDbaccess().updateObject(vs); // Commented out as this was just reading data
         return obj;
     }
 
