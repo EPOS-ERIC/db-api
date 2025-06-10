@@ -50,24 +50,24 @@ public class EposDataModelDAO<T> {
 
     // Primary cache for query results with optimized configuration
     private static final Cache<String, Object> queryCache = Caffeine.newBuilder()
-            .maximumSize(10_000) // Maximum 10k entries
-            .expireAfterWrite(Duration.ofMinutes(30)) // TTL 30 minutes
-            .expireAfterAccess(Duration.ofMinutes(10)) // Idle timeout 10 minutes
+            .maximumSize(1_000_000_000) // Maximum 10k entries
+            .expireAfterWrite(Duration.ofMinutes(120)) // TTL 120 minutes
+            .expireAfterAccess(Duration.ofMinutes(60)) // Idle timeout 60 minutes
             .recordStats() // Enable detailed statistics
             .build();
 
     // Separate cache for count queries (shorter TTL due to volatility)
     private static final Cache<String, Long> countCache = Caffeine.newBuilder()
-            .maximumSize(1_000)
-            .expireAfterWrite(Duration.ofMinutes(5))
+            .maximumSize(1_000_000_000)
+            .expireAfterWrite(Duration.ofMinutes(60))
             .recordStats()
             .build();
 
     // Cache for single entities (longer TTL for better hit rate)
     private static final Cache<String, Object> entityCache = Caffeine.newBuilder()
-            .maximumSize(5_000)
+            .maximumSize(1_000_000_000)
             .expireAfterWrite(Duration.ofHours(1))
-            .expireAfterAccess(Duration.ofMinutes(30))
+            .expireAfterAccess(Duration.ofMinutes(60))
             .recordStats()
             .build();
 
