@@ -395,9 +395,9 @@ public class EPOSTestDataFactory {
         sourceCode.setName("Plugin for the conversion from QuakeML to GeoJSON payload");
         sourceCode.setDescription("Plugin for the conversion from QuakeML to GeoJSON payload");
         sourceCode.setSoftwareVersion("main");
-        sourceCode.setCodeRepository("https://epos-ci.brgm.fr/epos/converter-plugins/quakeml-plugin.git");
-        sourceCode.setLicenseURL("https://epos-ci.brgm.fr/epos/converter-plugins/quakeml-plugin/-/blob/main/README.md");
-        sourceCode.setMainEntityofPage("https://epos-ci.brgm.fr/epos/converter-plugins/quakeml-plugin/-/blob/main/README.md");
+        sourceCode.setCodeRepository("");
+        sourceCode.setLicenseURL("");
+        sourceCode.setMainEntityofPage("");
         sourceCode.addProgrammingLanguage("Java");
         sourceCode.setRuntimePlatform("java-1.10");
 
