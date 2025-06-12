@@ -499,10 +499,10 @@ public class Equipment extends EPOSDataModelEntity {
 		return keywords;
 	}
 
-
 	@Override
 	public String toString() {
-		return "Equipment{ category=" + category +
+		return "Equipment{" +
+				"category=" + category +
 				", contactPoint=" + contactPoint +
 				", description='" + description + '\'' +
 				", dynamicRange='" + dynamicRange + '\'' +
@@ -510,6 +510,7 @@ public class Equipment extends EPOSDataModelEntity {
 				", isPartOf=" + isPartOf +
 				", manufacturer=" + manufacturer +
 				", name='" + name + '\'' +
+				", identifier='" + identifier + '\'' +
 				", pageURL='" + pageURL + '\'' +
 				", orientation='" + orientation + '\'' +
 				", relation=" + relation +
@@ -518,8 +519,9 @@ public class Equipment extends EPOSDataModelEntity {
 				", serialNumber='" + serialNumber + '\'' +
 				", spatialExtent=" + spatialExtent +
 				", temporalExtent=" + temporalExtent +
+				", keywords='" + keywords + '\'' +
 				", type='" + type + '\'' +
-				"} " + super.toString();
+				'}'+ super.toString();
 	}
 
 	@Override

@@ -66,8 +66,12 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                 roleobj.setAttributionInstance(edmobj);
                 roleobj.setInstanceId(UUID.randomUUID().toString());
                 roleobj.setRoletype(role);
-                roleobj.setMetaId(UUID.randomUUID().toString());
-                roleobj.setVersion(null); //TODO: fix version
+                roleobj.setMetaId(UUID.randomUUID().toString());//TODO: fix version
+                if(edmobj.getVersion().getEditorId()!=null) roleobj.setEditorId(edmobj.getVersion().getEditorId());
+                if(edmobj.getVersion().getProvenance()!=null) roleobj.setFileProvenance(edmobj.getVersion().getProvenance());
+                if(edmobj.getVersion().getChangeComment()!=null) roleobj.setChangeComment(edmobj.getVersion().getChangeComment());
+                if(edmobj.getVersion().getChangeTimestamp()!=null) roleobj.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+
                 dbaccess.updateObject(roleobj);
             }
         }

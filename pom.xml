@@ -4,10 +4,18 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>3.4.5</version>
+	<version>3.4.7</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
+
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub EPOS ERIC Apache Maven Packages</name>
+			<url>https://maven.pkg.github.com/epos-eu/db-api</url>
+		</repository>
+	</distributionManagement>
 
 	<properties>
 		<java.version>21</java.version>
@@ -78,7 +86,7 @@
 			</plugin>
 			<!-- END SIGNATURE -->
 
-			<plugin>
+			<!--<plugin>
 				<groupId>org.sonatype.central</groupId>
 				<artifactId>central-publishing-maven-plugin</artifactId>
 				<version>0.7.0</version>
@@ -87,7 +95,7 @@
 					<publishingServerId>central</publishingServerId>
 					<autoPublish>true</autoPublish>
 				</configuration>
-			</plugin>
+			</plugin>-->
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

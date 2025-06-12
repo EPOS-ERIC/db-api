@@ -32,10 +32,10 @@ public class IriTemplate extends EPOSDataModelEntity{
 
     @Override
     public String toString() {
-        return "IriTemplateBean{" +
+        return "IriTemplate{" +
                 "template='" + template + '\'' +
                 ", mappings=" + mappings +
-                '}';
+                '}'+ super.toString();
     }
 }
 

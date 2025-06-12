@@ -10,12 +10,16 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 import static model.StatusType.DRAFT;
 
 public class VersioningStatusAPI {
 
+    static Logger LOG = Logger.getLogger(VersioningStatusAPI.class.getName());
+
     public static EPOSDataModelEntity checkVersion(EPOSDataModelEntity obj, StatusType overrideStatus) {
+
         List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                 obj.getInstanceId(),
                 obj.getMetaId(),
@@ -32,7 +36,6 @@ public class VersioningStatusAPI {
                 obj.setStatus(overrideStatus);
             } else {
                 if (obj.getStatus() == null) obj.setStatus(DRAFT);
-
                 if (obj.getStatus().equals(DRAFT)) {
                     if (!edmobj.getStatus().equals(DRAFT.name())) {
                         // Creating a new version - need to create new entity, not update existing
@@ -85,15 +88,14 @@ public class VersioningStatusAPI {
                     // Different status, but not DRAFT - update existing without changing primary keys
                     edmobj.setStatus(obj.getStatus().toString());
                     edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
-                    edmobj.setChangeComment(obj.getChangeComment());
-                    edmobj.setEditorId(obj.getEditorId());
-                    edmobj.setProvenance(obj.getFileProvenance());
-                    edmobj.setVersion(obj.getVersion());
+                    edmobj.setChangeComment(obj.getChangeComment()!=null?obj.getChangeComment():"unknown");
+                    edmobj.setEditorId(obj.getEditorId()!=null?obj.getEditorId():"unknown");
+                    edmobj.setProvenance(obj.getFileProvenance()!=null?obj.getFileProvenance():"unknown");
+                    edmobj.setVersion(obj.getVersion()!=null?obj.getVersion():"unknown");
 
                     getDbaccess().updateObject(edmobj);
                 }
             }
-
             return obj;
         } else {
             // No existing version found - create new one

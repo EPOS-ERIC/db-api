@@ -79,7 +79,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
                 List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
                 if(!identifierList.isEmpty()) {
                     OrganizationIdentifier pi = new OrganizationIdentifier();
@@ -107,7 +107,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** MEMBER OF **/
         if (obj.getMemberOf() != null) {
             for(LinkedEntity organization : obj.getMemberOf()) {
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(organization, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(organization, overrideStatus, edmobj.getVersion());
 
                 List<Organization> list2 = getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Organization.class);
 
@@ -145,6 +145,12 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
+
+        if(edmobj.getVersion().getEditorId()!=null) element.setEditorId(edmobj.getVersion().getEditorId());
+        if(edmobj.getVersion().getProvenance()!=null) element.setFileProvenance(edmobj.getVersion().getProvenance());
+        if(edmobj.getVersion().getChangeComment()!=null) element.setChangeComment(edmobj.getVersion().getChangeComment());
+        if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OrganizationElement ce = new OrganizationElement();

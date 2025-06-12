@@ -59,6 +59,7 @@ public class EntityManagementTest extends TestcontainersLifecycle {
         address.setStreet("Rue de la Paix");
         address.setPostalCode("75002");
         address.setLocality("Paris");
+        address.setEditorId("test/editor");
 
         api.create(address, null, null, null);
 

@@ -142,6 +142,12 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
+
+        if(edmobj.getVersion().getEditorId()!=null) element.setEditorId(edmobj.getVersion().getEditorId());
+        if(edmobj.getVersion().getProvenance()!=null) element.setFileProvenance(edmobj.getVersion().getProvenance());
+        if(edmobj.getVersion().getChangeComment()!=null) element.setChangeComment(edmobj.getVersion().getChangeComment());
+        if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         FacilityElement ce = new FacilityElement();

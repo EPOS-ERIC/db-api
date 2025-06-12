@@ -72,6 +72,6 @@ public class SoftwareApplicationParameter extends EPOSDataModelEntity {
                 "encodingformat='" + encodingformat + '\'' +
                 ", conformsto='" + conformsto + '\'' +
                 ", action='" + action + '\'' +
-                '}';
+                '}'+ super.toString();
     }
 }

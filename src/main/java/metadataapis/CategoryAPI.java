@@ -77,6 +77,10 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             childObj.setMetaId(inscheme.getMetaId());
             childObj.setUid(inscheme.getUid());
             childObj.setStatus(StatusType.valueOf(edmobj.getVersion().getStatus()));
+            if(edmobj.getVersion().getEditorId()!=null) childObj.setEditorId(edmobj.getVersion().getEditorId());
+            if(edmobj.getVersion().getProvenance()!=null) childObj.setFileProvenance(edmobj.getVersion().getProvenance());
+            if(edmobj.getVersion().getChangeComment()!=null) childObj.setChangeComment(edmobj.getVersion().getChangeComment());
+            if(edmobj.getVersion().getChangeTimestamp()!=null) childObj.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
             LinkedEntity le = retrieveAPI(EntityNames.CATEGORYSCHEME.name()).create(childObj, overrideStatus, null, null);
             edmobj.setInScheme((CategoryScheme) getDbaccess().getOneFromDBByLinkedEntity(le, CategoryScheme.class).get(0));
         }
@@ -85,7 +89,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     private void createBroaders(List<LinkedEntity> broaders, Category edmobj, StatusType overrideStatus){
         for(LinkedEntity broader : broaders) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus);
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus, edmobj.getVersion());
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
             categoryIspartof.setCategory1Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
@@ -98,7 +102,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     private void createNarrowers(List<LinkedEntity> narrowers, Category edmobj, StatusType overrideStatus){
         for(LinkedEntity narrower : narrowers) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus);
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus, edmobj.getVersion());
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
             categoryIspartof.setCategory1Instance(edmobj);

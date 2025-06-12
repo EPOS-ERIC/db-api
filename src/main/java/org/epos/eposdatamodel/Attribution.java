@@ -62,6 +62,6 @@ public class Attribution extends EPOSDataModelEntity {
         return "Attribution{" +
                 "agent=" + agent +
                 ", role='" + role + '\'' +
-                '}';
+                '}'+ super.toString();
     }
 }

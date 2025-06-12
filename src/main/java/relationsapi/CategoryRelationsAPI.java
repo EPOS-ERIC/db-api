@@ -21,7 +21,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     EquipmentCategory pi = new EquipmentCategory();
@@ -42,7 +42,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     FacilityCategory pi = new FacilityCategory();
@@ -63,7 +63,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     DataproductCategory pi = new DataproductCategory();
@@ -84,7 +84,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     WebserviceCategory pi = new WebserviceCategory();
@@ -105,7 +105,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     SoftwaresourcecodeCategory pi = new SoftwaresourcecodeCategory();
@@ -126,7 +126,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
                 }
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
                 List<Category> categoryList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Category.class);
                 if(!categoryList.isEmpty()) {
                     SoftwareapplicationCategory pi = new SoftwareapplicationCategory();

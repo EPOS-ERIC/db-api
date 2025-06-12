@@ -378,6 +378,6 @@ public class Person extends EPOSDataModelEntity {
                 ", identifier=" + identifier +
                 ", qualifications=" + qualifications +
                 ", telephone=" + telephone +
-                '}';
+                '}'+ super.toString();
     }
 }

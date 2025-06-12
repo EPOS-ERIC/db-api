@@ -875,6 +875,6 @@ public class SoftwareApplication extends EPOSDataModelEntity {
                 ", provider=" + provider +
                 ", publisher=" + publisher +
                 ", creator=" + creator +
-                '}';
+                '}'+ super.toString();
     }
 }

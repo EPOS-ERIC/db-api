@@ -82,7 +82,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
                 List<model.Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Identifier.class);
                 if(!identifierList.isEmpty()) {
                     SoftwareapplicationIdentifier pi = new SoftwareapplicationIdentifier();
@@ -95,7 +95,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getParameter() != null) {
             for(org.epos.eposdatamodel.LinkedEntity parameter : obj.getParameter()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(parameter, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(parameter, overrideStatus, edmobj.getVersion());
                 List<model.Parameter> parameterList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Parameter.class);
                 if(!parameterList.isEmpty()) {
                     SoftwareapplicationParameter pi = new SoftwareapplicationParameter();
@@ -108,7 +108,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getRelatedOperation() != null) {
             for(LinkedEntity relation : obj.getRelatedOperation()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(relation, overrideStatus);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(relation, overrideStatus, edmobj.getVersion());
                 List<model.Operation> relationList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), model.Operation.class);
                 if(!relationList.isEmpty()) {
                     SoftwareapplicationOperation pi = new SoftwareapplicationOperation();
@@ -235,6 +235,12 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
+
+        if(edmobj.getVersion().getEditorId()!=null) element.setEditorId(edmobj.getVersion().getEditorId());
+        if(edmobj.getVersion().getProvenance()!=null) element.setFileProvenance(edmobj.getVersion().getProvenance());
+        if(edmobj.getVersion().getChangeComment()!=null) element.setChangeComment(edmobj.getVersion().getChangeComment());
+        if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
         LinkedEntity le = api.create(element, overrideStatus, null, null);
         List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);

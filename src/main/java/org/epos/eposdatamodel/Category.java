@@ -164,6 +164,6 @@ public class Category extends EPOSDataModelEntity {
                 ", broader=" + broader +
                 ", narrower=" + narrower +
                 ", topConcept=" + topConcept +
-                '}';
+                '}'+ super.toString();
     }
 }

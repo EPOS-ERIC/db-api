@@ -482,6 +482,6 @@ public class Distribution extends EPOSDataModelEntity {
                 ", mediaType='" + mediaType + '\'' +
                 ", maturity='" + maturity + '\'' +
                 ", dataProduct=" + dataProduct +
-                '}';
+                '}'+ super.toString();
     }
 }

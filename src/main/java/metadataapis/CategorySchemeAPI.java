@@ -70,7 +70,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     private void createTopConcepts(List<LinkedEntity> topConcepts, CategoryScheme edmobj, StatusType overrideStatus){
         for(LinkedEntity topConcept : topConcepts) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(topConcept, overrideStatus);
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(topConcept, overrideStatus, edmobj.getVersion());
 
             CategoryHastopconcept categoryHastopconcept = new CategoryHastopconcept();
             categoryHastopconcept.setCategorySchemeInstance(edmobj);

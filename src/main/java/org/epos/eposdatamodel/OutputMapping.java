@@ -172,12 +172,12 @@ public class OutputMapping extends EPOSDataModelEntity {
     @Override
     public String toString() {
         return "OutputMapping{" +
-                "label='" + outputLabel + '\'' +
-                ", property='" + outputProperty + '\'' +
-                ", range='" + outputRange + '\'' +
-                ", required='" + outputRequired + '\'' +
-                ", valuePattern='" + outputValuePattern + '\'' +
-                ", variable='" + outputVariable + '\'' +
-                '}';
+                "outputLabel='" + outputLabel + '\'' +
+                ", outputProperty='" + outputProperty + '\'' +
+                ", outputRange='" + outputRange + '\'' +
+                ", outputRequired='" + outputRequired + '\'' +
+                ", outputValuePattern='" + outputValuePattern + '\'' +
+                ", outputVariable='" + outputVariable + '\'' +
+                '}'+ super.toString();
     }
 }

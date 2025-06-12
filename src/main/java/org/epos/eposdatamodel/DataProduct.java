@@ -921,6 +921,6 @@ public class DataProduct extends EPOSDataModelEntity {
                 ", versionInfo='" + versionInfo + '\'' +
                 ", documentation='" + documentation + '\'' +
                 ", qualityAssurance='" + qualityAssurance + '\'' +
-                '}';
+                '}'+ super.toString();
     }
 }

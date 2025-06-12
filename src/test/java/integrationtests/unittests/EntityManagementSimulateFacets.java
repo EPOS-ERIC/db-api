@@ -29,6 +29,7 @@ public class EntityManagementSimulateFacets extends TestcontainersLifecycle {
         categoryScheme.setUid("test/categoryscheme");
         categoryScheme.setDescription("Test Category Scheme");
         categoryScheme.setTitle("Test Category Scheme");
+        categoryScheme.setEditorId("test/editor");
 
         LinkedEntity linkedEntity = new LinkedEntity();
         linkedEntity.setEntityType("CATEGORYSCHEME");
@@ -39,6 +40,7 @@ public class EntityManagementSimulateFacets extends TestcontainersLifecycle {
         category1.setDescription("Test Category 1");
         category1.setName("Test Category 1");
         category1.setInScheme(linkedEntity);
+        category1.setEditorId("test/editor");
 
         AbstractAPI.retrieveAPI(EntityNames.CATEGORYSCHEME.name()).create(categoryScheme, StatusType.PUBLISHED,null,null);
 
@@ -48,7 +50,9 @@ public class EntityManagementSimulateFacets extends TestcontainersLifecycle {
             System.out.println(object);
         }
 
-
+        for(Object object : AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveAll()){
+            System.out.println(object);
+        }
 
     }
 

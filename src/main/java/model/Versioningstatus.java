@@ -163,4 +163,22 @@ public class Versioningstatus {
         this.status = status;
     }
 
+    @Override
+    public String toString() {
+        return "Versioningstatus{" +
+                "versionId='" + versionId + '\'' +
+                ", instanceId='" + instanceId + '\'' +
+                ", metaId='" + metaId + '\'' +
+                ", uid='" + uid + '\'' +
+                ", instanceChangeId='" + instanceChangeId + '\'' +
+                ", provenance='" + provenance + '\'' +
+                ", editorId='" + editorId + '\'' +
+                ", reviewerId='" + reviewerId + '\'' +
+                ", reviewComment='" + reviewComment + '\'' +
+                ", changeComment='" + changeComment + '\'' +
+                ", changeTimestamp=" + changeTimestamp +
+                ", version='" + version + '\'' +
+                ", status='" + status + '\'' +
+                '}';
+    }
 }

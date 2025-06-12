@@ -2,10 +2,11 @@ package model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 
 @Entity
 @Table(name = "attribution_role", schema = "metadata_catalogue")
-public class AttributionRole {
+public class AttributionRole extends EPOSDataModelEntity {
     @Id
     @Size(max = 100)
     @Column(name = "instance_id", nullable = false, length = 100)
@@ -53,14 +54,6 @@ public class AttributionRole {
 
     public void setUid(String uid) {
         this.uid = uid;
-    }
-
-    public Versioningstatus getVersion() {
-        return version;
-    }
-
-    public void setVersion(Versioningstatus version) {
-        this.version = version;
     }
 
     public Attribution getAttributionInstance() {

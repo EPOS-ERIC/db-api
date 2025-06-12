@@ -33,6 +33,7 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         distribution.setMetaId(UUID.randomUUID().toString());
         distribution.setUid(UUID.randomUUID().toString());
         distribution.setStatus(StatusType.PUBLISHED);
+        distribution.setEditorId("test");
 
         LinkedEntity linkedEntityDistribution = api.create(distribution, null, null, null);
 
@@ -49,6 +50,7 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         webService.setUid(UUID.randomUUID().toString());
         webService.setStatus(StatusType.PUBLISHED);
         webService.setDistribution(List.of(linkedEntityDistribution));
+        webService.setEditorId("test");
 
         LinkedEntity linkedEntityWebservice = api.create(webService, null, null, null);
 
@@ -80,6 +82,7 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         mapping.setMetaId(UUID.randomUUID().toString());
         mapping.setUid(UUID.randomUUID().toString());
         mapping.setStatus(StatusType.PUBLISHED);
+        mapping.setEditorId("test");
 
         LinkedEntity linkedEntityMapping = api.create(mapping, null, null, null);
 

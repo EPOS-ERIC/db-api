@@ -35,7 +35,6 @@ public class Location extends EPOSDataModelEntity{
         this.location = location;
     }
 
-
     @Override
     public String toString() {
         return "Location{" +

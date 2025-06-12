@@ -589,6 +589,7 @@ public class WebService extends EPOSDataModelEntity {
     }
 
     public List<LinkedEntity> getDistribution() {
+        if(distribution == null) distribution = new ArrayList<>();
         return distribution;
     }
 
@@ -638,7 +639,7 @@ public class WebService extends EPOSDataModelEntity {
                 ", supportedOperation=" + supportedOperation +
                 ", temporalExtent=" + temporalExtent +
                 ", distribution=" + distribution +
-                ", relation=" + webserviceRelation +
+                ", webserviceRelation=" + webserviceRelation +
                 ", aaaiTypes='" + aaaiTypes + '\'' +
                 '}'+ super.toString();
     }

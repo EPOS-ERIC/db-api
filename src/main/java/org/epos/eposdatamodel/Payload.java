@@ -77,6 +77,6 @@ public class Payload extends EPOSDataModelEntity {
         return "Payload{" +
                 "outputMapping=" + outputMapping +
                 ", supportedOperation=" + supportedOperation +
-                '}';
+                '}'+ super.toString();
     }
 }

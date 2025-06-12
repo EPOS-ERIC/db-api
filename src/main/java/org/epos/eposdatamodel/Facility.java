@@ -357,17 +357,20 @@ public class Facility extends EPOSDataModelEntity {
 
 	@Override
 	public String toString() {
-		return "Facility{ address=" + address +
+		return "Facility{" +
+				"address=" + address +
 				", category=" + category +
 				", contactPoint=" + contactPoint +
 				", description='" + description + '\'' +
+				", identifier='" + identifier + '\'' +
 				", isPartOf=" + isPartOf +
 				", pageURL=" + pageURL +
 				", relation=" + relation +
 				", spatialExtent=" + spatialExtent +
 				", title='" + title + '\'' +
 				", type='" + type + '\'' +
-				"} " + super.toString();
+				", keywords='" + keywords + '\'' +
+				'}'+ super.toString();
 	}
 
 	@Override

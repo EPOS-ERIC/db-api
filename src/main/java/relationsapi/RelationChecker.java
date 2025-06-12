@@ -2,6 +2,7 @@ package relationsapi;
 
 import abstractapis.AbstractAPI;
 import commonapis.LinkedEntityAPI;
+import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.Operation;
@@ -47,7 +48,7 @@ public class RelationChecker {
             List<Object> results = dbaccess.getOneFromDBByLinkedEntity(linkedEntity,clazz);
             if(!results.isEmpty()) obj = linkedEntity;
             else {
-                obj = LinkedEntityAPI.createFromLinkedEntity(linkedEntity, mainEntity.getStatus());
+                obj = LinkedEntityAPI.createFromLinkedEntity(linkedEntity, mainEntity.getStatus(), VersioningStatusAPI.retrieveVersioningStatus(mainEntity));
             }
         }
         List<Object> results = dbaccess.getOneFromDBByLinkedEntity(obj,clazz);

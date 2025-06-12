@@ -189,13 +189,14 @@ public class ContactPoint extends EPOSDataModelEntity {
 
     @Override
     public String toString() {
-        return "ContactPoint{ email=" + email +
-                ", language='" + language + '\'' +
+        return "ContactPoint{" +
+                "email=" + email +
+                ", language=" + language +
                 ", role='" + role + '\'' +
                 ", organization=" + organization +
                 ", person=" + person +
                 ", telephone=" + telephone +
-                "} " + super.toString();
+                '}'+ super.toString();
     }
 
     @Override

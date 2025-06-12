@@ -364,7 +364,7 @@ public class Service extends EPOSDataModelEntity {
                 ", temporalExtent=" + temporalExtent +
                 ", type='" + type + '\'' +
                 ", serviceContract=" + serviceContract +
-                "} " + super.toString();
+                '}'+ super.toString();
     }
 
     @Override

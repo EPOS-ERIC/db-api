@@ -28,6 +28,7 @@ public class DataProductDataProviderTest extends TestcontainersLifecycle {
         organization.setUid(UUID.randomUUID().toString());
         organization.setLegalName(List.of("organization"));
         organization.setStatus(StatusType.PUBLISHED);
+        organization.setEditorId("test");
 
         LinkedEntity organizationLinkedEntity = AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name()).create(organization,null,null,null);
 
@@ -37,6 +38,7 @@ public class DataProductDataProviderTest extends TestcontainersLifecycle {
         dataProduct.setUid(UUID.randomUUID().toString());
         dataProduct.setPublisher(List.of(organizationLinkedEntity));
         dataProduct.setStatus(StatusType.PUBLISHED);
+        dataProduct.setEditorId("test");
 
         LinkedEntity dataProductLinkedEntity = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).create(dataProduct,null,null,null);
 
@@ -44,8 +46,9 @@ public class DataProductDataProviderTest extends TestcontainersLifecycle {
         organization2.setInstanceId(UUID.randomUUID().toString());
         organization2.setMetaId(UUID.randomUUID().toString());
         organization2.setUid(UUID.randomUUID().toString());
-        organization.setLegalName(List.of("organization2"));
-        organization.setStatus(StatusType.PUBLISHED);
+        organization2.setLegalName(List.of("organization2"));
+        organization2.setStatus(StatusType.PUBLISHED);
+        organization2.setEditorId("test");
 
         LinkedEntity organization2LinkedEntity = AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name()).create(organization,null,null,null);
 

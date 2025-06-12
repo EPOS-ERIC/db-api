@@ -760,6 +760,6 @@ public class SoftwareSourceCode extends EPOSDataModelEntity {
                 ", citation=" + citation +
                 ", size='" + size + '\'' +
                 ", timeRequired='" + timeRequired + '\'' +
-                '}';
+                '}'+ super.toString();
     }
 }

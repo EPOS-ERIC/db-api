@@ -242,7 +242,8 @@ public class Operation extends EPOSDataModelEntity {
                 ", template='" + template + '\'' +
                 ", mapping=" + mapping +
                 ", webservice=" + webservice +
+                ", iriTemplate=" + iriTemplate +
                 ", payload=" + payload +
-                '}';
+                '}'+ super.toString();
     }
 }

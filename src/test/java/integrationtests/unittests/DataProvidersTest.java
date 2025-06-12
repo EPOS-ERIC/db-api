@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class DataProvidersTest extends TestcontainersLifecycle {
 
@@ -21,9 +22,17 @@ public class DataProvidersTest extends TestcontainersLifecycle {
 
         List<EPOSDataModelEntity> classes = new ArrayList<>();
 
+        LinkedEntity ownsLe = new LinkedEntity();
+        ownsLe.setInstanceId(UUID.randomUUID().toString());
+        ownsLe.setMetaId(UUID.randomUUID().toString());
+        ownsLe.setUid("OWNS");
+        ownsLe.setEntityType(EntityNames.FACILITY.name());
+
         Organization dataprovider1 = new Organization();
         classes.add(dataprovider1);
         dataprovider1.setUid("PIC:000518944");
+        dataprovider1.setOwns(List.of(ownsLe));
+
 
         Identifier identifier1 = new Identifier();
         classes.add(identifier1);

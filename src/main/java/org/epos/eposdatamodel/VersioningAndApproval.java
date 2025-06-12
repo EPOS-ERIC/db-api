@@ -198,7 +198,8 @@ public abstract class VersioningAndApproval {
     @Override
     public String toString() {
         return "VersioningAndApproval{" +
-                "instanceId='" + instanceId + '\'' +
+                "versionId='" + versionId + '\'' +
+                ", instanceId='" + instanceId + '\'' +
                 ", metaId='" + metaId + '\'' +
                 ", instanceChangedId='" + instanceChangedId + '\'' +
                 ", changeTimestamp=" + changeTimestamp +

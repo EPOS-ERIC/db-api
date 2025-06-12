@@ -436,7 +436,7 @@ public class Organization extends EPOSDataModelEntity {
                 ", email=" + email +
                 ", identifier=" + identifier +
                 ", acronym='" + acronym + '\'' +
-                ", legalName='" + legalName + '\'' +
+                ", legalName=" + legalName +
                 ", leiCode='" + leiCode + '\'' +
                 ", logo='" + logo + '\'' +
                 ", memberOf=" + memberOf +
@@ -445,7 +445,7 @@ public class Organization extends EPOSDataModelEntity {
                 ", URL='" + URL + '\'' +
                 ", type='" + type + '\'' +
                 ", maturity='" + maturity + '\'' +
-                "} " + super.toString();
+                '}'+ super.toString();
     }
 
     @Override

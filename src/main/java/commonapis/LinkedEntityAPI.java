@@ -76,7 +76,7 @@ public class LinkedEntityAPI {
         edmClassMap.put(EntityNames.OUTPUTMAPPING.name(), org.epos.eposdatamodel.OutputMapping.class);
     }
 
-    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus){
+    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus){
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
 
@@ -101,6 +101,18 @@ public class LinkedEntityAPI {
                 entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
                 entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
                 if (overrideStatus != null) entity.setStatus(overrideStatus);
+                if(parentVersioningstatus!=null) {
+                    if (parentVersioningstatus.getProvenance() != null)
+                        entity.setFileProvenance(parentVersioningstatus.getProvenance());
+                    if (parentVersioningstatus.getVersion() != null)
+                        entity.setVersion(parentVersioningstatus.getVersion());
+                    if (parentVersioningstatus.getEditorId() != null)
+                        entity.setEditorId(parentVersioningstatus.getEditorId());
+                    if (parentVersioningstatus.getChangeComment() != null)
+                        entity.setChangeComment(parentVersioningstatus.getChangeComment());
+                    if (parentVersioningstatus.getChangeTimestamp() != null)
+                        entity.setChangeTimestamp(parentVersioningstatus.getChangeTimestamp().toLocalDateTime());
+                }
                 return api.create(entity, overrideStatus, null, null);
             } else {
                 Versioningstatus versioningstatus = returnList.get(0);
@@ -130,7 +142,7 @@ public class LinkedEntityAPI {
                 return api.retrieve(edmobj.getInstanceId());
             }
         } else {
-            return createFromLinkedEntity(obj, null);
+            return createFromLinkedEntity(obj, null, null);
         }
         return null;
     }
