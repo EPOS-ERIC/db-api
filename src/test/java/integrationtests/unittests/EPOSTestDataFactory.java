@@ -387,47 +387,6 @@ public class EPOSTestDataFactory {
     }
 
     // ===============================
-    // SOFTWARE COMPONENTS
-    // ===============================
-
-    public static SoftwareSourceCode createSoftwareSourceCodeQuakeML() {
-        SoftwareSourceCode sourceCode = new SoftwareSourceCode();
-        sourceCode.setName("Plugin for the conversion from QuakeML to GeoJSON payload");
-        sourceCode.setDescription("Plugin for the conversion from QuakeML to GeoJSON payload");
-        sourceCode.setSoftwareVersion("main");
-        sourceCode.setCodeRepository("");
-        sourceCode.setLicenseURL("");
-        sourceCode.setMainEntityofPage("");
-        sourceCode.addProgrammingLanguage("Java");
-        sourceCode.setRuntimePlatform("java-1.10");
-
-        // Add identifier
-        Identifier pluginId = createIdentifier("ID", "Plugin/SoftwareSourceCode/QuakeML");
-        sourceCode.addIdentifier(createLinkedEntity("identifier4", "IDENTIFIER"));
-
-        // Add relation to software application
-        sourceCode.addRelation(createLinkedEntity("Plugin/SoftwareApplication/QuakeML", "SOFTWAREAPPLICATION"));
-
-        return sourceCode;
-    }
-
-    public static SoftwareApplication createSoftwareApplicationQuakeML() {
-        SoftwareApplication application = new SoftwareApplication();
-        application.setName("QuakeML Converter Application");
-        application.setDescription("Application for converting QuakeML to GeoJSON");
-        application.setRequirements("Java-Reflection;target/;QuakeML-main-jar-with-dependencies.jar;org.epos.quakeml.core.QuakeMLInvoker");
-
-        // Add identifier
-        Identifier appId = createIdentifier("ID", "Plugin/SoftwareApplication/QuakeML");
-        application.addIdentifier(createLinkedEntity("identifier5", "IDENTIFIER"));
-
-        // Add related operation
-        application.addRelatedOperation(createLinkedEntity("Operation/Test/2", "OPERATION"));
-
-        return application;
-    }
-
-    // ===============================
     // LOCATIONS
     // ===============================
 
