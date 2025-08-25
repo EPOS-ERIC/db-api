@@ -10,20 +10,4 @@
       </scope>
     </mapping>
   </component>
-  <component name="SqlDataSourceStorage">
-    <option name="dataSources">
-      <list>
-        <State>
-          <option name="id" value="ae6e45ae-a56c-4a33-8dd0-373ae4feeb14" />
-          <option name="name" value="eposdatamodel (DDL)" />
-          <option name="languageId" value="PostgreSQL" />
-          <option name="urls">
-            <array>
-              <option value="file://$PROJECT_DIR$/src/main/java/model" />
-            </array>
-          </option>
-        </State>
-      </list>
-    </option>
-  </component>
 </project>

@@ -160,12 +160,26 @@ public class EposDataModelDAO<T> {
     }
 
     private void callMigrateCache(String pattern){
-        migrateCache("http://resources-service:8080/api/resources-service/v1/invalidate", pattern);
-        migrateCache("http://backoffice-service:8080/api/backoffice-service/v1/invalidate", pattern);
-        migrateCache("http://ingestor-service:8080/api/ingestor-service/v1/invalidate", pattern);
-        migrateCache("http://external-access-service:8080/api/external-access-service/v1/invalidate", pattern);
-        migrateCache("http://email-sender-service:8080/api/email-sender-service/v1/invalidate", pattern);
-        migrateCache("http://distributed-processing-service:8080/api/distributed-processing-service/v1/invalidate", pattern);
+        String[] services = null;
+        if(System.getenv("SERVICES").isEmpty() || System.getenv("SERVICES").equals("")){
+            services = new String[]{"resources-service", "ingestor-service", "external-access-service", "email-sender-service", "distributed-processing-service"};
+        } else {
+            services = System.getenv("SERVICES").split(",");
+        }
+        Map<String, String> mapping = new HashMap<>();
+        mapping.put("resources-service", "resources");
+        mapping.put("ingestor-service", "ingestor");
+        mapping.put("external-access-service", "external");
+        mapping.put("email-sender-service", "email");
+        mapping.put("distributed-processing-service", "distributed");
+
+        for (String service : services) {
+            for(Map.Entry<String, String> entry : mapping.entrySet()) {
+                if(service.contains(entry.getValue())) {
+                    migrateCache("http://" + service + ":8080/api/" + entry.getKey() + "/v1/invalidate", pattern);
+                }
+            }
+        }
     }
 
     private void migrateCache(String inputURL, String pattern) {
