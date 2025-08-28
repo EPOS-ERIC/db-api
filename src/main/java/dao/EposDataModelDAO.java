@@ -161,7 +161,7 @@ public class EposDataModelDAO<T> {
 
     private void callMigrateCache(String pattern){
         String[] services = null;
-        if(System.getenv("SERVICES").isEmpty() || System.getenv("SERVICES").equals("")){
+        if(System.getenv("SERVICES")!=null && System.getenv("SERVICES").isEmpty() || System.getenv("SERVICES").equals("")){
             services = new String[]{"resources-service", "ingestor-service", "external-access-service", "email-sender-service", "distributed-processing-service"};
         } else {
             services = System.getenv("SERVICES").split(",");
