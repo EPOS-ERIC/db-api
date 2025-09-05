@@ -43,7 +43,7 @@ public class DataProductCategoriesTest extends TestcontainersLifecycle {
 
         //DO UPDATE
         dataProduct.setCategory(List.of(category2));
-        System.out.println(dataProduct);
+        //System.out.println(dataProduct);
         for(EPOSDataModelEntity entity : classes) {
             AbstractAPI.retrieveAPI(EntityNames.valueOf(entity.getClass().getSimpleName().toUpperCase(Locale.ROOT)).name()).create(entity, null, null, null);
         }

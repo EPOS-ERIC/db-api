@@ -38,17 +38,17 @@ public class EntityManagementPersonTest extends TestcontainersLifecycle {
         person.addContactPoint(le);
 
 
-        LOG.info("CREATED:\n"+person.toString());
+        //LOG.info("CREATED:\n"+person.toString());
 
         api.create(person, null, null, null);
 
         Person retrievedPerson = (Person) api.retrieve(person.getInstanceId());
 
-        LOG.info("RECEIVED:\n"+person.toString());
+        //LOG.info("RECEIVED:\n"+person.toString());
 
         List<ContactPoint> retrieveContactPoint = apicp.retrieveAll();
 
-        LOG.info("RECEIVED:\n"+retrieveContactPoint);
+        //LOG.info("RECEIVED:\n"+retrieveContactPoint);
 
         assertNotNull(retrievedPerson);
         assertNotNull(retrievedPerson.getContactPoint());

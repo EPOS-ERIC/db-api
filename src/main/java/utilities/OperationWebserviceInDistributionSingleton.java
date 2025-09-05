@@ -25,7 +25,7 @@ public class OperationWebserviceInDistributionSingleton {
     }
 
     public void createRelation(LinkedEntity source, LinkedEntity target){
-        System.out.println(source+" "+target);
+        //System.out.println(source+" "+target);
         relations.put(source, target);
     }
 

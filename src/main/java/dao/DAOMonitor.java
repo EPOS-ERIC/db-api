@@ -326,7 +326,7 @@ public class DAOMonitor {
         @Override
         public void onAlert(AlertType type, String message, Map<String, Object> context) {
             // Implement email sending logic here
-            LOG.info("Would send email alert to " + recipientEmail + ": " + message);
+            //LOG.info("Would send email alert to " + recipientEmail + ": " + message);
 
             // Example: Use JavaMail or your preferred email service
             // sendEmail(recipientEmail, "EPOS DAO Alert: " + type, message + "\n\nContext: " + context);
@@ -527,7 +527,7 @@ public class DAOMonitor {
      */
     public static void setMonitoringEnabled(boolean enabled) {
         monitoringEnabled = enabled;
-        LOG.info("Monitoring " + (enabled ? "enabled" : "disabled"));
+        //LOG.info("Monitoring " + (enabled ? "enabled" : "disabled"));
     }
 
     /**
@@ -538,7 +538,7 @@ public class DAOMonitor {
         operationTotalTime.clear();
         operationErrors.clear();
         performanceHistory.clear();
-        LOG.info("All metrics reset");
+        //LOG.info("All metrics reset");
     }
 
     /**

@@ -210,7 +210,7 @@ public class EposDataModelDAO<T> {
                 // print result
                 //LOG.info("Sent invalidation to "+ inputURL +" successfully");
             } else {
-                LOG.info("POST request for "+ inputURL+" did not work.");
+                //LOG.info("POST request for "+ inputURL+" did not work.");
             }
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Sending invalidation to "+ inputURL +" unsuccessful, cause: "+e.getMessage());
@@ -256,7 +256,7 @@ public class EposDataModelDAO<T> {
             String entityName = entity.getClass().getSimpleName();
             evictCacheByPattern(entityName);
 
-            LOG.info("Entity saved successfully: " + entityName);
+            //LOG.info("Entity saved successfully: " + entityName);
             return true;
 
         } catch (Exception exception) {
@@ -322,7 +322,7 @@ public class EposDataModelDAO<T> {
                 evictCacheByPattern(entityName);
             }
 
-            LOG.info("Batch create completed: " + entities.size() + " entities of type " + entityName);
+            //LOG.info("Batch create completed: " + entities.size() + " entities of type " + entityName);
             return true;
 
         } catch (Exception exception) {
@@ -370,7 +370,7 @@ public class EposDataModelDAO<T> {
             // Invalidate related cache entries
             evictCacheByPattern(obj.getClass().getSimpleName());
 
-            LOG.info("Entity updated successfully");
+            //LOG.info("Entity updated successfully");
             return true;
 
         } catch (Exception exception) {
@@ -420,7 +420,7 @@ public class EposDataModelDAO<T> {
 
             evictCacheByPattern(obj.getClass().getSimpleName());
 
-            LOG.info("Entity deleted successfully");
+            //LOG.info("Entity deleted successfully");
             return true;
 
         } catch (Exception exception) {
@@ -487,7 +487,7 @@ public class EposDataModelDAO<T> {
                 evictCacheByPattern(entityName);
             }
 
-            LOG.info("Batch delete completed: " + objects.size() + " entities");
+            //LOG.info("Batch delete completed: " + objects.size() + " entities");
             return true;
 
         } catch (Exception exception) {
@@ -1128,7 +1128,7 @@ public class EposDataModelDAO<T> {
      * Cache warm-up with most frequently used entities
      */
     public void warmUpCache(Class<T> entityClass, List<String> commonInstanceIds) {
-        LOG.info("Starting cache warm-up for " + entityClass.getSimpleName());
+        //LOG.info("Starting cache warm-up for " + entityClass.getSimpleName());
 
         long startTime = System.currentTimeMillis();
         int warmedUp = 0;
@@ -1143,7 +1143,7 @@ public class EposDataModelDAO<T> {
         }
 
         long elapsed = System.currentTimeMillis() - startTime;
-        LOG.info("Cache warm-up completed: " + warmedUp + " entities in " + elapsed + "ms");
+        //LOG.info("Cache warm-up completed: " + warmedUp + " entities in " + elapsed + "ms");
     }
 
     /**
@@ -1169,7 +1169,7 @@ public class EposDataModelDAO<T> {
         countCache.cleanUp();
 
         long elapsed = System.currentTimeMillis() - startTime;
-        LOG.info("Smart cache cleanup completed in " + elapsed + "ms");
+        //LOG.info("Smart cache cleanup completed in " + elapsed + "ms");
     }
 
     /**
@@ -1180,7 +1180,7 @@ public class EposDataModelDAO<T> {
         entityCache.asMap().keySet().removeIf(key -> key.contains(entityName));
         countCache.asMap().keySet().removeIf(key -> key.contains(entityName));
 
-        LOG.info("Cache invalidated for entity: " + entityName);
+        //LOG.info("Cache invalidated for entity: " + entityName);
     }
 
     /**
@@ -1193,10 +1193,10 @@ public class EposDataModelDAO<T> {
         entityCache.invalidateAll();
         countCache.invalidateAll();
 
-        LOG.info("All caches cleared. Entries removed: " +
+        /*LOG.info("All caches cleared. Entries removed: " +
                 ((Long) statsBefore.get("queryCacheSize") +
                         (Long) statsBefore.get("entityCacheSize") +
-                        (Long) statsBefore.get("countCacheSize")));
+                        (Long) statsBefore.get("countCacheSize")));*/
     }
 
     // =================== MONITORING AND HEALTH CHECK ===================
@@ -1263,7 +1263,7 @@ public class EposDataModelDAO<T> {
      * Automatic cache maintenance (call periodically)
      */
     public static void performCacheMaintenance() {
-        LOG.info("Starting periodic cache maintenance");
+        //LOG.info("Starting periodic cache maintenance");
 
         long startTime = System.currentTimeMillis();
 
@@ -1277,17 +1277,17 @@ public class EposDataModelDAO<T> {
 
         long elapsed = System.currentTimeMillis() - startTime;
 
-        LOG.info("Cache maintenance completed in " + elapsed + "ms. " +
-                "Sizes: Query=" + stats.get("queryCacheSize") +
-                ", Entity=" + stats.get("entityCacheSize") +
-                ", Count=" + stats.get("countCacheSize"));
+        //LOG.info("Cache maintenance completed in " + elapsed + "ms. " +
+                //"Sizes: Query=" + stats.get("queryCacheSize") +
+        //", Entity=" + stats.get("entityCacheSize") +
+        //      ", Count=" + stats.get("countCacheSize"));
     }
 
     /**
      * Preload cache for critical entities
      */
     public void preloadCriticalData(Class<T> entityClass) {
-        LOG.info("Preloading critical data for " + entityClass.getSimpleName());
+        //LOG.info("Preloading critical data for " + entityClass.getSimpleName());
 
         // Preload count (always useful)
         countAll(entityClass);
@@ -1295,7 +1295,7 @@ public class EposDataModelDAO<T> {
         // Preload first 100 entities
         List<T> firstBatch = getAllFromDBPaginated(entityClass, 0, 100);
 
-        LOG.info("Preloaded " + firstBatch.size() + " entities for " + entityClass.getSimpleName());
+        //LOG.info("Preloaded " + firstBatch.size() + " entities for " + entityClass.getSimpleName());
     }
 
 }

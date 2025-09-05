@@ -32,13 +32,13 @@ public class EntityManagementBunchTest extends TestcontainersLifecycle {
         address.setLocality("Rome");
 
 
-        LOG.info("CREATED:\n"+address.toString());
+        //LOG.info("CREATED:\n"+address.toString());
 
         api.create(address, null, null, null);
 
         Address retrievedAddress = (Address) api.retrieveBunch(List.of(address.getInstanceId())).get(0);
 
-        LOG.info("RECEIVED:\n"+address.toString());
+        //LOG.info("RECEIVED:\n"+address.toString());
 
         assertNotNull(retrievedAddress);
         assertEquals(address, retrievedAddress);

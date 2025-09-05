@@ -80,8 +80,8 @@ public class UserGroupMultipleManagementTest extends TestcontainersLifecycle {
 
         User retrieveUser = UserGroupManagementAPI.retrieveUser(user1);
 
-        System.out.println(retrieveGroup);
-        System.out.println(retrieveUser);
+        //System.out.println(retrieveGroup);
+        //System.out.println(retrieveUser);
 
 
         assertAll(
@@ -105,8 +105,8 @@ public class UserGroupMultipleManagementTest extends TestcontainersLifecycle {
         User retrieveUser = UserGroupManagementAPI.retrieveUser(user2);
 
 
-        System.out.println(retrieveGroup);
-        System.out.println(retrieveUser);
+        //System.out.println(retrieveGroup);
+        //System.out.println(retrieveUser);
         assertAll(
                 () -> assertNotNull(retrieveGroup),
                 () -> assertEquals(2, retrieveGroup.getUsers().size()),

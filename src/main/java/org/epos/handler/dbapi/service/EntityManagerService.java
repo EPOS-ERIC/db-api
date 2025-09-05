@@ -234,7 +234,7 @@ public class EntityManagerService {
         if (hikariDataSource != null && !hikariDataSource.isClosed()) {
             hikariDataSource.close();
         }
-        LOG.info("Enhanced EntityManagerService closed");
+        //LOG.info("Enhanced EntityManagerService closed");
     }
 
 }

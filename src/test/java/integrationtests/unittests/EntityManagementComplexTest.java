@@ -33,8 +33,8 @@ public class EntityManagementComplexTest extends TestcontainersLifecycle {
 
         LinkedEntity le = identifierAPI.create(identifier, null, null, null);
 
-        LOG.info("CREATED:\n"+identifier.toString());
-        LOG.info("CREATED:\n"+le.toString());
+        //LOG.info("CREATED:\n"+identifier.toString());
+        //LOG.info("CREATED:\n"+le.toString());
 
         WebService webservice = new WebService();
         webservice.setInstanceId(UUID.randomUUID().toString());
@@ -46,16 +46,16 @@ public class EntityManagementComplexTest extends TestcontainersLifecycle {
 
         LinkedEntity newLe = webserviceAPI.create(webservice, null, null, null);
 
-        LOG.info("CREATED:\n"+webservice.toString());
-        LOG.info("CREATED:\n"+newLe.toString());
+        //LOG.info("CREATED:\n"+webservice.toString());
+        //LOG.info("CREATED:\n"+newLe.toString());
 
         Identifier retrievedIdentifier = (Identifier) identifierAPI.retrieve(identifier.getInstanceId());
 
-        LOG.info("RECEIVED:\n"+retrievedIdentifier.toString());
+        //LOG.info("RECEIVED:\n"+retrievedIdentifier.toString());
 
         WebService retrievedWebservice = (WebService) webserviceAPI.retrieve(webservice.getInstanceId());
 
-        LOG.info("RECEIVED:\n"+retrievedWebservice.toString());
+        //LOG.info("RECEIVED:\n"+retrievedWebservice.toString());
 
         assertAll(
                 () -> assertEquals(identifier.getType(), retrievedIdentifier.getType()),

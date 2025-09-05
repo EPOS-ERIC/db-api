@@ -30,7 +30,7 @@ public class EntityManagementOrganizationsTest extends TestcontainersLifecycle {
         organization.setLegalName(List.of("Father organization"));
 
 
-        LOG.info("CREATED:\n"+organization.toString());
+        //LOG.info("CREATED:\n"+organization.toString());
 
         LinkedEntity linkedEntity = api.create(organization, null, null, null);
 
@@ -53,7 +53,7 @@ public class EntityManagementOrganizationsTest extends TestcontainersLifecycle {
 
         List<Organization> organizations = api.retrieveAll();
 
-        LOG.info("RECEIVED:\n"+organizations.toString());
+        //LOG.info("RECEIVED:\n"+organizations.toString());
 
         for (Organization org : organizations) {
             // only take into account the organization with legalname

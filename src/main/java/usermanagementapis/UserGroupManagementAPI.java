@@ -210,8 +210,8 @@ public class UserGroupManagementAPI {
         MetadataGroup group = (MetadataGroup) getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId,MetadataGroup.class).get(0);
         MetadataUser user = (MetadataUser) getDbaccess().getOneFromDBBySpecificKeySimple("authIdentifier",userId,MetadataUser.class).get(0);
 
-        System.out.println(group);
-        System.out.println(user);
+        //System.out.println(group);
+        //System.out.println(user);
 
         if(!metadataGroupUserList.isEmpty()) return true;
 
