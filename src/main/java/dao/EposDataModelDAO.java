@@ -612,9 +612,9 @@ public class EposDataModelDAO<T> {
 			List<T> result = query.getResultList();
 
 			// Cache only if dataset is not too large
-			if (result.size() < 5000) {
+			//if (result.size() < 5000) {
 				putInQueryCache(cacheKey, result);
-			}
+			//}
 
 			return result;
 
@@ -1067,9 +1067,9 @@ public class EposDataModelDAO<T> {
 			List<T> result = query.getResultList();
 
 			// Cache pagination only for small pages
-			if (size <= 100) {
+			//if (size <= 100) {
 				putInQueryCache(cacheKey, result);
-			}
+			//}
 
 			return result;
 
