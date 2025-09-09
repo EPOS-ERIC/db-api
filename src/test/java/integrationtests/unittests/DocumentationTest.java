@@ -27,9 +27,8 @@ public class DocumentationTest extends TestcontainersLifecycle {
 
         LinkedEntity le = AbstractAPI.retrieveAPI(EntityNames.DOCUMENTATION.name()).create(documentation,null,null,null);
 
-        EposDataModelDAO dao = new EposDataModelDAO();
 
-        System.out.println(dao.getOneFromDBByLinkedEntity(le, Element   .class));
+        System.out.println(EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(le, Element   .class));
     }
 
 }

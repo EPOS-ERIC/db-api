@@ -26,9 +26,8 @@ public class EDMEntityIdTest extends TestcontainersLifecycle {
         edmEntityId.setMetaId("TESTMETAID");
         edmEntityId.setTableName("PERSON");
 
-        EposDataModelDAO dataModelDAO = new EposDataModelDAO();
 
-        dataModelDAO.updateObject(edmEntityId);
+        EposDataModelDAO.getInstance().updateObject(edmEntityId);
     }
 
     @Test
