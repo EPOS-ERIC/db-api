@@ -17,8 +17,6 @@ import java.util.Locale;
 
 public class RelationChecker {
 
-    protected static EposDataModelDAO dbaccess = EposDataModelDAO.getInstance();
-
     public static Object checkRelation(EPOSDataModelEntity mainEntity, EPOSDataModelEntity oldMainEntity, Class mainEntityClazz, LinkedEntity linkedEntity, StatusType overrideStatus, Class clazz, Boolean enableStore) {
         if(mainEntityClazz == null) mainEntityClazz = mainEntity.getClass();
 
@@ -45,13 +43,13 @@ public class RelationChecker {
                 obj = linkedEntity;
             }
         } else {
-            List<Object> results = dbaccess.getOneFromDBByLinkedEntity(linkedEntity,clazz);
+            List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(linkedEntity,clazz);
             if(!results.isEmpty()) obj = linkedEntity;
             else {
                 obj = LinkedEntityAPI.createFromLinkedEntity(linkedEntity, mainEntity.getStatus(), VersioningStatusAPI.retrieveVersioningStatus(mainEntity));
             }
         }
-        List<Object> results = dbaccess.getOneFromDBByLinkedEntity(obj,clazz);
+        List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(obj,clazz);
         return results.isEmpty()? null : results.get(0);
     }
 }

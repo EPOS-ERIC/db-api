@@ -81,8 +81,10 @@ public class EposDataModelDAO<T> {
 			.recordStats()
 			.build();
 
+	private EntityManagerService entityManagerService = null;
+
 	private EposDataModelDAO() {
-		new EntityManagerService.EntityManagerServiceBuilder().build();
+		this.entityManagerService = new EntityManagerService.EntityManagerServiceBuilder().build();
 	}
 
 	private static EposDataModelDAO instance;
@@ -1356,6 +1358,7 @@ public class EposDataModelDAO<T> {
 		cacheInstance.getAllFromDB(Versioningstatus.class);
 		cacheInstance.getAllFromDB(Person.class);
 
+		entityManagerService.close();
 		instance = cacheInstance;
 	}
 }
