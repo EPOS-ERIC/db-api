@@ -55,7 +55,7 @@ public class DAOMonitor {
             this.avgResponseTimes = calculateAverageResponseTimes();
             this.operationCounts = getCurrentOperationCounts();
             this.errorRates = calculateErrorRates();
-            this.cacheStats = EposDataModelDAO.getDetailedCacheStats();
+            this.cacheStats = EposDataModelDAO.getInstance().getDetailedCacheStats();
         }
 
         // Getters
@@ -360,7 +360,7 @@ public class DAOMonitor {
 
         // Cache statistics
         report.append("\nCACHE STATISTICS:\n");
-        Map<String, Object> cacheStats = EposDataModelDAO.getDetailedCacheStats();
+        Map<String, Object> cacheStats = EposDataModelDAO.getInstance().getDetailedCacheStats();
         cacheStats.forEach((key, value) -> {
             if (value instanceof Map) {
                 report.append("  ").append(key).append(":\n");
@@ -410,7 +410,7 @@ public class DAOMonitor {
         data.put("operationCounts", getCurrentOperationCounts());
         data.put("averageResponseTimes", calculateAverageResponseTimes());
         data.put("errorRates", calculateErrorRates());
-        data.put("cacheStatistics", EposDataModelDAO.getDetailedCacheStats());
+        data.put("cacheStatistics", EposDataModelDAO.getInstance().getDetailedCacheStats());
 
         // Historical data
         data.put("performanceHistory", new ArrayList<>(performanceHistory));
