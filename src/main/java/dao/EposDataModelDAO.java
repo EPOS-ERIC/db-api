@@ -61,7 +61,7 @@ public class EposDataModelDAO<T> {
 	// Primary cache for query results with optimized configuration
 	private final Cache<String, Object> queryCache = Caffeine.newBuilder()
 			.maximumSize(1_000_000_000) // Maximum 10k entries
-			.expireAfterWrite(Duration.ofMinutes(120)) // TTL 120 minutes
+			.expireAfterWrite(Duration.ofMinutes(120)) //queryCache TTL 120 minutes
 			.expireAfterAccess(Duration.ofMinutes(60)) // Idle timeout 60 minutes
 			.recordStats() // Enable detailed statistics
 			.build();
@@ -86,6 +86,10 @@ public class EposDataModelDAO<T> {
 	private EposDataModelDAO() {
 		this.entityManagerService = new EntityManagerService.EntityManagerServiceBuilder().build();
 	}
+
+    private EposDataModelDAO(EposDataModelDAO instance) {
+        this.entityManagerService = instance.entityManagerService;
+    }
 
 	private static EposDataModelDAO instance;
 	private static EposDataModelDAO cacheInstance;
@@ -1346,7 +1350,7 @@ public class EposDataModelDAO<T> {
 	}
 
 	public void reloadCache() {
-		cacheInstance = new EposDataModelDAO<>();
+		cacheInstance = new EposDataModelDAO(instance);
 
 		cacheInstance.getAllFromDB(Dataproduct.class);
 		cacheInstance.getAllFromDB(Distribution.class);
@@ -1358,7 +1362,7 @@ public class EposDataModelDAO<T> {
 		cacheInstance.getAllFromDB(Versioningstatus.class);
 		cacheInstance.getAllFromDB(Person.class);
 
-		entityManagerService.close();
+		//entityManagerService.close();
 		instance = cacheInstance;
 	}
 }
