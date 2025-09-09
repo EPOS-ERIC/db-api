@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
@@ -54,10 +55,10 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         }
 
         if(obj.getRole()!=null) {
-            for(Object object : dbaccess.getAllFromDB(AttributionRole.class)){
+            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(AttributionRole.class)){
                 AttributionRole role = (AttributionRole) object;
                 if(role.getAttributionInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(role);
+                    EposDataModelDAO.getInstance().deleteObject(role);
                 }
             }
 
@@ -72,7 +73,7 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                 if(edmobj.getVersion().getChangeComment()!=null) roleobj.setChangeComment(edmobj.getVersion().getChangeComment());
                 if(edmobj.getVersion().getChangeTimestamp()!=null) roleobj.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
-                dbaccess.updateObject(roleobj);
+                EposDataModelDAO.getInstance().updateObject(roleobj);
             }
         }
 
@@ -90,7 +91,7 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
         List<Attribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Attribution.class);
         for(Attribution object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }

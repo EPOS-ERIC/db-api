@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import model.Attribution;
 import model.Distribution;
@@ -85,10 +86,10 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         /** TITLE **/
         if (obj.getTitle() != null) {
 
-            for(Object object : dbaccess.getAllFromDB(DataproductTitle.class)){
+            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DataproductTitle.class)){
                 DataproductTitle title = (DataproductTitle) object;
                 if(title.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(title);
+                    EposDataModelDAO.getInstance().deleteObject(title);
                 }
             }
 
@@ -102,17 +103,17 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 pi.setDataproductInstance(edmobj);
                 pi.setLang(null);
 
-                dbaccess.updateObject(pi);
+                EposDataModelDAO.getInstance().updateObject(pi);
             }
         }
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null) {
 
-            for(Object object : dbaccess.getAllFromDB(DataproductDescription.class)){
+            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DataproductDescription.class)){
                 DataproductDescription description = (DataproductDescription) object;
                 if(description.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(description);
+                    EposDataModelDAO.getInstance().deleteObject(description);
                 }
             }
 
@@ -125,7 +126,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 pi.setDescription(description);
                 pi.setDataproductInstance(edmobj);
                 pi.setLang(null);
-                dbaccess.updateObject(pi);
+                EposDataModelDAO.getInstance().updateObject(pi);
             }
         }
 
@@ -141,7 +142,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductAttribution pi = new DataproductAttribution();
                     pi.setDataproductInstance(edmobj);
                     pi.setAttributionInstance(attribution);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -158,7 +159,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductSource pi = new DataproductSource();
                     pi.setDataproduct1Instance(edmobj);
                     pi.setDataproduct2Instance(dataproduct);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -176,7 +177,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductHaspart pi = new DataproductHaspart();
                     pi.setDataproduct1Instance(edmobj);
                     pi.setDataproduct2Instance(dataproduct);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -193,7 +194,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductIspartof pi = new DataproductIspartof();
                     pi.setDataproduct1Instance(dataproduct);
                     pi.setDataproduct2Instance(edmobj);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -202,12 +203,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
-                List<Identifier> identifierList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
+                List<Identifier> identifierList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
                 if(!identifierList.isEmpty()) {
                     DataproductIdentifier pi = new DataproductIdentifier();
                     pi.setDataproductInstance(edmobj);
                     pi.setIdentifierInstance(identifierList.get(0));
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -221,7 +222,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 pi.setVersion(null);
                 pi.setProvenance(provenance);
                 pi.setDataproductInstance(edmobj);
-                dbaccess.updateObject(pi);
+                EposDataModelDAO.getInstance().updateObject(pi);
             }
         }
 
@@ -249,7 +250,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductPublisher pi = new DataproductPublisher();
                     pi.setDataproductInstance(edmobj);
                     pi.setOrganizationInstance(organization1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -266,7 +267,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDataproductInstance(edmobj);
                     pi.setDistributionInstance(distribution1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -283,7 +284,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductSpatial pi = new DataproductSpatial();
                     pi.setDataproductInstance(edmobj);
                     pi.setSpatialInstance(spatial);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -300,7 +301,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductTemporal pi = new DataproductTemporal();
                     pi.setDataproductInstance(edmobj);
                     pi.setTemporalInstance(temporal);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -344,11 +345,11 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
         LinkedEntity le = api.create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         DataproductElement ce = new DataproductElement();
         ce.setDataproductInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
 
@@ -357,109 +358,109 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         for(Object object : getDbaccess().getAllFromDB(DataproductAttribution.class)){
             DataproductAttribution item = (DataproductAttribution) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductElement.class)){
             DataproductElement item = (DataproductElement) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductSource.class)){
             DataproductSource item = (DataproductSource) object;
             if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductContactpoint.class)){
             DataproductContactpoint item = (DataproductContactpoint) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
             DataproductCategory item = (DataproductCategory) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductIspartof.class)){
             DataproductIspartof item = (DataproductIspartof) object;
             if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
             DataproductIdentifier item = (DataproductIdentifier) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductTitle.class)){
             DataproductTitle item = (DataproductTitle) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductTemporal.class)){
             DataproductTemporal item = (DataproductTemporal) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductSpatial.class)){
             DataproductSpatial item = (DataproductSpatial) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductRelation.class)){
             DataproductRelation item = (DataproductRelation) object;
             if(item.getDataproduct().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(DataproductPublisher.class)){
             DataproductPublisher item = (DataproductPublisher) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(DataproductProvenance.class)){
             DataproductProvenance item = (DataproductProvenance) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(DataproductHaspart.class)){
             DataproductHaspart item = (DataproductHaspart) object;
             if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(DataproductDescription.class)){
             DataproductDescription item = (DataproductDescription) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(DistributionDataproduct.class)){
             DistributionDataproduct item = (DistributionDataproduct) object;
             if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
 
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
         for(Dataproduct object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;
@@ -502,7 +503,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             for(String item : edmobj.getKeywords().split("\\|"))
                 o.addKeywords(item);
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductAttribution.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductAttribution.class)) {
             DataproductAttribution item = (DataproductAttribution) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
             LinkedEntity le = retrieveAPI(EntityNames.ATTRIBUTION.name()).retrieveLinkedEntity(item.getAttributionInstance().getInstanceId());
@@ -510,7 +511,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductCategory.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductCategory.class)) {
             DataproductCategory item = (DataproductCategory) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
@@ -518,7 +519,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductContactpoint.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductContactpoint.class)) {
             DataproductContactpoint item = (DataproductContactpoint) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
@@ -526,21 +527,21 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductDescription.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductDescription.class)) {
             DataproductDescription item = (DataproductDescription) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 o.addDescription(item.getDescription());
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTitle.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTitle.class)) {
             DataproductTitle item = (DataproductTitle) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 o.addTitle(item.getTitle());
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductIdentifier.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductIdentifier.class)) {
             DataproductIdentifier item = (DataproductIdentifier) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
@@ -548,7 +549,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductSource.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductSource.class)) {
             DataproductSource item = (DataproductSource) object;
             // if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
             LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
@@ -556,7 +557,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductHaspart.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductHaspart.class)) {
             DataproductHaspart item = (DataproductHaspart) object;
             // if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
@@ -564,7 +565,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductIspartof.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductIspartof.class)) {
             DataproductIspartof item = (DataproductIspartof) object;
             //if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
@@ -572,14 +573,14 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductProvenance.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductProvenance.class)) {
             DataproductProvenance item = (DataproductProvenance) object;
             if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 o.addDescription(item.getProvenance());
             }
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductPublisher.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductPublisher.class)) {
             DataproductPublisher item = (DataproductPublisher) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId());
@@ -587,7 +588,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
             DistributionDataproduct item = (DistributionDataproduct) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveLinkedEntity(item.getDistributionInstance().getInstanceId());
@@ -595,7 +596,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductSpatial.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductSpatial.class)) {
             DataproductSpatial item = (DataproductSpatial) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
@@ -603,7 +604,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTemporal.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTemporal.class)) {
             DataproductTemporal item = (DataproductTemporal) object;
             //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
@@ -611,7 +612,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             //}
         }
 
-        for (Object object : dbaccess.getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductElement.class)) {
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductElement.class)) {
             DataproductElement item = (DataproductElement) object;
             //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
             Element el = item.getElementInstance();

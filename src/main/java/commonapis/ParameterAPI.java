@@ -1,6 +1,7 @@
 package commonapis;
 
 import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Group;
@@ -87,12 +88,12 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
                 .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(parameterItemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(parameterItemsToDelete);
 
         List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
                 .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(parameterListToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(parameterListToDelete);
 
         return true;
     }

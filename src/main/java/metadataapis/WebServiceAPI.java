@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import model.Element;
 import model.Facility;
@@ -96,11 +97,11 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             for(LinkedEntity documentation : obj.getDocumentation()){
                 Element documentation1 = (Element) RelationChecker.checkRelation(obj, previousObj, null, documentation, overrideStatus, Element.class, false);
                 if(documentation1!=null) {
-                    List<Element> el = dbaccess.getOneFromDBByInstanceId(documentation1.getInstanceId(), Element.class);
+                    List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(documentation1.getInstanceId(), Element.class);
                     WebserviceElement pi = new WebserviceElement();
                     pi.setWebserviceInstance(edmobj);
                     pi.setElementInstance(el.get(0));
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -116,7 +117,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceIdentifier pi = new WebserviceIdentifier();
                     pi.setWebserviceInstance(edmobj);
                     pi.setIdentifierInstance(identifier1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -133,7 +134,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceSpatial pi = new WebserviceSpatial();
                     pi.setWebserviceInstance(edmobj);
                     pi.setSpatialInstance(spatial);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -150,7 +151,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceTemporal pi = new WebserviceTemporal();
                     pi.setWebserviceInstance(edmobj);
                     pi.setTemporalInstance(temporal);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -166,7 +167,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setWebserviceInstance(edmobj);
                     pi.setDistributionInstance(distribution1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -182,7 +183,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     OperationWebservice pi = new OperationWebservice();
                     pi.setWebserviceInstance(edmobj);
                     pi.setOperationInstance(operation1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -200,7 +201,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                     pi.setId(wid);
                     pi.setWebserviceInstance(edmobj);
                     pi.setResourceEntity(EntityNames.WEBSERVICE.name());
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -220,55 +221,55 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
             WebserviceIdentifier item = (WebserviceIdentifier) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceTemporal.class)){
             WebserviceTemporal item = (WebserviceTemporal) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
             WebserviceElement item = (WebserviceElement) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceSpatial.class)){
             WebserviceSpatial item = (WebserviceSpatial) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceContactpoint.class)){
             WebserviceContactpoint item = (WebserviceContactpoint) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceRelation.class)){
             WebserviceRelation item = (WebserviceRelation) object;
             if(item.getId().getWebserviceInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceDistribution.class)){
             WebserviceDistribution item = (WebserviceDistribution) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceCategory.class)){
             WebserviceCategory item = (WebserviceCategory) object;
             if(item.getWebserviceInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         List<Webservice> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Webservice.class);
         for(Webservice object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }
@@ -299,7 +300,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 for(String item : edmobj.getKeywords().split("\\|"))
                     o.addKeywords(item);
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceCategory.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceCategory.class)) {
                 WebserviceCategory item = (WebserviceCategory) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
@@ -307,7 +308,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceContactpoint.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceContactpoint.class)) {
                 WebserviceContactpoint item = (WebserviceContactpoint) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
@@ -319,7 +320,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 o.setProvider(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(edmobj.getProvider()));
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceElement.class)) {
                 WebserviceElement item = (WebserviceElement) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
@@ -327,7 +328,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 // }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceIdentifier.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceIdentifier.class)) {
                 WebserviceIdentifier item = (WebserviceIdentifier) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
@@ -335,7 +336,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 // }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceSpatial.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceSpatial.class)) {
                 WebserviceSpatial item = (WebserviceSpatial) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
@@ -343,7 +344,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceTemporal.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceTemporal.class)) {
                 WebserviceTemporal item = (WebserviceTemporal) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
@@ -351,7 +352,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
@@ -359,7 +360,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceRelation.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(),WebserviceRelation.class)) {
                 WebserviceRelation item = (WebserviceRelation) object;
                 //if(item.getWebserviceInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 //if(item.getResourceEntity().equalsIgnoreCase(EntityNames.WEBSERVICE.name())) {

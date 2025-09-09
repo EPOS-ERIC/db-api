@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
@@ -70,7 +71,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
                 MappingElement item = (MappingElement) object;
                 if(item.getMappingInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
+                    EposDataModelDAO.getInstance().deleteObject(item);
                 }
             }
             for(String paramvalue : obj.getParamValue()) {
@@ -99,11 +100,11 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         MappingElement ce = new MappingElement();
         ce.setMappingInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
     @Override
@@ -111,18 +112,18 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
             MappingElement item = (MappingElement) object;
             if(item.getMappingInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationMapping.class)){
             OperationMapping item = (OperationMapping) object;
             if(item.getMappingInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);
         for(Mapping object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;
@@ -152,7 +153,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             o.setVariable(edmobj.getVariable());
             o.setHealthCheckVariable(edmobj.getHealthcheckvalue());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(),MappingElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(),MappingElement.class)) {
                 MappingElement item = (MappingElement) object;
                 //if(item.getMappingInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

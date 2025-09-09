@@ -3,6 +3,7 @@ package metadataapis;
 import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 
@@ -68,12 +69,12 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
         for(Object object : getDbaccess().getAllFromDB(PayloadOutputMapping.class)){
             PayloadOutputMapping item = (PayloadOutputMapping) object;
             if(item.getOutputMappingInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<OutputMapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, OutputMapping.class);
         for(OutputMapping object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;

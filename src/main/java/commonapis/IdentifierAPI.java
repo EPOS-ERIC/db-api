@@ -1,6 +1,7 @@
 package commonapis;
 
 import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Group;
@@ -64,35 +65,35 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
         for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
             DataproductIdentifier item = (DataproductIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
             WebserviceIdentifier item = (WebserviceIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
             OrganizationIdentifier item = (OrganizationIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
             PersonIdentifier item = (PersonIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         // Delete Identifier itself
         List<Identifier> identifierList = getDbaccess().getAllFromDB(Identifier.class);
         identifierList.stream()
                 .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(dbaccess::deleteObject);
+                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
 
         return true;
     }

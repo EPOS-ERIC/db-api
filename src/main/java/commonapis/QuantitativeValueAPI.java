@@ -1,6 +1,7 @@
 package commonapis;
 
 import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Group;
@@ -67,7 +68,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
         List<Quantitativevalue> itemsToDelete = (List<Quantitativevalue>) getDbaccess().getAllFromDB(Quantitativevalue.class).stream()
                 .filter(item -> ((Quantitativevalue)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(itemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(itemsToDelete);
         return true;
     }
 

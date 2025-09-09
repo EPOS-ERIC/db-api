@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
@@ -83,7 +84,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                     FacilityAddress pi = new FacilityAddress();
                     pi.setFacilityInstance(edmobj);
                     pi.setAddressInstance(address1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -100,7 +101,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                     FacilityIspartof pi = new FacilityIspartof();
                     pi.setFacility1Instance(edmobj);
                     pi.setFacility2Instance(facility1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -117,7 +118,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                     FacilitySpatial pi = new FacilitySpatial();
                     pi.setFacilityInstance(edmobj);
                     pi.setSpatialInstance(spatial);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -149,11 +150,11 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         FacilityElement ce = new FacilityElement();
         ce.setFacilityInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
     @Override
@@ -161,42 +162,42 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         for(Object object : getDbaccess().getAllFromDB(FacilityContactpoint.class)){
             FacilityContactpoint item = (FacilityContactpoint) object;
             if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityIspartof.class)){
             FacilityIspartof item = (FacilityIspartof) object;
             if(item.getFacility1Instance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
             FacilityElement item = (FacilityElement) object;
             if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilitySpatial.class)){
             FacilitySpatial item = (FacilitySpatial) object;
             if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityCategory.class)){
             FacilityCategory item = (FacilityCategory) object;
             if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityAddress.class)){
             FacilityAddress item = (FacilityAddress) object;
             if(item.getFacilityInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
         for(Facility object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;
@@ -219,7 +220,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             o.setTitle(edmobj.getTitle());
             o.setKeywords(edmobj.getKeywords());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
                 FacilityCategory item = (FacilityCategory) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
@@ -227,7 +228,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
                 FacilityContactpoint item = (FacilityContactpoint) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
@@ -235,7 +236,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
                 FacilityAddress item = (FacilityAddress) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(item.getAddressInstance().getInstanceId());
@@ -243,7 +244,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 // }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
                 FacilityIspartof item = (FacilityIspartof) object;
                 // if(item.getFacility1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getFacility2Instance().getInstanceId());
@@ -251,7 +252,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
                 FacilitySpatial item = (FacilitySpatial) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
@@ -259,7 +260,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityElement.class)) {
                 FacilityElement item = (FacilityElement) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

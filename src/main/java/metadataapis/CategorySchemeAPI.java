@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -86,13 +87,13 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         for(Object object : getDbaccess().getAllFromDB(CategoryHastopconcept.class)){
             CategoryHastopconcept item = (CategoryHastopconcept) object;
             if(item.getCategorySchemeInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
         for(CategoryScheme object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }
@@ -119,7 +120,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             o.setColor(edmobj.getColor());
             o.setOrderitemnumber(edmobj.getOrderitemnumber());
 
-            for(Object categoryHastopconcept : dbaccess.getAllFromDB(CategoryHastopconcept.class)){
+            for(Object categoryHastopconcept : EposDataModelDAO.getInstance().getAllFromDB(CategoryHastopconcept.class)){
                 CategoryHastopconcept item = (CategoryHastopconcept) categoryHastopconcept;
                 if(item.getCategorySchemeInstance().getInstanceId().equals(edmobj.getInstanceId())){
                     o.addTopConcepts(AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));

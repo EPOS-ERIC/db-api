@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.ElementAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.ContactPoint;
 import org.epos.eposdatamodel.Group;
@@ -95,12 +96,12 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
         LinkedEntity le = api.create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         ContactpointElement ce = new ContactpointElement();
         ce.setContactpointInstance(edmobj);
         ce.setElementInstance(el.get(0));
 
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
     @Override
@@ -109,69 +110,69 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
             ContactpointElement item = (ContactpointElement) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceContactpoint.class)){
             WebserviceContactpoint item = (WebserviceContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductContactpoint.class)){
             DataproductContactpoint item = (DataproductContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentContactpoint.class)){
             EquipmentContactpoint item = (EquipmentContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityContactpoint.class)){
             FacilityContactpoint item = (FacilityContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeContactpoint.class)){
             SoftwaresourcecodeContactpoint item = (SoftwaresourcecodeContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationContactpoint.class)){
             SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(ServiceContactpoint.class)){
             ServiceContactpoint item = (ServiceContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(PersonContactpoint.class)){
             PersonContactpoint item = (PersonContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         for(Object object : getDbaccess().getAllFromDB(OrganizationContactpoint.class)){
             OrganizationContactpoint item = (OrganizationContactpoint) object;
             if(item.getContactpointInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
         List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
         for(Contactpoint object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }

@@ -3,6 +3,7 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Documentation;
@@ -95,61 +96,61 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
             ContactpointElement item = (ContactpointElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
             DistributionElement item = (DistributionElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
             WebserviceElement item = (WebserviceElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
             OrganizationElement item = (OrganizationElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
             PersonElement item = (PersonElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
             OperationElement item = (OperationElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
             MappingElement item = (MappingElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
             SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
             EquipmentElement item = (EquipmentElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
             FacilityElement item = (FacilityElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
 
@@ -157,7 +158,7 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
         elementList.stream()
                 .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(dbaccess::deleteObject);
+                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
 
         return true;
     }

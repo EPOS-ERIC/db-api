@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
@@ -95,7 +96,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                     pi.setEquipmentInstanceId(edmobj.getInstanceId());
                     pi.setEntityInstanceId(equipment1.getInstanceId());
                     pi.setResourceEntity(EntityNames.EQUIPMENT.name());
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -117,7 +118,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                     pi.setEquipmentInstanceId(edmobj.getInstanceId());
                     pi.setEntityInstanceId(facility1.getInstanceId());
                     pi.setResourceEntity(EntityNames.FACILITY.name());
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -135,7 +136,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                     EquipmentSpatial pi = new EquipmentSpatial();
                     pi.setEquipmentInstance(edmobj);
                     pi.setSpatialInstance(spatial);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -152,7 +153,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                     EquipmentTemporal pi = new EquipmentTemporal();
                     pi.setEquipmentInstance(edmobj);
                     pi.setTemporalInstance(temporal);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -182,11 +183,11 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         EquipmentElement ce = new EquipmentElement();
         ce.setEquipmentInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
 
@@ -214,7 +215,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             o.setSerialNumber(edmobj.getSerialnumber());
             o.addKeywords(edmobj.getKeywords());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
                 EquipmentCategory item = (EquipmentCategory) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
@@ -222,7 +223,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentContactpoint.class)) {
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
@@ -230,7 +231,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipment", edmobj.getInstanceId(),EquipmentIspartof.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipment", edmobj.getInstanceId(),EquipmentIspartof.class)) {
                 EquipmentIspartof item = (EquipmentIspartof) object;
                 //if(item.getEquipment().getInstanceId().equals(edmobj.getInstanceId())) {
                     if(item.getResourceEntity().equals(EntityNames.FACILITY.name())){
@@ -242,7 +243,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentSpatial.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentSpatial.class)) {
                 EquipmentSpatial item = (EquipmentSpatial) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
@@ -250,7 +251,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                     // }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentTemporal.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentTemporal.class)) {
                 EquipmentTemporal item = (EquipmentTemporal) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
@@ -258,7 +259,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentElement.class)) {
                 EquipmentElement item = (EquipmentElement) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
@@ -276,48 +277,48 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         for(Object object : getDbaccess().getAllFromDB(EquipmentContactpoint.class)){
             EquipmentContactpoint item = (EquipmentContactpoint) object;
             if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentTemporal.class)){
             EquipmentTemporal item = (EquipmentTemporal) object;
             if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentSpatial.class)){
             EquipmentSpatial item = (EquipmentSpatial) object;
             if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentRelation.class)){
             EquipmentRelation item = (EquipmentRelation) object;
             if(item.getEquipment().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentIspartof.class)){
             EquipmentIspartof item = (EquipmentIspartof) object;
             if(item.getEquipment().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
             EquipmentElement item = (EquipmentElement) object;
             if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentCategory.class)){
             EquipmentCategory item = (EquipmentCategory) object;
             if(item.getEquipmentInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Equipment> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Equipment.class);
         for(Equipment object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;

@@ -1,6 +1,7 @@
 package commonapis;
 
 import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Group;
@@ -67,28 +68,28 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
         List<Object> relatedItems = (List<Object>) getDbaccess().getAllFromDB(DataproductTemporal.class).stream()
                 .filter(item -> ((DataproductTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(relatedItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
 
         relatedItems = (List<Object>) getDbaccess().getAllFromDB(WebserviceTemporal.class).stream()
                 .filter(item -> ((WebserviceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(relatedItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
 
         relatedItems = (List<Object>) getDbaccess().getAllFromDB(EquipmentTemporal.class).stream()
                 .filter(item -> ((EquipmentTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(relatedItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
 
         relatedItems = (List<Object>) getDbaccess().getAllFromDB(ServiceTemporal.class).stream()
                 .filter(item -> ((ServiceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(relatedItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
 
         // Delete the main Temporal record
         List<Temporal> temporalItems = (List<Temporal>) getDbaccess().getAllFromDB(Temporal.class).stream()
                 .filter(item -> ((Temporal)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        dbaccess.deleteListOfObjects(temporalItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(temporalItems);
 
         return true;
     }

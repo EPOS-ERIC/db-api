@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
@@ -65,7 +66,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                     OperationMapping pi = new OperationMapping();
                     pi.setOperationInstance(edmobj);
                     pi.setMappingInstance(mapping1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -81,7 +82,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                     OperationWebservice pi = new OperationWebservice();
                     pi.setOperationInstance(edmobj);
                     pi.setWebserviceInstance(webservice);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -97,7 +98,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                     OperationPayload pi = new OperationPayload();
                     pi.setOperationInstance(edmobj);
                     pi.setPayloadInstance(payload1);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -107,7 +108,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
                 OperationElement item = (OperationElement) object;
                 if(item.getOperationInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
+                    EposDataModelDAO.getInstance().deleteObject(item);
                 }
             }
             for(String returns : obj.getReturns()) {
@@ -135,11 +136,11 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
         LinkedEntity le = retrieveAPI(EntityNames.ELEMENT.name()).create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         OperationElement ce = new OperationElement();
         ce.setOperationInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
     @Override
@@ -147,30 +148,30 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
             OperationElement item = (OperationElement) object;
             if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationMapping.class)){
             OperationMapping item = (OperationMapping) object;
             if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationDistribution.class)){
             OperationDistribution item = (OperationDistribution) object;
             if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationWebservice.class)){
             OperationWebservice item = (OperationWebservice) object;
             if(item.getOperationInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
         for(Operation object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;
@@ -191,7 +192,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             o.setMethod(edmobj.getMethod());
             o.setTemplate(edmobj.getTemplate());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationWebservice.class)) {
                 OperationWebservice item = (OperationWebservice) object;
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
@@ -199,7 +200,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationPayload.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationPayload.class)) {
                 OperationPayload item = (OperationPayload) object;
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                 LinkedEntity le = retrieveAPI(EntityNames.PAYLOAD.name()).retrieveLinkedEntity(item.getPayloadInstance().getInstanceId());
@@ -207,7 +208,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationMapping.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationMapping.class)) {
                 OperationMapping item = (OperationMapping) object;
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.MAPPING.name()).retrieveLinkedEntity(item.getMappingInstance().getInstanceId());
@@ -215,7 +216,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationElement.class)) {
                 OperationElement item = (OperationElement) object;
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();

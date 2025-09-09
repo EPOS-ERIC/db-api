@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
 import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
+import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Group;
@@ -68,7 +69,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus){
 
-        List<CategoryScheme> categorySchemeList = dbaccess.getOneFromDBByLinkedEntity(inscheme,CategoryScheme.class);
+        List<CategoryScheme> categorySchemeList = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(inscheme,CategoryScheme.class);
         if(!categorySchemeList.isEmpty()) {
             edmobj.setInScheme(categorySchemeList.get(0));
         } else{
@@ -118,54 +119,54 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         for(Object object : getDbaccess().getAllFromDB(CategoryHastopconcept.class)){
             CategoryHastopconcept item = (CategoryHastopconcept) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(CategoryIspartof.class)){
             CategoryIspartof item = (CategoryIspartof) object;
             if(item.getCategory1Instance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
             DataproductCategory item = (DataproductCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceCategory.class)){
             WebserviceCategory item = (WebserviceCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationCategory.class)){
             SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeCategory.class)){
             SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(FacilityCategory.class)){
             FacilityCategory item = (FacilityCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(EquipmentCategory.class)){
             EquipmentCategory item = (EquipmentCategory) object;
             if(item.getCategoryInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
         for(Category object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }
@@ -191,7 +192,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             ArrayList<LinkedEntity> broaders = new ArrayList<>();
             ArrayList<LinkedEntity> narrowers = new ArrayList<>();
 
-            for(Object categoryIspartof : dbaccess.getAllFromDB(CategoryIspartof.class)){
+            for(Object categoryIspartof : EposDataModelDAO.getInstance().getAllFromDB(CategoryIspartof.class)){
                 CategoryIspartof item = (CategoryIspartof) categoryIspartof;
                 if(item.getCategory2Instance().getInstanceId().equals(edmobj.getInstanceId())){
                     broaders.add(retrieveLinkedEntity(item.getCategory1Instance().getInstanceId()));

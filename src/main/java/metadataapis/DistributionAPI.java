@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.*;
+import dao.EposDataModelDAO;
 import model.*;
 import model.Distribution;
 import model.Element;
@@ -71,10 +72,10 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         /** TITLE **/
         if (obj.getTitle() != null) {
-            for(Object object : dbaccess.getAllFromDB(DistributionTitle.class)){
+            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DistributionTitle.class)){
                 DistributionTitle title = (DistributionTitle) object;
                 if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(title);
+                    EposDataModelDAO.getInstance().deleteObject(title);
                 }
             }
             for(String title : obj.getTitle()){
@@ -86,16 +87,16 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 pi.setTitle(title);
                 pi.setDistributionInstance(edmobj);
                 pi.setLang(null);
-                dbaccess.updateObject(pi);
+                EposDataModelDAO.getInstance().updateObject(pi);
             }
         }
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null) {
-            for(Object object : dbaccess.getAllFromDB(DistributionDescription.class)){
+            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DistributionDescription.class)){
                 DistributionDescription title = (DistributionDescription) object;
                 if(title.getDistributionInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(title);
+                    EposDataModelDAO.getInstance().deleteObject(title);
                 }
             }
             for(String description : obj.getDescription()){
@@ -107,7 +108,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 pi.setDescription(description);
                 pi.setDistributionInstance(edmobj);
                 pi.setLang(null);
-                dbaccess.updateObject(pi);
+                EposDataModelDAO.getInstance().updateObject(pi);
             }
         }
 
@@ -124,7 +125,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     DistributionDataproduct pi = new DistributionDataproduct();
                     pi.setDistributionInstance(edmobj);
                     pi.setDataproductInstance(dataproduct);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -140,7 +141,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     OperationDistribution pi = new OperationDistribution();
                     pi.setDistributionInstance(edmobj);
                     pi.setOperationInstance(operation);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -156,7 +157,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     WebserviceDistribution pi = new WebserviceDistribution();
                     pi.setDistributionInstance(edmobj);
                     pi.setWebserviceInstance(webservice);
-                    dbaccess.updateObject(pi);
+                    EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
         }
@@ -194,11 +195,11 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
         LinkedEntity le = api.create(element, overrideStatus, null, null);
-        List<Element> el = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
+        List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
         DistributionElement ce = new DistributionElement();
         ce.setDistributionInstance(edmobj);
         ce.setElementInstance(el.get(0));
-        dbaccess.updateObject(ce);
+        EposDataModelDAO.getInstance().updateObject(ce);
     }
 
     @Override
@@ -206,42 +207,42 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         for(Object object : getDbaccess().getAllFromDB(DistributionTitle.class)){
             DistributionTitle item = (DistributionTitle) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
             DistributionElement item = (DistributionElement) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DistributionDescription.class)){
             DistributionDescription item = (DistributionDescription) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(DistributionDataproduct.class)){
             DistributionDataproduct item = (DistributionDataproduct) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(OperationDistribution.class)){
             OperationDistribution item = (OperationDistribution) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         for(Object object : getDbaccess().getAllFromDB(WebserviceDistribution.class)){
             WebserviceDistribution item = (WebserviceDistribution) object;
             if(item.getDistributionInstance().getInstanceId().equals(instanceId)){
-                dbaccess.deleteObject(item);
+                EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
         List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
         for(Distribution object : elementList){
-            dbaccess.deleteObject(object);
+            EposDataModelDAO.getInstance().deleteObject(object);
         }
 
         return true;
@@ -273,21 +274,21 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             o.setMaturity(edmobj.getMaturity());
             o.setMediaType(edmobj.getMediaType());
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDescription.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDescription.class)) {
                 DistributionDescription item = (DistributionDescription) object;
                 //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     o.addDescription(item.getDescription());
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionTitle.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionTitle.class)) {
                 DistributionTitle item = (DistributionTitle) object;
                 if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     o.addTitle(item.getTitle());
                 }
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
                 DistributionDataproduct item = (DistributionDataproduct) object;
                 //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproductInstance().getInstanceId());
@@ -295,7 +296,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),WebserviceDistribution.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),WebserviceDistribution.class)) {
                 WebserviceDistribution item = (WebserviceDistribution) object;
                 //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
@@ -303,7 +304,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),OperationDistribution.class)) {
                 OperationDistribution item = (OperationDistribution) object;
                 //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     //System.out.println(item.getDistributionInstance().getInstanceId());
@@ -312,7 +313,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 //}
             }
 
-            for (Object object : dbaccess.getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionElement.class)) {
+            for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(),DistributionElement.class)) {
                 DistributionElement item = (DistributionElement) object;
                 //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     Element el = item.getElementInstance();
