@@ -81,10 +81,8 @@ public class EposDataModelDAO<T> {
 			.recordStats()
 			.build();
 
-	public EposDataModelDAO() {
-		if (EntityManagerService.getInstance() == null) {
-			new EntityManagerService.EntityManagerServiceBuilder().build();
-		}
+	private EposDataModelDAO() {
+		new EntityManagerService.EntityManagerServiceBuilder().build();
 	}
 
 	private static EposDataModelDAO instance;
