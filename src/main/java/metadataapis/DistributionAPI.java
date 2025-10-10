@@ -169,6 +169,18 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
 
         if(obj.getDownloadURL()!=null) {
+            for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
+                DistributionElement item = (DistributionElement) object;
+                if(item.getDistributionInstance().getMetaId().equals(edmobj.getMetaId())){
+                    List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(item.getElementInstance().getInstanceId(), Element.class);
+                    for(Element element : el){
+                        if(element.getType().equals(ElementType.DOWNLOADURL.name())){
+                            EposDataModelDAO.getInstance().deleteObject(element);
+                            EposDataModelDAO.getInstance().deleteObject(item);
+                        }
+                    }
+                }
+            }
             for (String downloadurl : obj.getDownloadURL()) {
                 createInnerElement(ElementType.DOWNLOADURL, downloadurl, edmobj, overrideStatus);
             }
