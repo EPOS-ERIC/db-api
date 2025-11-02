@@ -102,24 +102,26 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
         return true;
     }
+
+
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Address.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Address.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Address.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Address.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Address.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Address.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Address> retrieveEntities(Function<Void, List<Address>> dbFetcher) {
-        List<Address> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Address> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

@@ -97,7 +97,6 @@ public class EposDataModelDAO<T> {
 	public static EposDataModelDAO getInstance() {
 		if (instance == null) {
 			instance = new EposDataModelDAO();
-			DAOMonitor.initialize();
 		}
 		return instance;
 	}
@@ -632,6 +631,46 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+    public List<T> getAllIDsFromDB(Class<T> obj) {
+        String cacheKey = generateCacheKey("allIDsFromDB", obj.getSimpleName());
+
+        // Check cache first
+        List<T> cached = getFromQueryCache(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        EntityManager em = null;
+        try {
+            em = EntityManagerService.getInstance().createEntityManager();
+
+            TypedQuery<T> query = em.createQuery(
+                    "SELECT c.instanceId FROM " + obj.getSimpleName() + " c",
+                    obj);
+
+            List<T> result = query.getResultList();
+
+            // Cache only if dataset is not too large
+            //if (result.size() < 5000) {
+            putInQueryCache(cacheKey, result);
+            //}
+
+            return result;
+
+        } catch (Exception exception) {
+            LOG.log(Level.SEVERE, "Error in getAllFromDB", exception);
+            return new ArrayList<>();
+        } finally {
+            if (em != null) {
+                try {
+                    em.close();
+                } catch (Exception closeEx) {
+                    LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
+                }
+            }
+        }
+    }
+
 	/**
 	 * Count with dedicated cache
 	 * NEW METHOD with count-specific caching
@@ -831,6 +870,38 @@ public class EposDataModelDAO<T> {
 				em.close();
 		}
 	}
+
+    public List<T> getListIDsFromDBByInstanceId(List<String> instanceIds, Class<T> obj) {
+        if (instanceIds == null || instanceIds.isEmpty())
+            return new ArrayList<>();
+
+        String cacheKey = generateCacheKey("listIDsInstanceId", instanceIds.toString(), obj.getSimpleName());
+
+        List<T> cached = getFromQueryCache(cacheKey);
+        if (cached != null)
+            return cached;
+
+        EntityManager em = null;
+        try {
+            em = EntityManagerService.getInstance().createEntityManager();
+
+            TypedQuery<T> query = em.createQuery(
+                    "SELECT c.instanceId FROM " + obj.getSimpleName() + " c WHERE c.instanceId IN :instanceId",
+                    obj);
+            query.setParameter("instanceId", instanceIds);
+
+            List<T> result = query.getResultList();
+            putInQueryCache(cacheKey, result);
+            return result;
+
+        } catch (Exception exception) {
+            LOG.log(Level.SEVERE, "Error in getListFromDBByInstanceId", exception);
+            return new ArrayList<>();
+        } finally {
+            if (em != null)
+                em.close();
+        }
+    }
 
 	/**
 	 * REPLACES: getOneFromDBByMetaId
@@ -1040,6 +1111,40 @@ public class EposDataModelDAO<T> {
 				em.close();
 		}
 	}
+
+    public List<T> getAllIDsFromDBWithStatus(Class<T> obj, StatusType status) {
+        if (status == null)
+            return getAllFromDB(obj);
+
+        String cacheKey = generateCacheKey("allIDsFromDBWithStatus", obj.getSimpleName(), status.name());
+
+        List<T> cached = getFromQueryCache(cacheKey);
+        if (cached != null)
+            return cached;
+
+        EntityManager em = null;
+        try {
+            em = EntityManagerService.getInstance().createEntityManager();
+
+            TypedQuery<T> query = em.createQuery(
+                    "SELECT c.instanceId FROM " + obj.getSimpleName() + " c " +
+                            "JOIN Versioningstatus v ON c.instanceId = v.instanceId " +
+                            "WHERE v.status = :status",
+                    obj);
+            query.setParameter("status", status.name());
+
+            List<T> result = query.getResultList();
+            putInQueryCache(cacheKey, result);
+            return result;
+
+        } catch (Exception exception) {
+            LOG.log(Level.SEVERE, "Error in getAllFromDBWithStatus", exception);
+            return new ArrayList<>();
+        } finally {
+            if (em != null)
+                em.close();
+        }
+    }
 
 	// =================== ADVANCED METHODS WITH CACHING ===================
 

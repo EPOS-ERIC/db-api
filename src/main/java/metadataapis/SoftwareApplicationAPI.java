@@ -504,26 +504,29 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             return o;
 
     }
+
+
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Softwareapplication.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Softwareapplication.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Softwareapplication.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Softwareapplication.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Softwareapplication.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Softwareapplication.class, status));
     }
 
-    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<Softwareapplication>> dbFetcher) {
-        List<Softwareapplication> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

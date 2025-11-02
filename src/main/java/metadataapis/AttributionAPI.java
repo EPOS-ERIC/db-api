@@ -55,13 +55,11 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         }
 
         if(obj.getRole()!=null) {
-            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(AttributionRole.class)){
-                AttributionRole role = (AttributionRole) object;
-                if(role.getAttributionInstance().getInstanceId().equals(obj.getInstanceId())){
-                    EposDataModelDAO.getInstance().deleteObject(role);
-                }
-            }
 
+            for(Object organizationContactpoint : getDbaccess().getOneFromDBBySpecificKey("attributionInstance", edmobj.getInstanceId(),AttributionRole.class)){
+                AttributionRole item = (AttributionRole) organizationContactpoint;
+                EposDataModelDAO.getInstance().deleteObject(item);
+            }
             for(String role : obj.getRole()) {
                 AttributionRole roleobj = new AttributionRole();
                 roleobj.setAttributionInstance(edmobj);
@@ -113,22 +111,22 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
     }
     @Override
     public List<org.epos.eposdatamodel.Attribution> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Attribution.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Attribution.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Attribution> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Attribution.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Attribution.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Attribution> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Attribution.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Attribution.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Attribution> retrieveEntities(Function<Void, List<Attribution>> dbFetcher) {
-        List<Attribution> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Attribution> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

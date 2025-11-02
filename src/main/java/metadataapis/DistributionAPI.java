@@ -338,24 +338,25 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
             return o;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Distribution.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Distribution.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Distribution.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Distribution.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Distribution.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Distribution.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Distribution> retrieveEntities(Function<Void, List<Distribution>> dbFetcher) {
-        List<Distribution> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Distribution> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

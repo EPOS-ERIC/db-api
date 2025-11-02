@@ -103,27 +103,27 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
             return o;
 
     }
+
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, OutputMapping.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, OutputMapping.class));
     }
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(OutputMapping.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(OutputMapping.class));
     }
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(OutputMapping.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(OutputMapping.class, status));
     }
 
-    private List<org.epos.eposdatamodel.OutputMapping> retrieveEntities(Function<Void, List<OutputMapping>> dbFetcher) {
-        List<OutputMapping> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.OutputMapping> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
-
 
 
     @Override

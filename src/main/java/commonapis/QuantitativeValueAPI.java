@@ -92,22 +92,22 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Quantitativevalue.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Quantitativevalue.class));
     }
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Quantitativevalue.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Quantitativevalue.class));
     }
     @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Quantitativevalue.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Quantitativevalue.class, status));
     }
 
-    private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<Quantitativevalue>> dbFetcher) {
-        List<Quantitativevalue> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

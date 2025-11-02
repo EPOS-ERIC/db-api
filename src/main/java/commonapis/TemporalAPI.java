@@ -112,26 +112,28 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
         return (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
     }
 
+
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Temporal.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Temporal.class));
     }
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Temporal.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Temporal.class));
     }
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Temporal.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Temporal.class, status));
     }
 
-    private List<org.epos.eposdatamodel.PeriodOfTime> retrieveEntities(Function<Void, List<Temporal>> dbFetcher) {
-        List<Temporal> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.PeriodOfTime> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
+
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Temporal> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Temporal.class);

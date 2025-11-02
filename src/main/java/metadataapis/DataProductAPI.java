@@ -627,25 +627,24 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         return o;
     }
 
-
     @Override
     public List<DataProduct> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Dataproduct.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Dataproduct.class));
     }
     @Override
     public List<DataProduct> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Dataproduct.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Dataproduct.class));
     }
     @Override
     public List<DataProduct> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Dataproduct.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Dataproduct.class, status));
     }
 
-    private List<DataProduct> retrieveEntities(Function<Void, List<Dataproduct>> dbFetcher) {
-        List<Dataproduct> dbEntities = dbFetcher.apply(null);
+    private List<DataProduct> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

@@ -460,24 +460,26 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
             return o;
     }
+
+
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Softwaresourcecode.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Softwaresourcecode.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Softwaresourcecode.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Softwaresourcecode.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Softwaresourcecode.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Softwaresourcecode.class, status));
     }
 
-    private List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveEntities(Function<Void, List<Softwaresourcecode>> dbFetcher) {
-        List<Softwaresourcecode> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.SoftwareSourceCode> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

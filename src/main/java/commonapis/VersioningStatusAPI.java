@@ -127,13 +127,18 @@ public class VersioningStatusAPI {
     }
 
     public static EPOSDataModelEntity retrieveVersion(EPOSDataModelEntity obj) {
-        List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
-                obj.getMetaId(),
-                obj.getUid(),
-                obj.getVersionId(),
-                Versioningstatus.class
-        );
+
+        List<Versioningstatus> returnList = null;
+        if(obj.getInstanceId() == null)
+            returnList = getDbaccess().getOneFromDB(
+                    obj.getInstanceId(),
+                    obj.getMetaId(),
+                    obj.getUid(),
+                    obj.getVersionId(),
+                    Versioningstatus.class
+            );
+        else
+            returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
 
         if (returnList.isEmpty()) return null;
 
@@ -151,13 +156,17 @@ public class VersioningStatusAPI {
     }
 
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
-        List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
-                obj.getMetaId(),
-                obj.getUid(),
-                obj.getVersionId(),
-                Versioningstatus.class
-        );
+        List<Versioningstatus> returnList = null;
+        if(obj.getInstanceId() == null)
+            returnList = getDbaccess().getOneFromDB(
+                    obj.getInstanceId(),
+                    obj.getMetaId(),
+                    obj.getUid(),
+                    obj.getVersionId(),
+                    Versioningstatus.class
+            );
+        else
+            returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
 
         return returnList.isEmpty() ? null : returnList.get(0);
     }

@@ -219,24 +219,26 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
             return o;
     }
+
+
     @Override
-    public List<ContactPoint> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Contactpoint.class));
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveBunch(List<String> entities) {
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, ContactPoint.class));
     }
     @Override
-    public List<ContactPoint> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Contactpoint.class));
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveAll() {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(ContactPoint.class));
     }
     @Override
-    public List<ContactPoint> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Contactpoint.class, status));
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveAllWithStatus(StatusType status) {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(ContactPoint.class, status));
     }
 
-    private List<ContactPoint> retrieveEntities(Function<Void, List<Contactpoint>> dbFetcher) {
-        List<Contactpoint> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.ContactPoint> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

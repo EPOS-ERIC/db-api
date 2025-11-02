@@ -98,24 +98,25 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         return true;
     }
 
+
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Parameter.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Parameter.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Parameter.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Parameter.class));
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Parameter.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Parameter.class, status));
     }
 
-    private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveEntities(Function<Void, List<Parameter>> dbFetcher) {
-        List<Parameter> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

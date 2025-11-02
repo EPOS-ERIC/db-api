@@ -7,9 +7,13 @@ import jakarta.persistence.Persistence;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 
 import javax.sql.DataSource;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class EntityManagerService {
 
@@ -71,30 +75,225 @@ public class EntityManagerService {
         this.postgresqlUsername = entityManagerServiceBuilder.postgresqlUsername;
         this.postgresqlPassword = entityManagerServiceBuilder.postgresqlPassword;
 
-        //System.out.println(this.postgresqlHost);
-
         if (connectionString != null) {
-            hikariConfig.setJdbcUrl(connectionString);
+            // Apply dynamic DNS resolution to provided connection string
+            try {
+                String resolvedUrl = resolveConnectionString(connectionString);
+                hikariConfig.setJdbcUrl(resolvedUrl);
+                LOG.info("Using resolved connection string: " + maskPassword(resolvedUrl));
+            } catch (Exception e) {
+                LOG.warning("Failed to resolve connection string, using as-is: " + e.getMessage());
+                hikariConfig.setJdbcUrl(connectionString);
+                LOG.info("Using original connection string");
+            }
         } else {
-            String dburl = "jdbc:postgresql://";
+            // Build connection string with dynamic host resolution
+            try {
+                String dburl = buildDynamicJdbcUrl(postgresqlHost, postgresqlDBName);
+                hikariConfig.setJdbcUrl(dburl);
+                LOG.info("Built dynamic JDBC URL: " + maskPassword(dburl));
+            } catch (Exception e) {
+                LOG.severe("Failed to build dynamic JDBC URL: " + e.getMessage());
+                // Fallback to simple URL
+                String dburl = "jdbc:postgresql://" + postgresqlHost + "/" + postgresqlDBName;
+                hikariConfig.setJdbcUrl(dburl);
+                LOG.warning("Using fallback JDBC URL: " + dburl);
+            }
 
-            dburl += postgresqlHost;
-            dburl += "/";
-            dburl += postgresqlDBName;
-
-            String user = postgresqlUsername;
-            String password = postgresqlPassword;
-
-            hikariConfig.setJdbcUrl(dburl);
-            hikariConfig.setUsername(user);
-            hikariConfig.setPassword(password);
+            hikariConfig.setUsername(postgresqlUsername);
+            hikariConfig.setPassword(postgresqlPassword);
         }
-
 
         hikariDataSource = new HikariDataSource(hikariConfig);
 
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
+
+        LOG.info("EntityManagerService initialized successfully");
+    }
+
+    /**
+     * Resolves DNS for hostnames in an existing JDBC connection string.
+     * Parses the connection string, resolves all hostnames to IPs, and rebuilds
+     * the URL with primary targeting parameters.
+     */
+    private String resolveConnectionString(String jdbcUrl) throws Exception {
+        LOG.info("Resolving connection string: " + maskPassword(jdbcUrl));
+
+        // Parse JDBC URL format: jdbc:postgresql://host1:port1,host2:port2/database?params
+        if (!jdbcUrl.startsWith("jdbc:postgresql://")) {
+            throw new IllegalArgumentException("Invalid PostgreSQL JDBC URL format");
+        }
+
+        // Remove jdbc:postgresql:// prefix
+        String remaining = jdbcUrl.substring("jdbc:postgresql://".length());
+
+        // Split into hosts and rest (database + params)
+        String[] parts = remaining.split("/", 2);
+        if (parts.length < 2) {
+            throw new IllegalArgumentException("JDBC URL missing database name");
+        }
+
+        String hostsString = parts[0];
+        String databaseAndParams = parts[1];
+
+        // Split database name and parameters
+        String database;
+        String existingParams = "";
+        if (databaseAndParams.contains("?")) {
+            String[] dbParts = databaseAndParams.split("\\?", 2);
+            database = dbParts[0];
+            existingParams = dbParts[1];
+        } else {
+            database = databaseAndParams;
+        }
+
+        // Parse and resolve each host
+        String[] hosts = hostsString.split(",");
+        StringBuilder resolvedHosts = new StringBuilder();
+
+        for (int i = 0; i < hosts.length; i++) {
+            String host = hosts[i].trim();
+            String hostname;
+            String port = "5432";
+
+            // Check if host contains port
+            if (host.contains(":")) {
+                String[] hostParts = host.split(":");
+                hostname = hostParts[0];
+                port = hostParts[1];
+            } else {
+                hostname = host;
+            }
+
+            LOG.info("Resolving hostname: " + hostname);
+
+            try {
+                // Resolve all IPs for this hostname
+                InetAddress[] addresses = InetAddress.getAllByName(hostname);
+                LOG.info("Found " + addresses.length + " IP(s) for " + hostname);
+
+                // Add all resolved IPs
+                for (int j = 0; j < addresses.length; j++) {
+                    if (resolvedHosts.length() > 0) {
+                        resolvedHosts.append(",");
+                    }
+                    resolvedHosts.append(addresses[j].getHostAddress()).append(":").append(port);
+                }
+            } catch (UnknownHostException e) {
+                LOG.warning("Could not resolve " + hostname + ", keeping original: " + e.getMessage());
+                // Keep original hostname if resolution fails
+                if (resolvedHosts.length() > 0) {
+                    resolvedHosts.append(",");
+                }
+                resolvedHosts.append(host);
+            }
+        }
+
+        // Build new parameters ensuring targetServerType and loadBalanceHosts are set
+        Map<String, String> params = parseQueryParameters(existingParams);
+
+        // Ensure critical parameters are set for primary detection
+        if (!params.containsKey("targetServerType")) {
+            params.put("targetServerType", "primary");
+        }
+        if (!params.containsKey("loadBalanceHosts")) {
+            params.put("loadBalanceHosts", "true");
+        }
+
+        // Rebuild parameter string
+        String newParams = params.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("&"));
+
+        // Rebuild complete JDBC URL
+        String resolvedUrl = "jdbc:postgresql://" + resolvedHosts.toString() + "/" + database;
+        if (!newParams.isEmpty()) {
+            resolvedUrl += "?" + newParams;
+        }
+
+        LOG.info("Resolved to: " + maskPassword(resolvedUrl));
+        return resolvedUrl;
+    }
+
+    /**
+     * Parse query parameters from a parameter string
+     */
+    private Map<String, String> parseQueryParameters(String paramString) {
+        Map<String, String> params = new HashMap<>();
+        if (paramString == null || paramString.isEmpty()) {
+            return params;
+        }
+
+        String[] pairs = paramString.split("&");
+        for (String pair : pairs) {
+            String[] keyValue = pair.split("=", 2);
+            if (keyValue.length == 2) {
+                params.put(keyValue[0], keyValue[1]);
+            }
+        }
+        return params;
+    }
+
+    /**
+     * Builds a JDBC URL with dynamic DNS resolution for Kubernetes headless services.
+     * Resolves all IPs from the hostname and creates a multi-host connection string
+     * with targetServerType=primary to ensure connection to the primary database.
+     */
+    private String buildDynamicJdbcUrl(String host, String dbName) throws UnknownHostException {
+        // Check if host contains port specification
+        String hostname;
+        String port; // default PostgreSQL port
+
+        if (host.contains(":")) {
+            String[] parts = host.split(":");
+            hostname = parts[0];
+            port = parts[1];
+        } else {
+            port = "5432";
+            hostname = host;
+        }
+
+        LOG.info("Resolving DNS for hostname: " + hostname);
+
+        // Resolve all IPs for the hostname (important for Kubernetes headless services)
+        InetAddress[] addresses = InetAddress.getAllByName(hostname);
+
+        LOG.info("Found " + addresses.length + " IP address(es) for " + hostname);
+
+        if (addresses.length == 0) {
+            throw new UnknownHostException("No IP addresses found for host: " + hostname);
+        }
+
+        // Build multi-host connection string
+        String hosts;
+        if (addresses.length == 1) {
+            // Single host - simple URL
+            hosts = addresses[0].getHostAddress() + ":" + port;
+            LOG.info("Single host detected: " + hosts);
+        } else {
+            // Multiple hosts - build comma-separated list
+            hosts = Arrays.stream(addresses)
+                    .map(addr -> addr.getHostAddress() + ":" + port)
+                    .collect(Collectors.joining(","));
+            LOG.info("Multiple hosts detected: " + hosts);
+        }
+
+        // Build JDBC URL with primary targeting
+        // targetServerType=primary ensures connection only to read-write (primary) server
+        // loadBalanceHosts=true makes the driver try all hosts until it finds the primary
+        String jdbcUrl = "jdbc:postgresql://" + hosts + "/" + dbName +
+                "?targetServerType=primary&loadBalanceHosts=true";
+
+        return jdbcUrl;
+    }
+
+    /**
+     * Masks password in JDBC URL for logging purposes
+     */
+    private String maskPassword(String jdbcUrl) {
+        if (jdbcUrl == null) return null;
+        return jdbcUrl.replaceAll("password=[^&]*", "password=***");
     }
 
     // Enhanced monitoring methods
@@ -162,7 +361,6 @@ public class EntityManagerService {
 
             leakDetectionThreshold = System.getenv("CONNECTION_LEAK_DETECTION_THRESHOLD");
             leakDetectionThreshold = leakDetectionThreshold == null ? CONNECTION_LEAK_DETECTION_THRESHOLD : leakDetectionThreshold;
-
 
             this.connectionString = System.getenv("POSTGRESQL_CONNECTION_STRING");
             this.postgresqlHost =  System.getenv("POSTGRESQL_HOST");
@@ -234,7 +432,7 @@ public class EntityManagerService {
         if (hikariDataSource != null && !hikariDataSource.isClosed()) {
             hikariDataSource.close();
         }
-        //LOG.info("Enhanced EntityManagerService closed");
+        LOG.info("EntityManagerService closed");
     }
 
 }

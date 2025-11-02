@@ -192,15 +192,16 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             ArrayList<LinkedEntity> broaders = new ArrayList<>();
             ArrayList<LinkedEntity> narrowers = new ArrayList<>();
 
-            for(Object categoryIspartof : EposDataModelDAO.getInstance().getAllFromDB(CategoryIspartof.class)){
-                CategoryIspartof item = (CategoryIspartof) categoryIspartof;
-                if(item.getCategory2Instance().getInstanceId().equals(edmobj.getInstanceId())){
-                    broaders.add(retrieveLinkedEntity(item.getCategory1Instance().getInstanceId()));
-                }
-                if(item.getCategory1Instance().getInstanceId().equals(edmobj.getInstanceId())){
-                    narrowers.add(retrieveLinkedEntity(item.getCategory2Instance().getInstanceId()));
-                }
-            }
+        for(Object obj : getDbaccess().getOneFromDBBySpecificKey("category1Instance", edmobj.getInstanceId(),CategoryIspartof.class)){
+            CategoryIspartof item = (CategoryIspartof) obj;
+            narrowers.add(retrieveLinkedEntity(item.getCategory2Instance().getInstanceId()));
+        }
+
+        for(Object obj : getDbaccess().getOneFromDBBySpecificKey("category2Instance", edmobj.getInstanceId(),CategoryIspartof.class)){
+            CategoryIspartof item = (CategoryIspartof) obj;
+            broaders.add(retrieveLinkedEntity(item.getCategory1Instance().getInstanceId()));
+        }
+
             o.setBroader(broaders);
             o.setNarrower(narrowers);
             o = (org.epos.eposdatamodel.Category) VersioningStatusAPI.retrieveVersion(o);
@@ -209,22 +210,22 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Category.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Category.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Category.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Category.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Category.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Category.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Category> retrieveEntities(Function<Void, List<Category>> dbFetcher) {
-        List<Category> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Category> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

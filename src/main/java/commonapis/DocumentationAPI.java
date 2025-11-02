@@ -165,24 +165,25 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Element.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Element.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Element.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Element.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Element.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Element.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Documentation> retrieveEntities(Function<Void, List<Element>> dbFetcher) {
-        List<Element> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Documentation> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

@@ -118,22 +118,22 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Spatial.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Spatial.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Spatial.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Spatial.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Location> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Spatial.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Spatial.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Location> retrieveEntities(Function<Void, List<Spatial>> dbFetcher) {
-        List<Spatial> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Location> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

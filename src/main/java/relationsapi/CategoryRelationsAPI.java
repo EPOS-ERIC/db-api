@@ -14,11 +14,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(EquipmentCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("equipmentInstance",obj.getInstanceId(), EquipmentCategory.class)){
                 EquipmentCategory item = (EquipmentCategory) object;
-                if(item.getEquipmentInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
@@ -35,11 +33,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(FacilityCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("facilityInstance",obj.getInstanceId(), FacilityCategory.class)){
                 FacilityCategory item = (FacilityCategory) object;
-                if(item.getFacilityInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
@@ -56,11 +52,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("dataproductInstance",obj.getInstanceId(), DataproductCategory.class)){
                 DataproductCategory item = (DataproductCategory) object;
-                if(item.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
@@ -77,11 +71,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(WebserviceCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("webserviceInstance",obj.getInstanceId(), WebserviceCategory.class)){
                 WebserviceCategory item = (WebserviceCategory) object;
-                if(item.getWebserviceInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
@@ -98,11 +90,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwaresourcecodeInstance",obj.getInstanceId(), SoftwaresourcecodeCategory.class)){
                 SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
-                if(item.getSoftwaresourcecodeInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());
@@ -119,11 +109,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getAllFromDB(SoftwareapplicationCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwareapplicationInstance",obj.getInstanceId(), SoftwareapplicationCategory.class)){
                 SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
-                if(item.getSoftwareapplicationInstance().getInstanceId().equals(obj.getInstanceId())){
-                    dbaccess.deleteObject(item);
-                }
+                dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity category : obj.getCategory()){
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(category, overrideStatus, edmobj.getVersion());

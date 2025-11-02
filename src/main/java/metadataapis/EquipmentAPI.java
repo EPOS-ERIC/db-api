@@ -324,24 +324,25 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         return true;
     }
 
+
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Equipment.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Equipment.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Equipment.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Equipment.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Equipment.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Equipment.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Equipment> retrieveEntities(Function<Void, List<Equipment>> dbFetcher) {
-        List<Equipment> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Equipment> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

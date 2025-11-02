@@ -146,24 +146,25 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
             return o;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Payload> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Payload.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Payload.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Payload> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Payload.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Payload.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Payload> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Payload.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Payload.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Payload> retrieveEntities(Function<Void, List<Payload>> dbFetcher) {
-        List<Payload> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Payload> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

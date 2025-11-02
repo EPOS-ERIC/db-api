@@ -374,24 +374,25 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
             return o;
     }
+
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Webservice.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Webservice.class));
     }
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Webservice.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Webservice.class));
     }
     @Override
     public List<org.epos.eposdatamodel.WebService> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Webservice.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Webservice.class, status));
     }
 
-    protected List<org.epos.eposdatamodel.WebService> retrieveEntities(Function<Void, List<Webservice>> dbFetcher) {
-        List<Webservice> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.WebService> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

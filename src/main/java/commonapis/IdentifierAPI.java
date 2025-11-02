@@ -116,25 +116,24 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
         return (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.retrieveVersion(o);
     }
 
-
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Identifier.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Identifier.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Identifier.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Identifier.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Identifier.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Identifier.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Identifier> retrieveEntities(Function<Void, List<Identifier>> dbFetcher) {
-        List<Identifier> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Identifier> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
 

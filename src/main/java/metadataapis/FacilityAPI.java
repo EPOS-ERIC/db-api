@@ -5,14 +5,11 @@ import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
-import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
-import usermanagementapis.UserGroupManagementAPI;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -272,26 +269,28 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
             return o;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListFromDBByInstanceId(entities, Facility.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Facility.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllFromDB(Facility.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Facility.class));
     }
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllFromDBWithStatus(Facility.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Facility.class, status));
     }
 
-    private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<Facility>> dbFetcher) {
-        List<Facility> dbEntities = dbFetcher.apply(null);
+    private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
 
         return dbEntities.parallelStream()
-                .map(item -> retrieve(item.getInstanceId()))
+                .map(item -> retrieve(item))
                 .collect(Collectors.toList());
     }
+
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

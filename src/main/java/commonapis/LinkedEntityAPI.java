@@ -126,7 +126,6 @@ public class LinkedEntityAPI {
 
     public static Object retrieveFromLinkedEntity(LinkedEntity obj) {
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
-        Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
 
         if (api != null) {
             List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
