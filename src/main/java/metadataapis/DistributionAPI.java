@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
+import model.Address;
 import model.Distribution;
 import model.Element;
 import model.Operation;
@@ -338,7 +339,14 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
             return o;
     }
-
+    @Override
+    public org.epos.eposdatamodel.Distribution retrieveByUID(String uid) {
+        List<Distribution> returnList = getDbaccess().getOneFromDBByUID(uid, Distribution.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Distribution.class));

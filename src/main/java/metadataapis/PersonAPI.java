@@ -245,6 +245,15 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     }
 
     @Override
+    public org.epos.eposdatamodel.Person retrieveByUID(String uid) {
+        List<Person> returnList = getDbaccess().getOneFromDBByUID(uid, Person.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Person> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Person.class));
     }

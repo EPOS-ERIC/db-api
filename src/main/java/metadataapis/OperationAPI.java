@@ -6,6 +6,7 @@ import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
+import org.epos.eposdatamodel.IriTemplate;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
@@ -216,6 +217,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 //}
             }
 
+
+            IriTemplate iriTemplateObject = new IriTemplate();
+            iriTemplateObject.setMappings(o.getMapping());
+            iriTemplateObject.setTemplate(o.getTemplate());
+            o.setIriTemplateObject(iriTemplateObject);
+
             for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(),OperationElement.class)) {
                 OperationElement item = (OperationElement) object;
                 //if(item.getOperationInstance().getInstanceId().equals(edmobj.getInstanceId())) {
@@ -227,6 +234,15 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             o = (org.epos.eposdatamodel.Operation) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
+    }
+
+    @Override
+    public org.epos.eposdatamodel.Operation retrieveByUID(String uid) {
+        List<Operation> returnList = getDbaccess().getOneFromDBByUID(uid, Operation.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
     }
 
 

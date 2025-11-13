@@ -291,6 +291,15 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     }
 
     @Override
+    public org.epos.eposdatamodel.Organization retrieveByUID(String uid) {
+        List<Organization> returnList = getDbaccess().getOneFromDBByUID(uid, Organization.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.Organization> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Organization.class));
     }

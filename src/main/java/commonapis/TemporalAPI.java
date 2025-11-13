@@ -111,7 +111,14 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
         return (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.retrieveVersion(o);
     }
-
+    @Override
+    public org.epos.eposdatamodel.PeriodOfTime retrieveByUID(String uid) {
+        List<Temporal> returnList = getDbaccess().getOneFromDBByUID(uid, Temporal.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunch(List<String> entities) {

@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
+import model.Address;
 import model.Element;
 import model.Facility;
 import model.Identifier;
@@ -373,6 +374,16 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             o = (org.epos.eposdatamodel.WebService) VersioningStatusAPI.retrieveVersion(o);
 
             return o;
+    }
+
+
+    @Override
+    public org.epos.eposdatamodel.WebService retrieveByUID(String uid) {
+        List<Webservice> returnList = getDbaccess().getOneFromDBByUID(uid, Webservice.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
     }
 
     @Override

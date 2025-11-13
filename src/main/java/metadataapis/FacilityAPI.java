@@ -269,7 +269,14 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
             return o;
     }
-
+    @Override
+    public org.epos.eposdatamodel.Facility retrieveByUID(String uid) {
+        List<Facility> returnList = getDbaccess().getOneFromDBByUID(uid, Facility.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Facility.class));

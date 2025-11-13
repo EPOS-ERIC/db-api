@@ -162,7 +162,14 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
         return true;
     }
-
+    @Override
+    public org.epos.eposdatamodel.Documentation retrieveByUID(String uid) {
+        List<Element> returnList = getDbaccess().getOneFromDBByUID(uid, Element.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Element.class));

@@ -146,6 +146,14 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
             return o;
     }
+    @Override
+    public org.epos.eposdatamodel.Payload retrieveByUID(String uid) {
+        List<Payload> returnList = getDbaccess().getOneFromDBByUID(uid, Payload.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.Payload> retrieveBunch(List<String> entities) {

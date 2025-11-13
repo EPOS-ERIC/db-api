@@ -109,6 +109,16 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
             return o;
     }
+
+    @Override
+    public org.epos.eposdatamodel.Attribution retrieveByUID(String uid) {
+        List<Attribution> returnList = getDbaccess().getOneFromDBByUID(uid, Attribution.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+
     @Override
     public List<org.epos.eposdatamodel.Attribution> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Attribution.class));

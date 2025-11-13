@@ -103,6 +103,14 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
         return true;
     }
 
+    @Override
+    public org.epos.eposdatamodel.Address retrieveByUID(String uid) {
+        List<Address> returnList = getDbaccess().getOneFromDBByUID(uid, Address.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveBunch(List<String> entities) {

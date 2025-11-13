@@ -103,7 +103,14 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
             return o;
 
     }
-
+    @Override
+    public org.epos.eposdatamodel.OutputMapping retrieveByUID(String uid) {
+        List<OutputMapping> returnList = getDbaccess().getOneFromDBByUID(uid, OutputMapping.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, OutputMapping.class));

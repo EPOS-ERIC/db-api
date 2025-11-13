@@ -91,6 +91,15 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
     }
 
     @Override
+    public org.epos.eposdatamodel.QuantitativeValue retrieveByUID(String uid) {
+        List<Quantitativevalue> returnList = getDbaccess().getOneFromDBByUID(uid, Quantitativevalue.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Quantitativevalue.class));
     }

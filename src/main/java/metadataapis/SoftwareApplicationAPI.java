@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
+import model.Address;
 import model.Element;
 import model.Person;
 import org.epos.eposdatamodel.*;
@@ -505,6 +506,15 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     }
 
+
+    @Override
+    public org.epos.eposdatamodel.SoftwareApplication retrieveByUID(String uid) {
+        List<Softwareapplication> returnList = getDbaccess().getOneFromDBByUID(uid, Softwareapplication.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) {

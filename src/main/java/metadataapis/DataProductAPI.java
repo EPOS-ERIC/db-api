@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
+import model.Address;
 import model.Attribution;
 import model.Distribution;
 import model.Element;
@@ -626,7 +627,14 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         return o;
     }
-
+    @Override
+    public org.epos.eposdatamodel.DataProduct retrieveByUID(String uid) {
+        List<Dataproduct> returnList = getDbaccess().getOneFromDBByUID(uid, Dataproduct.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<DataProduct> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Dataproduct.class));

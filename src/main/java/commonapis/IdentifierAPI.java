@@ -115,7 +115,14 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
         return (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.retrieveVersion(o);
     }
-
+    @Override
+    public org.epos.eposdatamodel.Identifier retrieveByUID(String uid) {
+        List<Identifier> returnList = getDbaccess().getOneFromDBByUID(uid, Identifier.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Identifier.class));

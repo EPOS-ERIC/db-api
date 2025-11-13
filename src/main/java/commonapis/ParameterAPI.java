@@ -83,6 +83,14 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     }
 
     @Override
+    public org.epos.eposdatamodel.SoftwareApplicationParameter retrieveByUID(String uid) {
+        List<Parameter> returnList = getDbaccess().getOneFromDBByUID(uid, Parameter.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+    @Override
     public Boolean delete(String instanceId) {
         // Batch delete for SoftwareApplicationParameter and Parameter
         List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()

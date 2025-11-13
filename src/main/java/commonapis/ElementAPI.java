@@ -151,7 +151,14 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         return true;
     }
 
-
+    @Override
+    public org.epos.eposdatamodel.Element retrieveByUID(String uid) {
+        List<Element> returnList = getDbaccess().getOneFromDBByUID(uid, Element.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Element> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Element.class));

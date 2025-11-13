@@ -61,6 +61,17 @@ public class Operation extends EPOSDataModelEntity {
         this.iriTemplate = iriTemplate;
     }
 
+
+    private IriTemplate iriTemplateObject;
+
+    public IriTemplate getIriTemplateObject() {
+        return iriTemplateObject;
+    }
+
+    public void setIriTemplateObject(IriTemplate iriTemplateObject) {
+        this.iriTemplateObject = iriTemplateObject;
+    }
+
     /**
      * A variable-to-property mapping of the payload expected
      **/

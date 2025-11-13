@@ -46,6 +46,8 @@ public abstract class AbstractAPI<T> {
 
     public abstract T retrieve(String instanceId);
 
+    public abstract T retrieveByUID(String uid);
+
     public abstract Boolean delete(String instanceId);
 
     public abstract List<T> retrieveBunch(List<String> entities);

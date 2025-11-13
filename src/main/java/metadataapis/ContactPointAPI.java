@@ -220,18 +220,26 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             return o;
     }
 
+    @Override
+    public org.epos.eposdatamodel.ContactPoint retrieveByUID(String uid) {
+        List<Contactpoint> returnList = getDbaccess().getOneFromDBByUID(uid, Contactpoint.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.ContactPoint> retrieveBunch(List<String> entities) {
-        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, ContactPoint.class));
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Contactpoint.class));
     }
     @Override
     public List<org.epos.eposdatamodel.ContactPoint> retrieveAll() {
-        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(ContactPoint.class));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Contactpoint.class));
     }
     @Override
     public List<org.epos.eposdatamodel.ContactPoint> retrieveAllWithStatus(StatusType status) {
-        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(ContactPoint.class, status));
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Contactpoint.class, status));
     }
 
     private List<org.epos.eposdatamodel.ContactPoint> retrieveEntities(Function<Void, List<String>> dbFetcher) {

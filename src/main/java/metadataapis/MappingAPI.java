@@ -169,7 +169,14 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     }
 
-
+    @Override
+    public org.epos.eposdatamodel.Mapping retrieveByUID(String uid) {
+        List<Mapping> returnList = getDbaccess().getOneFromDBByUID(uid, Mapping.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveBunch(List<String> entities) {

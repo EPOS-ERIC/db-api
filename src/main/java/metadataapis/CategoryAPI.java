@@ -208,6 +208,15 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
             return o;
     }
+
+    @Override
+    public org.epos.eposdatamodel.Category retrieveByUID(String uid) {
+        List<Category> returnList = getDbaccess().getOneFromDBByUID(uid, Category.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Category.class));

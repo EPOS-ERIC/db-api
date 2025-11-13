@@ -323,7 +323,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         return true;
     }
-
+    @Override
+    public org.epos.eposdatamodel.Equipment retrieveByUID(String uid) {
+        List<Equipment> returnList = getDbaccess().getOneFromDBByUID(uid, Equipment.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
 
     @Override
     public List<org.epos.eposdatamodel.Equipment> retrieveBunch(List<String> entities) {
