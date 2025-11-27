@@ -76,6 +76,12 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         }
 
         Element edmobj = elementList.get(0);
+
+        // Add type validation - only process DOCUMENTATION type Elements
+        if (!"DOCUMENTATION".equals(edmobj.getType())) {
+            return null; // Skip non-DOCUMENTATION Elements
+        }
+
         org.epos.eposdatamodel.Documentation o = new org.epos.eposdatamodel.Documentation();
 
         o.setInstanceId(edmobj.getInstanceId());
