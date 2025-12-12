@@ -15,7 +15,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("equipmentInstance",obj.getInstanceId(), EquipmentContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("equipmentInstance",obj.getInstanceId(), EquipmentContactpoint.class)){
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
                 dbaccess.deleteObject(item);
             }
@@ -34,7 +34,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("facilityInstance",obj.getInstanceId(), FacilityContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance",obj.getInstanceId(), FacilityContactpoint.class)){
                 FacilityContactpoint item = (FacilityContactpoint) object;
                 dbaccess.deleteObject(item);
             }
@@ -53,7 +53,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("dataproductInstance",obj.getInstanceId(), DataproductContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance",obj.getInstanceId(), DataproductContactpoint.class)){
                 DataproductContactpoint item = (DataproductContactpoint) object;
                 dbaccess.deleteObject(item);
             }
@@ -72,7 +72,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus){
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("webserviceInstance",obj.getInstanceId(), WebserviceContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("webserviceInstance",obj.getInstanceId(), WebserviceContactpoint.class)){
                 WebserviceContactpoint item = (WebserviceContactpoint) object;
                 dbaccess.deleteObject(item);
             }
@@ -91,7 +91,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus){
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwaresourcecodeInstance",obj.getInstanceId(), SoftwaresourcecodeContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("softwaresourcecodeInstance",obj.getInstanceId(), SoftwaresourcecodeContactpoint.class)){
                 SoftwaresourcecodeContactpoint item = (SoftwaresourcecodeContactpoint) object;
                 dbaccess.deleteObject(item);
             }
@@ -110,7 +110,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus){
         if (obj.getContactPoint() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwareapplicationInstance",obj.getInstanceId(), SoftwareapplicationContactpoint.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("softwareapplicationInstance",obj.getInstanceId(), SoftwareapplicationContactpoint.class)){
                 SoftwareapplicationContactpoint item = (SoftwareapplicationContactpoint) object;
                 dbaccess.deleteObject(item);
             }

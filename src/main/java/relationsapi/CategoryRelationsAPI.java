@@ -14,7 +14,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("equipmentInstance",obj.getInstanceId(), EquipmentCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("equipmentInstance",obj.getInstanceId(), EquipmentCategory.class)){
                 EquipmentCategory item = (EquipmentCategory) object;
                 dbaccess.deleteObject(item);
             }
@@ -33,7 +33,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("facilityInstance",obj.getInstanceId(), FacilityCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance",obj.getInstanceId(), FacilityCategory.class)){
                 FacilityCategory item = (FacilityCategory) object;
                 dbaccess.deleteObject(item);
             }
@@ -52,7 +52,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("dataproductInstance",obj.getInstanceId(), DataproductCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance",obj.getInstanceId(), DataproductCategory.class)){
                 DataproductCategory item = (DataproductCategory) object;
                 dbaccess.deleteObject(item);
             }
@@ -71,7 +71,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("webserviceInstance",obj.getInstanceId(), WebserviceCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("webserviceInstance",obj.getInstanceId(), WebserviceCategory.class)){
                 WebserviceCategory item = (WebserviceCategory) object;
                 dbaccess.deleteObject(item);
             }
@@ -90,7 +90,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwaresourcecodeInstance",obj.getInstanceId(), SoftwaresourcecodeCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("softwaresourcecodeInstance",obj.getInstanceId(), SoftwaresourcecodeCategory.class)){
                 SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;
                 dbaccess.deleteObject(item);
             }
@@ -109,7 +109,7 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
 
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus) {
         if (obj.getCategory() != null) {
-            for(Object object : getDbaccess().getOneFromDBBySpecificKeySimple("softwareapplicationInstance",obj.getInstanceId(), SoftwareapplicationCategory.class)){
+            for(Object object : getDbaccess().getOneFromDBBySpecificKey("softwareapplicationInstance",obj.getInstanceId(), SoftwareapplicationCategory.class)){
                 SoftwareapplicationCategory item = (SoftwareapplicationCategory) object;
                 dbaccess.deleteObject(item);
             }
