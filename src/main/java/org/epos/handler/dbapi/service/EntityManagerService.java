@@ -99,10 +99,10 @@ public class EntityManagerService {
                 hikariConfig.setJdbcUrl(dburl);
                 LOG.warning("Using fallback JDBC URL: " + dburl);
             }
-
-            hikariConfig.setUsername(postgresqlUsername);
-            hikariConfig.setPassword(postgresqlPassword);
         }
+
+        hikariConfig.setUsername(postgresqlUsername);
+        hikariConfig.setPassword(postgresqlPassword);
 
         hikariDataSource = new HikariDataSource(hikariConfig);
 
@@ -175,12 +175,23 @@ public class EntityManagerService {
 
                 // Add all resolved IPs
                 for (int j = 0; j < addresses.length; j++) {
+                    // FIX: Filter out IPv6 to prevent connection refused errors with Testcontainers/Docker
+                    if (addresses[j] instanceof java.net.Inet6Address) {
+                        LOG.warning("Skipping IPv6 address: " + addresses[j].getHostAddress());
+                        continue;
+                    }
+
                     if (resolvedHosts.length() > 0) {
                         resolvedHosts.append(",");
                     }
                     resolvedHosts.append(addresses[j].getHostAddress()).append(":").append(port);
                 }
-            } catch (UnknownHostException e) {
+
+                // Fallback: If no IPv4 addresses were found (unlikely), revert to original hostname
+                if (resolvedHosts.length() == 0) {
+                    resolvedHosts.append(hostname).append(":").append(port);
+                }
+            }catch (UnknownHostException e) {
                 LOG.warning("Could not resolve " + hostname + ", keeping original: " + e.getMessage());
                 // Keep original hostname if resolution fails
                 if (resolvedHosts.length() > 0) {
@@ -415,6 +426,10 @@ public class EntityManagerService {
         }
 
         public EntityManagerService build(){
+            if (instance != null && instance.isOpen()) {
+                LOG.info("EntityManagerService already initialized, reusing existing instance");
+                return null;
+            }
             return new EntityManagerService(this);
         }
 

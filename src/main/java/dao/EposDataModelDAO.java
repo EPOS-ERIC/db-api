@@ -229,7 +229,7 @@ public class EposDataModelDAO<T> {
 				// LOG.info("POST request for "+ inputURL+" did not work.");
 			}
 		} catch (IOException e) {
-			LOG.log(Level.WARNING, "Sending invalidation to " + inputURL + " unsuccessful, cause: " + e.getMessage());
+			//LOG.log(Level.WARNING, "Sending invalidation to " + inputURL + " unsuccessful, cause: " + e.getMessage());
 		}
 
 	}
