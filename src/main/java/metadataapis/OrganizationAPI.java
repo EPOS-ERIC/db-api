@@ -123,11 +123,12 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         if (obj.getOwns() != null) {
             for(LinkedEntity owns : obj.getOwns()) {
                 if (owns != null){
+                    LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
                     OrganizationOwn pi = new OrganizationOwn();
                     pi.setOrganization(edmobj);
                     pi.setOrganizationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(le.getEntityType());
+                    pi.setEntityInstanceId(le.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }

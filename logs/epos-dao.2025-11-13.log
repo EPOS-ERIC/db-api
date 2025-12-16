@@ -1,3 +1,0 @@
-2025-11-13 12:53:18 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
-2025-11-13 12:53:18 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
-2025-11-13 12:53:18 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 1.21.1
