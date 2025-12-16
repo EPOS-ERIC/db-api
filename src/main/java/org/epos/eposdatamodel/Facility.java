@@ -280,6 +280,13 @@ public class Facility extends EPOSDataModelEntity {
 		return this;
 	}
 
+    public void addSpatialExtent(LinkedEntity spatialExtentItem) {
+        if (this.spatialExtent == null) {
+            this.spatialExtent = new ArrayList<>();
+        }
+        this.spatialExtent.add(spatialExtentItem);
+    }
+
 	/**
 	 * This property refers to a geographical location of the Facility.
 	 *

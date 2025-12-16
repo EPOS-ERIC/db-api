@@ -227,7 +227,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 EquipmentContactpoint item = (EquipmentContactpoint) object;
                 //if(item.getEquipmentInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
-                    o.addCategory(le);
+                    o.addContactPoint(le);
                 //}
             }
 

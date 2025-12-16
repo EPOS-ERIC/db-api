@@ -218,6 +218,10 @@ public class SoftwareSourceCode extends EPOSDataModelEntity {
     private String timeRequired;
 
 
+    @Schema(name="softwareRequirements", description = "", required = false)
+    private String softwareRequirements;
+
+
     public void addCategory(LinkedEntity category) {
         if (this.getCategory() == null) {
             ArrayList<LinkedEntity> categoryList = new ArrayList<>();
@@ -280,6 +284,19 @@ public class SoftwareSourceCode extends EPOSDataModelEntity {
         }
         this.category.add(categoryItem);
         return this;
+    }
+
+    /**
+     * This property refers to a softwareRequirements of the Software Source Code. A Software Source Code may be associated with multiple categories.
+     *
+     * @return softwareRequirements
+     **/
+    public String getSoftwareRequirements() {
+        return softwareRequirements;
+    }
+
+    public void setSoftwareRequirements(String softwareRequirements) {
+        this.softwareRequirements = softwareRequirements;
     }
 
     /**
@@ -722,12 +739,12 @@ public class SoftwareSourceCode extends EPOSDataModelEntity {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         SoftwareSourceCode that = (SoftwareSourceCode) o;
-        return Objects.equals(category, that.category) && Objects.equals(codeRepository, that.codeRepository) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityofPage, that.mainEntityofPage) && Objects.equals(name, that.name) && Objects.equals(programmingLanguage, that.programmingLanguage) && Objects.equals(relation, that.relation) && Objects.equals(runtimePlatform, that.runtimePlatform) && Objects.equals(softwareVersion, that.softwareVersion) && Objects.equals(softwareStatus, that.softwareStatus) && Objects.equals(spatial, that.spatial) && Objects.equals(temporal, that.temporal) && Objects.equals(author, that.author) && Objects.equals(contributor, that.contributor) && Objects.equals(funder, that.funder) && Objects.equals(maintainer, that.maintainer) && Objects.equals(provider, that.provider) && Objects.equals(publisher, that.publisher) && Objects.equals(creator, that.creator) && Objects.equals(citation, that.citation) && Objects.equals(size, that.size) && Objects.equals(timeRequired, that.timeRequired);
+        return Objects.equals(category, that.category) && Objects.equals(codeRepository, that.codeRepository) && Objects.equals(contactPoint, that.contactPoint) && Objects.equals(description, that.description) && Objects.equals(downloadURL, that.downloadURL) && Objects.equals(identifier, that.identifier) && Objects.equals(keywords, that.keywords) && Objects.equals(licenseURL, that.licenseURL) && Objects.equals(mainEntityofPage, that.mainEntityofPage) && Objects.equals(name, that.name) && Objects.equals(programmingLanguage, that.programmingLanguage) && Objects.equals(relation, that.relation) && Objects.equals(runtimePlatform, that.runtimePlatform) && Objects.equals(softwareVersion, that.softwareVersion) && Objects.equals(softwareStatus, that.softwareStatus) && Objects.equals(spatial, that.spatial) && Objects.equals(temporal, that.temporal) && Objects.equals(author, that.author) && Objects.equals(contributor, that.contributor) && Objects.equals(funder, that.funder) && Objects.equals(maintainer, that.maintainer) && Objects.equals(provider, that.provider) && Objects.equals(publisher, that.publisher) && Objects.equals(creator, that.creator) && Objects.equals(citation, that.citation) && Objects.equals(size, that.size) && Objects.equals(timeRequired, that.timeRequired) && Objects.equals(softwareRequirements, that.softwareRequirements);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), category, codeRepository, contactPoint, description, downloadURL, identifier, keywords, licenseURL, mainEntityofPage, name, programmingLanguage, relation, runtimePlatform, softwareVersion, softwareStatus, spatial, temporal, author, contributor, funder, maintainer, provider, publisher, creator, citation, size, timeRequired);
+        return Objects.hash(super.hashCode(), category, codeRepository, contactPoint, description, downloadURL, identifier, keywords, licenseURL, mainEntityofPage, name, programmingLanguage, relation, runtimePlatform, softwareVersion, softwareStatus, spatial, temporal, author, contributor, funder, maintainer, provider, publisher, creator, citation, size, timeRequired, softwareRequirements);
     }
 
     @Override
@@ -760,6 +777,7 @@ public class SoftwareSourceCode extends EPOSDataModelEntity {
                 ", citation=" + citation +
                 ", size='" + size + '\'' +
                 ", timeRequired='" + timeRequired + '\'' +
-                '}'+ super.toString();
+                ", softwareRequirements='" + softwareRequirements + '\'' +
+                '}';
     }
 }

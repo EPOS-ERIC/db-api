@@ -68,6 +68,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         edmobj.setTemporal(obj.getTemporal());
         edmobj.setFilesize(obj.getSize());
         edmobj.setTimerequired(obj.getTimeRequired());
+        edmobj.setSoftwarerequirements(obj.getSoftwareRequirements());
 
         /** CATEGORY **/
         if (obj.getCategory() != null)
@@ -344,6 +345,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
             o.setTemporal(edmobj.getTemporal());
             o.setSize(edmobj.getFilesize());
             o.setTimeRequired(edmobj.getTimerequired());
+            o.setSoftwareRequirements(edmobj.getSoftwarerequirements());
 
             for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("softwaresourcecodeInstance", edmobj.getInstanceId(),SoftwaresourcecodeCategory.class)) {
                 SoftwaresourcecodeCategory item = (SoftwaresourcecodeCategory) object;

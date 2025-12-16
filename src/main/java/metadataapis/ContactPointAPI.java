@@ -43,7 +43,6 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Contactpoint edmobj = new Contactpoint();
-
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
