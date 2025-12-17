@@ -342,14 +342,6 @@ public class Organization extends EPOSDataModelEntity {
         return this;
     }
 
-    public void addOwns(String ownsString) {
-        if (this.owns == null) {
-            this.owns = new ArrayList<>();
-        }
-        LinkedEntity owns = new LinkedEntity();
-        owns.setUid(ownsString);
-        this.owns.add(owns);
-    }
 
     public Organization telephone(List<String> telephone) {
         this.telephone = telephone;

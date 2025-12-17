@@ -135,12 +135,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getAuthor() != null) {
             for(LinkedEntity owns : obj.getAuthor()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationAuthor pi = new SoftwareapplicationAuthor();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -148,12 +149,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getContributor() != null) {
             for(LinkedEntity owns : obj.getContributor()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationContributor pi = new SoftwareapplicationContributor();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -161,12 +163,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getFunder() != null) {
             for(LinkedEntity owns : obj.getFunder()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationFunder pi = new SoftwareapplicationFunder();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -174,12 +177,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getMaintainer() != null) {
             for(LinkedEntity owns : obj.getMaintainer()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationMaintainer pi = new SoftwareapplicationMaintainer();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -187,12 +191,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getProvider() != null) {
             for(LinkedEntity owns : obj.getProvider()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationProvider pi = new SoftwareapplicationProvider();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -200,12 +205,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getPublisher() != null) {
             for(LinkedEntity owns : obj.getPublisher()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationPublisher pi = new SoftwareapplicationPublisher();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
@@ -213,12 +219,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         if (obj.getCreator() != null) {
             for(LinkedEntity owns : obj.getCreator()) {
-                if (owns != null){
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwareapplicationCreator pi = new SoftwareapplicationCreator();
                     pi.setSoftwareapplication(edmobj);
                     pi.setSoftwareapplicationInstanceId(edmobj.getInstanceId());
-                    pi.setResourceEntity(owns.getEntityType());
-                    pi.setEntityInstanceId(owns.getInstanceId());
+                    pi.setResourceEntity(resolvedEntity.getEntityType());
+                    pi.setEntityInstanceId(resolvedEntity.getInstanceId());
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }
