@@ -58,7 +58,8 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         /** ADDRESS **/
         if (obj.getAddress() != null) {
-            List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(obj.getAddress(), Address.class);
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion());
+            List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
             if(!addressList.isEmpty()) {
                 edmobj.setAddress(addressList.get(0));
             }
@@ -67,7 +68,8 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** CONTACTPOINT **/
         if (obj.getContactPoint() != null) {
             for(LinkedEntity contactPoint : obj.getContactPoint()){
-                List<Contactpoint> contactpoint = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(contactPoint, Contactpoint.class);
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                List<Contactpoint> contactpoint = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpoint.isEmpty()) {
                     OrganizationContactpoint pi = new OrganizationContactpoint();
                     pi.setOrganizationInstance(edmobj);
