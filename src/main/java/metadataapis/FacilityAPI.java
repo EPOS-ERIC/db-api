@@ -253,7 +253,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 FacilitySpatial item = (FacilitySpatial) object;
                 //if(item.getFacilityInstance().getInstanceId().equals(edmobj.getInstanceId())) {
                     LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
-                    o.addIsPartOf(le);
+                    o.addSpatialExtent(le);
                 //}
             }
 
