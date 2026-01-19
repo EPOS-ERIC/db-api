@@ -57,7 +57,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         edmobj.setOrderitemnumber(Optional.ofNullable(obj.getOrderitemnumber()).orElse(""));
         edmobj.setLogo(Optional.ofNullable(obj.getLogo()).orElse(""));
 
-        if (Objects.nonNull(obj.getTopConcepts())) createTopConcepts(obj.getTopConcepts(), edmobj, overrideStatus);
+        if (Objects.nonNull(obj.getTopConcepts())) createTopConcepts(obj.getTopConcepts(), edmobj, overrideStatus, obj.getFileProvenance());
 
 
         getDbaccess().updateObject(edmobj);
@@ -68,10 +68,10 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
                 .uid(edmobj.getUid());
     }
 
-    private void createTopConcepts(List<LinkedEntity> topConcepts, CategoryScheme edmobj, StatusType overrideStatus){
+    private void createTopConcepts(List<LinkedEntity> topConcepts, CategoryScheme edmobj, StatusType overrideStatus, String provenance){
         for(LinkedEntity topConcept : topConcepts) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(topConcept, overrideStatus, edmobj.getVersion());
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(topConcept, overrideStatus, edmobj.getVersion(), provenance);
 
             CategoryHastopconcept categoryHastopconcept = new CategoryHastopconcept();
             categoryHastopconcept.setCategorySchemeInstance(edmobj);

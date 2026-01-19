@@ -54,9 +54,9 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         edmobj.setName(Optional.ofNullable(obj.getName()).orElse(""));
         edmobj.setDescription(Optional.ofNullable(obj.getDescription()).orElse(""));
 
-        if (Objects.nonNull(obj.getInScheme())) createInscheme(obj.getInScheme(), edmobj, overrideStatus);
-        if (Objects.nonNull(obj.getBroader())) createBroaders(obj.getBroader(), edmobj, overrideStatus);
-        if (Objects.nonNull(obj.getNarrower())) createNarrowers(obj.getNarrower(), edmobj, overrideStatus);
+        if (Objects.nonNull(obj.getInScheme())) createInscheme(obj.getInScheme(), edmobj, overrideStatus, obj.getFileProvenance());
+        if (Objects.nonNull(obj.getBroader())) createBroaders(obj.getBroader(), edmobj, overrideStatus, obj.getFileProvenance());
+        if (Objects.nonNull(obj.getNarrower())) createNarrowers(obj.getNarrower(), edmobj, overrideStatus, obj.getFileProvenance());
 
         getDbaccess().updateObject(edmobj);
 
@@ -67,7 +67,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     }
 
-    private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus){
+    private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus, String provenance){
 
         List<CategoryScheme> categorySchemeList = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(inscheme,CategoryScheme.class);
         if(!categorySchemeList.isEmpty()) {
@@ -87,10 +87,10 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         }
     }
 
-    private void createBroaders(List<LinkedEntity> broaders, Category edmobj, StatusType overrideStatus){
+    private void createBroaders(List<LinkedEntity> broaders, Category edmobj, StatusType overrideStatus, String provenance){
         for(LinkedEntity broader : broaders) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus, edmobj.getVersion());
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(broader, overrideStatus, edmobj.getVersion(), provenance);
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
             categoryIspartof.setCategory1Instance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
@@ -100,10 +100,10 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         }
     }
 
-    private void createNarrowers(List<LinkedEntity> narrowers, Category edmobj, StatusType overrideStatus){
+    private void createNarrowers(List<LinkedEntity> narrowers, Category edmobj, StatusType overrideStatus, String provenance){
         for(LinkedEntity narrower : narrowers) {
 
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus, edmobj.getVersion());
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(narrower, overrideStatus, edmobj.getVersion(), provenance);
 
             CategoryIspartof categoryIspartof = new CategoryIspartof();
             categoryIspartof.setCategory1Instance(edmobj);
@@ -125,6 +125,12 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         for(Object object : getDbaccess().getAllFromDB(CategoryIspartof.class)){
             CategoryIspartof item = (CategoryIspartof) object;
             if(item.getCategory1Instance().getInstanceId().equals(instanceId)){
+                EposDataModelDAO.getInstance().deleteObject(item);
+            }
+        }
+        for(Object object : getDbaccess().getAllFromDB(CategoryIspartof.class)){
+            CategoryIspartof item = (CategoryIspartof) object;
+            if(item.getCategory2Instance().getInstanceId().equals(instanceId)){
                 EposDataModelDAO.getInstance().deleteObject(item);
             }
         }

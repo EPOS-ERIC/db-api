@@ -59,13 +59,13 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         /** ADDRESS **/
         if (obj.getAddress() != null) {
-           LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion());
+           LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
         }
 
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Identifier> identifierList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
                 if(!identifierList.isEmpty()) {
                     PersonIdentifier pi = new PersonIdentifier();

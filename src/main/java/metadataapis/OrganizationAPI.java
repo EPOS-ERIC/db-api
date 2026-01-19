@@ -58,7 +58,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         /** ADDRESS **/
         if (obj.getAddress() != null) {
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion());
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
             List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
             if(!addressList.isEmpty()) {
                 edmobj.setAddress(addressList.get(0));
@@ -68,7 +68,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** CONTACTPOINT **/
         if (obj.getContactPoint() != null) {
             for(LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpoint = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpoint.isEmpty()) {
                     OrganizationContactpoint pi = new OrganizationContactpoint();
@@ -82,7 +82,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Identifier> identifierList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
                 if(!identifierList.isEmpty()) {
                     OrganizationIdentifier pi = new OrganizationIdentifier();
@@ -110,7 +110,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         /** MEMBER OF **/
         if (obj.getMemberOf() != null) {
             for(LinkedEntity organization : obj.getMemberOf()) {
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(organization, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(organization, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
 
                 List<Organization> list2 = getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Organization.class);
 
@@ -125,7 +125,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         if (obj.getOwns() != null) {
             for(LinkedEntity owns : obj.getOwns()) {
                 if (owns != null){
-                    LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                    LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                     OrganizationOwn pi = new OrganizationOwn();
                     pi.setOrganization(edmobj);
                     pi.setOrganizationInstanceId(edmobj.getInstanceId());

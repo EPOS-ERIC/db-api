@@ -76,7 +76,7 @@ public class LinkedEntityAPI {
         edmClassMap.put(EntityNames.OUTPUTMAPPING.name(), org.epos.eposdatamodel.OutputMapping.class);
     }
 
-    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus){
+    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus, String provenance){
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
 
@@ -100,6 +100,7 @@ public class LinkedEntityAPI {
                 entity.setInstanceId(Optional.ofNullable(obj.getInstanceId()).orElse(UUID.randomUUID().toString()));
                 entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
                 entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
+                if (provenance != null) entity.setFileProvenance(provenance);
                 if (overrideStatus != null) entity.setStatus(overrideStatus);
                 if(parentVersioningstatus!=null) {
                     if (parentVersioningstatus.getProvenance() != null)
@@ -141,7 +142,31 @@ public class LinkedEntityAPI {
                 return api.retrieve(edmobj.getInstanceId());
             }
         } else {
-            return createFromLinkedEntity(obj, null, null);
+            return createFromLinkedEntity(obj, null, null, null);
+        }
+        return null;
+    }
+
+    public static Object retrieveFromLinkedEntity(LinkedEntity obj, String fileProvenance) {
+        AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
+
+        if (api != null) {
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
+                    obj.getInstanceId(),
+                    obj.getMetaId(),
+                    obj.getUid(),
+                    null,
+                    Versioningstatus.class
+            );
+
+            if (!returnList.isEmpty()) {
+                Versioningstatus edmobj = returnList.get(0);
+                if(edmobj.getProvenance()!=null && edmobj.getProvenance().equals(fileProvenance))
+                    return api.retrieve(edmobj.getInstanceId());
+                else return null;
+            }
+        } else {
+            return createFromLinkedEntity(obj, null, null, fileProvenance);
         }
         return null;
     }

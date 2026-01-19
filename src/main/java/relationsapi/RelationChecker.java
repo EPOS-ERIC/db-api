@@ -14,6 +14,7 @@ import utilities.OperationWebserviceInDistributionSingleton;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class RelationChecker {
 
@@ -25,7 +26,7 @@ public class RelationChecker {
 
 
         /** RETRIEVE THE EPOS DATA MODEL OBJECT OF INTEREST FROM LINKED ENTITY **/
-        EPOSDataModelEntity relationEntity = (EPOSDataModelEntity) LinkedEntityAPI.retrieveFromLinkedEntity(linkedEntity);
+        EPOSDataModelEntity relationEntity = (EPOSDataModelEntity) LinkedEntityAPI.retrieveFromLinkedEntity(linkedEntity, mainEntity.getFileProvenance());
 
         /** SETUP THE LINKED ENTITY TO RETURN BACK TO THE MAIN FUNCTION **/
         LinkedEntity obj = null;
@@ -46,7 +47,7 @@ public class RelationChecker {
             List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(linkedEntity,clazz);
             if(!results.isEmpty()) obj = linkedEntity;
             else {
-                obj = LinkedEntityAPI.createFromLinkedEntity(linkedEntity, mainEntity.getStatus(), VersioningStatusAPI.retrieveVersioningStatus(mainEntity));
+                obj = LinkedEntityAPI.createFromLinkedEntity(linkedEntity, mainEntity.getStatus(), VersioningStatusAPI.retrieveVersioningStatus(mainEntity), Objects.nonNull(mainEntity.getFileProvenance())? mainEntity.getFileProvenance() : null );
             }
         }
         List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(obj,clazz);

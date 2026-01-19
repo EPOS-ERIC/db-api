@@ -81,7 +81,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
         /** IDENTIFIER **/
         if (obj.getIdentifier() != null) {
             for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Identifier> identifierList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
                 if(!identifierList.isEmpty()) {
                     SoftwaresourcecodeIdentifier pi = new SoftwaresourcecodeIdentifier();
@@ -103,7 +103,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getAuthor() != null) {
             for(LinkedEntity owns : obj.getAuthor()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
 
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeAuthor pi = new SoftwaresourcecodeAuthor();
@@ -119,7 +119,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getContributor() != null) {
             for(LinkedEntity owns : obj.getContributor()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeContributor pi = new SoftwaresourcecodeContributor();
                     pi.setSoftwaresourcecode(edmobj);
@@ -133,7 +133,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getFunder() != null) {
             for(LinkedEntity owns : obj.getFunder()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeFunder pi = new SoftwaresourcecodeFunder();
                     pi.setSoftwaresourcecode(edmobj);
@@ -147,7 +147,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getMaintainer() != null) {
             for(LinkedEntity owns : obj.getMaintainer()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeMaintainer pi = new SoftwaresourcecodeMaintainer();
                     pi.setSoftwaresourcecode(edmobj);
@@ -161,7 +161,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getProvider() != null) {
             for(LinkedEntity owns : obj.getProvider()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeProvider pi = new SoftwaresourcecodeProvider();
                     pi.setSoftwaresourcecode(edmobj);
@@ -175,7 +175,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getPublisher() != null) {
             for(LinkedEntity owns : obj.getPublisher()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodePublisher pi = new SoftwaresourcecodePublisher();
                     pi.setSoftwaresourcecode(edmobj);
@@ -189,7 +189,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         if (obj.getCreator() != null) {
             for(LinkedEntity owns : obj.getCreator()) {
-                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion());
+                LinkedEntity resolvedEntity = LinkedEntityAPI.createFromLinkedEntity(owns, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (resolvedEntity != null && resolvedEntity.getInstanceId() != null) {
                     SoftwaresourcecodeCreator pi = new SoftwaresourcecodeCreator();
                     pi.setSoftwaresourcecode(edmobj);

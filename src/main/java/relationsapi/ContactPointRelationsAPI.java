@@ -20,7 +20,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     EquipmentContactpoint pi = new EquipmentContactpoint();
@@ -39,7 +39,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     FacilityContactpoint pi = new FacilityContactpoint();
@@ -58,7 +58,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     DataproductContactpoint pi = new DataproductContactpoint();
@@ -77,7 +77,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     WebserviceContactpoint pi = new WebserviceContactpoint();
@@ -96,7 +96,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     SoftwaresourcecodeContactpoint pi = new SoftwaresourcecodeContactpoint();
@@ -115,7 +115,7 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                 dbaccess.deleteObject(item);
             }
             for(org.epos.eposdatamodel.LinkedEntity contactPoint : obj.getContactPoint()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion());
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(contactPoint, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 List<Contactpoint> contactpointList = dbaccess.getOneFromDBByInstanceId(le.getInstanceId(), Contactpoint.class);
                 if(!contactpointList.isEmpty()) {
                     SoftwareapplicationContactpoint pi = new SoftwareapplicationContactpoint();
