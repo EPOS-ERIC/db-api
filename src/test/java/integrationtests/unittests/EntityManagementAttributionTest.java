@@ -4,12 +4,11 @@ import abstractapis.AbstractAPI;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import model.StatusType;
-import org.epos.eposdatamodel.Address;
-import org.epos.eposdatamodel.Attribution;
-import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.*;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,29 +20,54 @@ public class EntityManagementAttributionTest extends TestcontainersLifecycle {
     @Order(1)
     public void testCreateAttribution() {
 
-        AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.ATTRIBUTION.name());
-
         LinkedEntity org = new LinkedEntity();
-        org.setInstanceId(UUID.randomUUID().toString());
-        org.setMetaId(UUID.randomUUID().toString());
         org.setUid("test");
         org.setEntityType(EntityNames.ORGANIZATION.name());
 
         Attribution attribution = new Attribution();
-        attribution.setInstanceId(UUID.randomUUID().toString());
-        attribution.setMetaId(UUID.randomUUID().toString());
         attribution.setUid("testattribution");
         attribution.setAgent(org);
         attribution.setRole(List.of("testrole","testrole2"));
 
+        LinkedEntity attributionLE = new LinkedEntity();
+        attributionLE.setUid(attribution.getUid());
+        attributionLE.setEntityType(EntityNames.ATTRIBUTION.name());
 
-        LOG.info("CREATED:\n"+attribution.toString());
+        DataProduct dataProduct = new DataProduct();
+        dataProduct.setUid(UUID.randomUUID().toString());
+        dataProduct.setPublisher(List.of(org));
+        dataProduct.addQualifiedAttribution(attributionLE);
 
-        api.create(attribution, StatusType.PUBLISHED, null, null);
+        List<EPOSDataModelEntity> classes = new ArrayList<>();
+        classes.add(dataProduct);
+        classes.add(attribution);
 
-        Attribution retrievedAddress = (Attribution) api.retrieve(attribution.getInstanceId());
+        for (EPOSDataModelEntity eposDataModelEntity : classes) {
+            if(eposDataModelEntity instanceof org.epos.eposdatamodel.ContactPoint) eposDataModelEntity.setStatus(StatusType.PUBLISHED);
+            if(eposDataModelEntity instanceof org.epos.eposdatamodel.Category) eposDataModelEntity.setStatus(StatusType.PUBLISHED);
+            if(eposDataModelEntity instanceof org.epos.eposdatamodel.CategoryScheme) eposDataModelEntity.setStatus(StatusType.PUBLISHED);
+            if(eposDataModelEntity instanceof org.epos.eposdatamodel.Organization) eposDataModelEntity.setStatus(StatusType.PUBLISHED);
+            if(eposDataModelEntity instanceof org.epos.eposdatamodel.Person) eposDataModelEntity.setStatus(StatusType.PUBLISHED);
+            // System.out.println("[ADDING TO DATABASE] "+eposDataModelEntity);
+            try {
+                AbstractAPI api = AbstractAPI.retrieveAPI(eposDataModelEntity.getClass().getSimpleName().toUpperCase());
+               System.out.println("Ingesting -> "+eposDataModelEntity);
+                LinkedEntity le = api.create(eposDataModelEntity, null, null, null);
+            } catch (Exception apiCreationException) {
+                apiCreationException.printStackTrace();
+                System.out.println("[ERROR] ON: " + eposDataModelEntity.toString() + "\n[EXCEPTION]: "
+                        + apiCreationException.getLocalizedMessage());
+            }
+        }
+
+        Attribution retrievedAddress = (Attribution) AbstractAPI.retrieveAPI(EntityNames.ATTRIBUTION.name()).retrieve(attribution.getInstanceId());
 
         LOG.info("RECEIVED:\n"+retrievedAddress.toString());
+
+        List<DataProduct> retrieveAll = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveAll();
+        for (DataProduct dp : retrieveAll) {
+            LOG.info("DP: "+dp.toString());
+        }
 
         assertAll(
                 () -> assertEquals(attribution.getAgent(),retrievedAddress.getAgent()),

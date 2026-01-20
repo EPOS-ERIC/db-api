@@ -137,12 +137,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 obj.getQualifiedAttribution().remove(relationFromUpdate);
                 obj.getQualifiedAttribution().add(relationToUpdate);
             }
-            for(LinkedEntity attributionLE : obj.getQualifiedAttribution()){
-                Attribution attribution = (Attribution) RelationChecker.checkRelation(obj, previousObj, null, attributionLE, overrideStatus, Attribution.class, false);
-                if(attribution!=null) {
+            for(LinkedEntity attribution : obj.getQualifiedAttribution()){
+                Attribution attribution1 = (Attribution) RelationChecker.checkRelation(obj, previousObj, null, attribution, overrideStatus, Attribution.class, false);
+                if(attribution1!=null) {
                     DataproductAttribution pi = new DataproductAttribution();
                     pi.setDataproductInstance(edmobj);
-                    pi.setAttributionInstance(attribution);
+                    pi.setAttributionInstance(attribution1);
                     EposDataModelDAO.getInstance().updateObject(pi);
                 }
             }

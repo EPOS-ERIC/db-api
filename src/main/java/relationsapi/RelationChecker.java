@@ -60,7 +60,7 @@ public class RelationChecker {
                                        LinkedEntity linkedEntity,
                                        StatusType overrideStatus,
                                        Class clazz,
-                                       Boolean enableStore) {
+                                       Boolean enableStore) {;
 
         String entityKey = getEntityKey(linkedEntity);
         Set<String> processing = processingEntities.get();

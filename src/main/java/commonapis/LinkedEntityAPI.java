@@ -23,6 +23,7 @@ public class LinkedEntityAPI {
     private static final Map<String, Class<?>> edmClassMap = new HashMap<>();
 
     static {
+        apiMap.put(EntityNames.ATTRIBUTION.name(), new AttributionAPI(EntityNames.ATTRIBUTION.name(), Attribution.class));
         apiMap.put(EntityNames.PERSON.name(), new PersonAPI(EntityNames.PERSON.name(), Person.class));
         apiMap.put(EntityNames.MAPPING.name(), new MappingAPI(EntityNames.MAPPING.name(), Mapping.class));
         apiMap.put(EntityNames.CATEGORY.name(), new CategoryAPI(EntityNames.CATEGORY.name(), Category.class));
@@ -49,6 +50,7 @@ public class LinkedEntityAPI {
         apiMap.put(EntityNames.PAYLOAD.name(), new PayloadAPI(EntityNames.PAYLOAD.name(), Payload.class));
         apiMap.put(EntityNames.OUTPUTMAPPING.name(), new OutputMappingAPI(EntityNames.OUTPUTMAPPING.name(), OutputMapping.class));
 
+        edmClassMap.put(EntityNames.ATTRIBUTION.name(), org.epos.eposdatamodel.Attribution.class);
         edmClassMap.put(EntityNames.PERSON.name(), org.epos.eposdatamodel.Person.class);
         edmClassMap.put(EntityNames.MAPPING.name(), org.epos.eposdatamodel.Mapping.class);
         edmClassMap.put(EntityNames.CATEGORY.name(), org.epos.eposdatamodel.Category.class);
