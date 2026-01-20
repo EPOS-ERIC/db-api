@@ -171,6 +171,26 @@ public class LinkedEntityAPI {
         return null;
     }
 
+    public static Object retrieveFromLinkedEntityIgnoringProvenance(LinkedEntity obj) {
+        AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
+
+        if (api != null) {
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
+                    obj.getInstanceId(),
+                    obj.getMetaId(),
+                    obj.getUid(),
+                    null,
+                    Versioningstatus.class
+            );
+
+            if (!returnList.isEmpty()) {
+                Versioningstatus edmobj = returnList.get(0);
+                return api.retrieve(edmobj.getInstanceId());
+            }
+        }
+        return null;
+    }
+
     private static EposDataModelDAO getDbaccess() {
         return EposDataModelDAO.getInstance();
     }
