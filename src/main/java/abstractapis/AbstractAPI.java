@@ -64,6 +64,7 @@ public abstract class AbstractAPI<T> {
 
     static {
         // Map entity types to their respective classes
+        ENTITY_CLASSES.put(EntityNames.ATTRIBUTION.name(), Attribution.class);
         ENTITY_CLASSES.put(EntityNames.PERSON.name(), Person.class);
         ENTITY_CLASSES.put(EntityNames.MAPPING.name(), Mapping.class);
         ENTITY_CLASSES.put(EntityNames.CATEGORY.name(), Category.class);
@@ -91,6 +92,7 @@ public abstract class AbstractAPI<T> {
         ENTITY_CLASSES.put(EntityNames.PAYLOAD.name(), Payload.class);
 
         // Map entity types to their respective API classes
+        API_CLASSES.put(EntityNames.ATTRIBUTION.name(), new AttributionAPI(EntityNames.ATTRIBUTION.name(), Attribution.class));
         API_CLASSES.put(EntityNames.PERSON.name(), new PersonAPI(EntityNames.PERSON.name(), Person.class));
         API_CLASSES.put(EntityNames.MAPPING.name(), new MappingAPI(EntityNames.MAPPING.name(), Mapping.class));
         API_CLASSES.put(EntityNames.CATEGORY.name(), new CategoryAPI(EntityNames.CATEGORY.name(), Category.class));

@@ -106,13 +106,13 @@ public class VersioningStatusAPI {
             // Create new Versioningstatus entity
             Versioningstatus edmobj = new Versioningstatus();
             edmobj.setStatus(Optional.ofNullable(obj.getStatus()).map(Enum::toString).orElse(DRAFT.toString()));
-            edmobj.setInstanceId(UUID.randomUUID().toString());
+            edmobj.setInstanceId(Optional.ofNullable(obj.getInstanceId()).orElse(UUID.randomUUID().toString()));
             obj.setInstanceId(edmobj.getInstanceId());
-            edmobj.setMetaId(UUID.randomUUID().toString());
+            edmobj.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
             obj.setMetaId(edmobj.getMetaId());
             edmobj.setVersionId(UUID.randomUUID().toString());
             obj.setVersionId(edmobj.getVersionId());
-            edmobj.setUid(obj.getUid());
+            edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
             edmobj.setInstanceChangeId(null);
             edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
             edmobj.setChangeComment(obj.getChangeComment());

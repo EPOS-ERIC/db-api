@@ -77,6 +77,7 @@ public class LinkedEntityAPI {
     }
 
     public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus, String provenance){
+
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
 
@@ -114,6 +115,7 @@ public class LinkedEntityAPI {
                     if (parentVersioningstatus.getChangeTimestamp() != null)
                         entity.setChangeTimestamp(parentVersioningstatus.getChangeTimestamp().toLocalDateTime());
                 }
+
                 return api.create(entity, overrideStatus, null, null);
             } else {
                 Versioningstatus versioningstatus = returnList.get(0);

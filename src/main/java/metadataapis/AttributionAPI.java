@@ -49,9 +49,13 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
 
-        if(obj.getAgent()!=null) {
-            edmobj.setAgentId(obj.getAgent().getInstanceId());
-            edmobj.setAgentType(obj.getAgent().getEntityType());
+        if (obj.getAgent() != null) {
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAgent(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
+            List<Organization> organizationList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Organization.class);
+            if(!organizationList.isEmpty()) {
+                edmobj.setAgentId(organizationList.get(0).getInstanceId());
+                edmobj.setAgentType(obj.getAgent().getEntityType());
+            }
         }
 
         if(obj.getRole()!=null) {
@@ -102,12 +106,21 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         }
         Attribution edmobj = elementList.get(0);
 
-            org.epos.eposdatamodel.Attribution o = new org.epos.eposdatamodel.Attribution();
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
+        org.epos.eposdatamodel.Attribution o = new org.epos.eposdatamodel.Attribution();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
 
-            return o;
+        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("attributionInstance", edmobj.getInstanceId(),AttributionRole.class)) {
+            AttributionRole item = (AttributionRole) object;
+            o.addRole(item.getRoletype());
+        }
+
+        if(edmobj.getAgentId()!=null && edmobj.getAgentType()!=null) {
+            o.setAgent(AbstractAPI.retrieveAPI(edmobj.getAgentType()).retrieveLinkedEntity(edmobj.getAgentId()));
+        }
+
+        return o;
     }
 
     @Override
