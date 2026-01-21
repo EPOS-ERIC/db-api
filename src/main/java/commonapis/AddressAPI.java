@@ -26,18 +26,35 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Address obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
+        }
+
         List<Address> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
+                searchInstanceId,
                 obj.getMetaId(),
                 obj.getUid(),
-                obj.getVersionId(),
+                null,
                 getEdmClass());
 
-        if (!returnList.isEmpty()) {
-            obj.setInstanceId(returnList.get(0).getInstanceId());
-            obj.setMetaId(returnList.get(0).getMetaId());
-            obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
+        if(!returnList.isEmpty()){
+            Address selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Address item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Address) VersioningStatusAPI.checkVersion(obj, overrideStatus);

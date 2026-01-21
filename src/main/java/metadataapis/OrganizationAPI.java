@@ -4,6 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import usermanagementapis.UserGroupManagementAPI;
@@ -21,18 +22,35 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
+        }
+
         List<Organization> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
+                searchInstanceId,
                 obj.getMetaId(),
                 obj.getUid(),
-                obj.getVersionId(),
+                null,
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            obj.setInstanceId(returnList.get(0).getInstanceId());
-            obj.setMetaId(returnList.get(0).getMetaId());
-            obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
+            Organization selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Organization item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Organization) VersioningStatusAPI.checkVersion(obj, overrideStatus);

@@ -33,18 +33,35 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
+        }
+
         List<Dataproduct> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
+                searchInstanceId,
                 obj.getMetaId(),
                 obj.getUid(),
-                obj.getVersionId(),
+                null,
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            obj.setInstanceId(returnList.get(0).getInstanceId());
-            obj.setMetaId(returnList.get(0).getMetaId());
-            obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
+            Dataproduct selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Dataproduct item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -236,12 +253,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             for (LinkedEntity organization : obj.getPublisher()) {
                 Organization organization1 = null;
 
-                if (obj.getStatus()!=null && obj.getStatus().equals(StatusType.DRAFT)) {
-                    List<Organization> tempOrganization = (List<Organization>) getDbaccess().getOneFromDBByLinkedEntity(organization, Organization.class);
-                    if (tempOrganization != null && !tempOrganization.isEmpty()) {
-                        organization1 = tempOrganization.get(0);
-                    }
-                }
+//                if (obj.getStatus()!=null && obj.getStatus().equals(StatusType.DRAFT)) {
+//                    List<Organization> tempOrganization = (List<Organization>) getDbaccess().getOneFromDBByLinkedEntity(organization, Organization.class);
+//                    if (tempOrganization != null && !tempOrganization.isEmpty()) {
+//                        organization1 = tempOrganization.get(0);
+//                    }
+//                }
 
                 if (organization1 == null) {
                     organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class, false);

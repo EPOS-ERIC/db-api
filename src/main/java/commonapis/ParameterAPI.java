@@ -24,25 +24,39 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     @Override
     public LinkedEntity create(SoftwareApplicationParameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        // Fetch the parameter from DB if it already exists
-        List<Parameter> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
-                obj.getMetaId(),
-                obj.getUid(),
-                obj.getVersionId(),
-                Parameter.class);
-
-        // Update if it already exists
-        if (!returnList.isEmpty()) {
-            Parameter existing = returnList.get(0);
-            obj.setInstanceId(existing.getInstanceId());
-            obj.setMetaId(existing.getMetaId());
-            obj.setUid(existing.getUid());
-            obj.setVersionId(existing.getVersion().getVersionId());
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
         }
 
-        // Check version and ensure versioning status
+        List<Parameter> returnList = getDbaccess().getOneFromDB(
+                searchInstanceId,
+                obj.getMetaId(),
+                obj.getUid(),
+                null,
+                getEdmClass());
+
+        if(!returnList.isEmpty()){
+            Parameter selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Parameter item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+        }
+
         obj = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         // Create the new parameter entity

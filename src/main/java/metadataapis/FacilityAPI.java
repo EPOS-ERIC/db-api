@@ -10,6 +10,7 @@ import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,18 +28,35 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
+        }
+
         List<Facility> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
+                searchInstanceId,
                 obj.getMetaId(),
                 obj.getUid(),
-                obj.getVersionId(),
+                null,
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            obj.setInstanceId(returnList.get(0).getInstanceId());
-            obj.setMetaId(returnList.get(0).getMetaId());
-            obj.setUid(returnList.get(0).getUid());
-            obj.setVersionId(returnList.get(0).getVersion().getVersionId());
+            Facility selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Facility item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Facility) VersioningStatusAPI.checkVersion(obj, overrideStatus);
@@ -58,7 +76,9 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         edmobj.setIdentifier(obj.getIdentifier());
         edmobj.setDescription(obj.getDescription());
         edmobj.setTitle(obj.getTitle());
-        edmobj.setKeywords(obj.getKeywords());
+
+        if (obj.getKeywords() != null)
+            edmobj.setKeywords(String.join(",", obj.getKeywords()));
 
         /** CATEGORY **/
         if (obj.getCategory() != null)
@@ -215,7 +235,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             o.setIdentifier(edmobj.getIdentifier());
             o.setDescription(edmobj.getDescription());
             o.setTitle(edmobj.getTitle());
-            o.setKeywords(edmobj.getKeywords());
+            o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
 
             for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
                 FacilityCategory item = (FacilityCategory) object;

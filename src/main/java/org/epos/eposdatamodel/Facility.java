@@ -89,16 +89,26 @@ public class Facility extends EPOSDataModelEntity {
 	private String type;
 
 
-	private String keywords;
+	private List<String> keywords;
 
 
-	public Facility keywords(String keywords) {
+	public Facility keywords(List<String> keywords) {
 		this.keywords = keywords;
 		return this;
 	}
 
-	public void setKeywords(String keyword) {
+	public void setKeywords(List<String> keyword) {
 		this.keywords = keyword;
+	}
+
+	public void addKeywords(String keyword) {
+		if (this.getKeywords() == null) {
+			ArrayList<String> keywordList = new ArrayList<>();
+			keywordList.add(keyword);
+			this.setKeywords(keywordList);
+		} else {
+			this.getKeywords().add(keyword);
+		}
 	}
 
 	/**
@@ -107,7 +117,7 @@ public class Facility extends EPOSDataModelEntity {
 	 * @return keywords
 	 **/
 
-	public String getKeywords() {
+	public List<String> getKeywords() {
 		return keywords;
 	}
 
@@ -363,6 +373,19 @@ public class Facility extends EPOSDataModelEntity {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (o == null || getClass() != o.getClass()) return false;
+		if (!super.equals(o)) return false;
+		Facility facility = (Facility) o;
+		return Objects.equals(address, facility.address) && Objects.equals(category, facility.category) && Objects.equals(contactPoint, facility.contactPoint) && Objects.equals(description, facility.description) && Objects.equals(identifier, facility.identifier) && Objects.equals(isPartOf, facility.isPartOf) && Objects.equals(pageURL, facility.pageURL) && Objects.equals(relation, facility.relation) && Objects.equals(spatialExtent, facility.spatialExtent) && Objects.equals(title, facility.title) && Objects.equals(type, facility.type) && Objects.equals(keywords, facility.keywords);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(super.hashCode(), address, category, contactPoint, description, identifier, isPartOf, pageURL, relation, spatialExtent, title, type, keywords);
+	}
+
+	@Override
 	public String toString() {
 		return "Facility{" +
 				"address=" + address +
@@ -376,22 +399,7 @@ public class Facility extends EPOSDataModelEntity {
 				", spatialExtent=" + spatialExtent +
 				", title='" + title + '\'' +
 				", type='" + type + '\'' +
-				", keywords='" + keywords + '\'' +
-				'}'+ super.toString();
+				", keywords=" + keywords +
+				'}';
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		if (!super.equals(o)) return false;
-		Facility facility = (Facility) o;
-		return Objects.equals(getUid(), facility.getUid()) && Objects.equals(getAddress(), facility.getAddress()) && Objects.equals(getCategory(), facility.getCategory()) && Objects.equals(getContactPoint(), facility.getContactPoint()) && Objects.equals(getDescription(), facility.getDescription()) && Objects.equals(getIsPartOf(), facility.getIsPartOf()) && Objects.equals(getPageURL(), facility.getPageURL()) && Objects.equals(getRelation(), facility.getRelation()) && Objects.equals(getSpatialExtent(), facility.getSpatialExtent()) && Objects.equals(getTitle(), facility.getTitle()) && Objects.equals(getType(), facility.getType());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(super.hashCode(), getAddress(), getCategory(), getContactPoint(), getDescription(), getIsPartOf(), getPageURL(), getRelation(), getSpatialExtent(), getTitle(), getType());
-	}
-
 }

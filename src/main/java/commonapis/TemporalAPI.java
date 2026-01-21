@@ -25,25 +25,39 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
     @Override
     public LinkedEntity create(PeriodOfTime obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        // Fetch existing record if it already exists
-        List<Temporal> returnList = getDbaccess().getOneFromDB(
-                obj.getInstanceId(),
-                obj.getMetaId(),
-                obj.getUid(),
-                obj.getVersionId(),
-                getEdmClass());
-
-        // Update if the record exists
-        if (!returnList.isEmpty()) {
-            Temporal existing = returnList.get(0);
-            obj.setInstanceId(existing.getInstanceId());
-            obj.setMetaId(existing.getMetaId());
-            obj.setUid(existing.getUid());
-            obj.setVersionId(existing.getVersion().getVersionId());
+        String searchInstanceId = obj.getInstanceId();
+        if (obj.getUid() != null) {
+            searchInstanceId = null;
         }
 
-        // Versioning and entity creation
+        List<Temporal> returnList = getDbaccess().getOneFromDB(
+                searchInstanceId,
+                obj.getMetaId(),
+                obj.getUid(),
+                null,
+                getEdmClass());
+
+        if(!returnList.isEmpty()){
+            Temporal selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Temporal item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+        }
+
         obj = (org.epos.eposdatamodel.PeriodOfTime) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Temporal edmobj = new Temporal();
