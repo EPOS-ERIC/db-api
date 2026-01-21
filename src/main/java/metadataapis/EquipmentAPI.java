@@ -12,10 +12,7 @@ import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 import usermanagementapis.UserGroupManagementAPI;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -78,7 +75,8 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         edmobj.setIdentifier(obj.getIdentifier());
         edmobj.setDescription(obj.getDescription());
         edmobj.setName(obj.getName());
-        edmobj.setKeywords(obj.getKeywords());
+        if (obj.getKeywords() != null)
+            edmobj.setKeywords(String.join(",", obj.getKeywords()));
         edmobj.setDynamicrange(obj.getDynamicRange());
         edmobj.setFilter(obj.getFilter());
         edmobj.setOrientation(obj.getOrientation());
@@ -230,7 +228,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             o.setOrientation(edmobj.getOrientation());
             o.setSamplePeriod(edmobj.getSampleperiod());
             o.setSerialNumber(edmobj.getSerialnumber());
-            o.addKeywords(edmobj.getKeywords());
+            o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
 
             for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("equipmentInstance", edmobj.getInstanceId(),EquipmentCategory.class)) {
                 EquipmentCategory item = (EquipmentCategory) object;

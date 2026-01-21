@@ -94,7 +94,7 @@ public class Equipment extends EPOSDataModelEntity {
 	 **/
 	private List<LinkedEntity> temporalExtent;
 
-	private String keywords;
+	private List<String> keywords;
 
 	/**
 	 * This property refers to the type of the Equipment.
@@ -476,17 +476,23 @@ public class Equipment extends EPOSDataModelEntity {
 
 	}
 
-	public Equipment keywords(String keywords) {
+	public Equipment keywords(List<String> keywords) {
 		this.keywords = keywords;
 		return this;
 	}
 
 	public void addKeywords(String keyword) {
-		if (this.keywords == null) {
-			this.keywords = keyword;
+		if (this.getKeywords() == null) {
+			ArrayList<String> keywordList = new ArrayList<>();
+			keywordList.add(keyword);
+			this.setKeywords(keywordList);
 		} else {
-			this.keywords = this.keywords + ",\t" + keyword;
+			this.getKeywords().add(keyword);
 		}
+	}
+
+	public void setKeywords(List<String> keyword) {
+		this.keywords = keyword;
 	}
 
 	/**
@@ -495,7 +501,7 @@ public class Equipment extends EPOSDataModelEntity {
 	 * @return keywords
 	 **/
 
-	public String getKeywords() {
+	public List<String> getKeywords() {
 		return keywords;
 	}
 
