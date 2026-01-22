@@ -4,8 +4,8 @@ import abstractapis.AbstractAPI;
 import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
-import model.Address;
 import model.Attribution;
+import model.Dataproduct;
 import model.Distribution;
 import model.Element;
 import model.Identifier;
@@ -13,12 +13,11 @@ import model.Organization;
 import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
-import relationsapi.RelationChecker;
-import usermanagementapis.UserGroupManagementAPI;
+import relationsapi.RelationSyncUtil;
 
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -31,7 +30,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     @Override
     public LinkedEntity create(DataProduct obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
@@ -45,19 +44,15 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 null,
                 getEdmClass());
 
-        if(!returnList.isEmpty()){
+        if (!returnList.isEmpty()) {
             Dataproduct selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
             for (Dataproduct item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
                     selectedEntity = item;
                     break;
                 }
             }
-
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
@@ -65,18 +60,16 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
 
         obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
-
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Dataproduct edmobj = new Dataproduct();
-
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
         getDbaccess().updateObject(edmobj);
 
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setKeywords(String.join("\\|", Optional.ofNullable(obj.getKeywords()).orElse("")));
         edmobj.setAccessright(obj.getAccessRight());
         edmobj.setAccrualperiodicity(obj.getAccrualPeriodicity());
@@ -84,417 +77,250 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         edmobj.setVersioninfo(obj.getVersionInfo());
         edmobj.setDocumentation(obj.getDocumentation());
         edmobj.setQualityassurance(obj.getQualityAssurance());
-        edmobj.setAccessright(obj.getAccessRight());
 
-        if (obj.getCreated() != null)
-            edmobj.setCreated(obj.getCreated());
-        if (obj.getModified() != null)
-            edmobj.setModified(obj.getModified());
-        if (obj.getIssued() != null)
-            edmobj.setIssued(obj.getIssued());
+        if (obj.getCreated() != null) edmobj.setCreated(obj.getCreated());
+        if (obj.getModified() != null) edmobj.setModified(obj.getModified());
+        if (obj.getIssued() != null) edmobj.setIssued(obj.getIssued());
 
-        /** CATEGORY **/
-        if (obj.getCategory() != null)
-            CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
-
-        /** CONTACTPOINT **/
-        if (obj.getContactPoint() != null)
-            ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
+        // CATEGORY & CONTACTPOINT (External Helpers)
+        if (obj.getCategory() != null) CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus);
+        if (obj.getContactPoint() != null) ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus);
 
         /** TITLE **/
         if (obj.getTitle() != null) {
-
-            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DataproductTitle.class)){
-                DataproductTitle title = (DataproductTitle) object;
-                if(title.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
-                    EposDataModelDAO.getInstance().deleteObject(title);
-                }
-            }
-
-            for(String title : obj.getTitle()){
-                DataproductTitle pi = new DataproductTitle();
-                pi.setInstanceId(UUID.randomUUID().toString());
-                pi.setMetaId(UUID.randomUUID().toString());
-                pi.setUid("Title/"+UUID.randomUUID().toString());
-                pi.setVersion(null); //TODO: Fix version
-                pi.setTitle(title);
-                pi.setDataproductInstance(edmobj);
-                pi.setLang(null);
-
-                EposDataModelDAO.getInstance().updateObject(pi);
-            }
+            RelationSyncUtil.syncSimpleOneToMany(
+                    edmobj, edmobj.getInstanceId(), obj.getTitle(), model.DataproductTitle.class,
+                    "dataproductInstance", "Title",
+                    model.DataproductTitle::getTitle, model.DataproductTitle::setTitle, model.DataproductTitle::setDataproductInstance
+            );
         }
 
         /** DESCRIPTION **/
         if (obj.getDescription() != null) {
-
-            for(Object object : EposDataModelDAO.getInstance().getAllFromDB(DataproductDescription.class)){
-                DataproductDescription description = (DataproductDescription) object;
-                if(description.getDataproductInstance().getInstanceId().equals(obj.getInstanceId())){
-                    EposDataModelDAO.getInstance().deleteObject(description);
-                }
-            }
-
-            for(String description : obj.getDescription()){
-                DataproductDescription pi = new DataproductDescription();
-                pi.setInstanceId(UUID.randomUUID().toString());
-                pi.setMetaId(UUID.randomUUID().toString());
-                pi.setUid("Description/"+UUID.randomUUID().toString());
-                pi.setVersion(null);
-                pi.setDescription(description);
-                pi.setDataproductInstance(edmobj);
-                pi.setLang(null);
-                EposDataModelDAO.getInstance().updateObject(pi);
-            }
+            RelationSyncUtil.syncSimpleOneToMany(
+                    edmobj, edmobj.getInstanceId(), obj.getDescription(), model.DataproductDescription.class,
+                    "dataproductInstance", "Description",
+                    model.DataproductDescription::getDescription, model.DataproductDescription::setDescription, model.DataproductDescription::setDataproductInstance
+            );
         }
 
-        /** QUALIFIEDATTRIBUTION **/
-        if (obj.getQualifiedAttribution() != null) {
-            if(relationFromUpdate!=null && obj.getQualifiedAttribution().contains(relationFromUpdate)){
-                obj.getQualifiedAttribution().remove(relationFromUpdate);
-                obj.getQualifiedAttribution().add(relationToUpdate);
-            }
-            for(LinkedEntity attribution : obj.getQualifiedAttribution()){
-                Attribution attribution1 = (Attribution) RelationChecker.checkRelation(obj, previousObj, null, attribution, overrideStatus, Attribution.class, false);
-                if(attribution1!=null) {
-                    DataproductAttribution pi = new DataproductAttribution();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setAttributionInstance(attribution1);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
-        }
-
-        /** SOURCE **/
-        if (obj.getSource() != null) {
-            if(relationFromUpdate!=null && obj.getSource().contains(relationFromUpdate)){
-                obj.getSource().remove(relationFromUpdate);
-                obj.getSource().add(relationToUpdate);
-            }
-            for(LinkedEntity dataProduct : obj.getSource()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
-                if(dataproduct!=null) {
-                    DataproductSource pi = new DataproductSource();
-                    pi.setDataproduct1Instance(edmobj);
-                    pi.setDataproduct2Instance(dataproduct);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
-        }
-
-
-        /** HASPART **/
-        if (obj.getHasPart() != null) {
-            if(relationFromUpdate!=null && obj.getHasPart().contains(relationFromUpdate)){
-                obj.getHasPart().remove(relationFromUpdate);
-                obj.getHasPart().add(relationToUpdate);
-            }
-            for(LinkedEntity dataProduct : obj.getHasPart()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
-                if(dataproduct!=null) {
-                    DataproductHaspart pi = new DataproductHaspart();
-                    pi.setDataproduct1Instance(edmobj);
-                    pi.setDataproduct2Instance(dataproduct);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
-        }
-
-        /** ISPARTOF **/
-        if (obj.getIsPartOf() != null) {
-            if(relationFromUpdate!=null && obj.getIsPartOf().contains(relationFromUpdate)){
-                obj.getIsPartOf().remove(relationFromUpdate);
-                obj.getIsPartOf().add(relationToUpdate);
-            }
-            for(LinkedEntity dataProduct : obj.getIsPartOf()){
-                Dataproduct dataproduct = (Dataproduct) RelationChecker.checkRelation(obj, previousObj, null, dataProduct, overrideStatus, Dataproduct.class, false);
-                if(dataproduct!=null) {
-                    DataproductIspartof pi = new DataproductIspartof();
-                    pi.setDataproduct1Instance(dataproduct);
-                    pi.setDataproduct2Instance(edmobj);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
-        }
-
-        /** IDENTIFIER **/
-        if (obj.getIdentifier() != null) {
-            for(org.epos.eposdatamodel.LinkedEntity identifier : obj.getIdentifier()){
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(identifier, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
-                List<Identifier> identifierList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(),Identifier.class);
-                if(!identifierList.isEmpty()) {
-                    DataproductIdentifier pi = new DataproductIdentifier();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setIdentifierInstance(identifierList.get(0));
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
-        }
         /** PROVENANCE **/
         if (obj.getProvenance() != null) {
-            for(String provenance : obj.getProvenance()){
-                DataproductProvenance pi = new DataproductProvenance();
-                pi.setInstanceId(UUID.randomUUID().toString());
-                pi.setMetaId(UUID.randomUUID().toString());
-                pi.setUid("Title/"+UUID.randomUUID().toString());
-                pi.setVersion(null);
-                pi.setProvenance(provenance);
-                pi.setDataproductInstance(edmobj);
-                EposDataModelDAO.getInstance().updateObject(pi);
-            }
+            RelationSyncUtil.syncSimpleOneToMany(
+                    edmobj, edmobj.getInstanceId(), obj.getProvenance(), model.DataproductProvenance.class,
+                    "dataproductInstance", "Provenance",
+                    model.DataproductProvenance::getProvenance, model.DataproductProvenance::setProvenance, model.DataproductProvenance::setDataproductInstance
+            );
         }
 
-        /** PUBLISHER **/
+        /** PUBLISHER (DataproductPublisher) **/
         if (obj.getPublisher() != null) {
-            if(relationFromUpdate!=null && obj.getPublisher().contains(relationFromUpdate)){
-                obj.getPublisher().remove(relationFromUpdate);
-                obj.getPublisher().add(relationToUpdate);
-            }
-            for (LinkedEntity organization : obj.getPublisher()) {
-                Organization organization1 = null;
-
-//                if (obj.getStatus()!=null && obj.getStatus().equals(StatusType.DRAFT)) {
-//                    List<Organization> tempOrganization = (List<Organization>) getDbaccess().getOneFromDBByLinkedEntity(organization, Organization.class);
-//                    if (tempOrganization != null && !tempOrganization.isEmpty()) {
-//                        organization1 = tempOrganization.get(0);
-//                    }
-//                }
-
-                if (organization1 == null) {
-                    organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, organization, overrideStatus, Organization.class, false);
-                }
-
-                if (organization1 != null) {
-                    DataproductPublisher pi = new DataproductPublisher();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setOrganizationInstance(organization1);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getPublisher(), relationFromUpdate, relationToUpdate,
+                    DataproductPublisher.class, Organization.class,
+                    "dataproductInstance",
+                    DataproductPublisher::getOrganizationInstance,
+                    DataproductPublisher::setDataproductInstance,
+                    DataproductPublisher::setOrganizationInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        /** DISTRIBUTION **/
+        /** DISTRIBUTION (DistributionDataproduct) **/
         if (obj.getDistribution() != null) {
-            if(relationFromUpdate!=null && obj.getDistribution().contains(relationFromUpdate)){
-                obj.getDistribution().remove(relationFromUpdate);
-                obj.getDistribution().add(relationToUpdate);
-            }
-            for(LinkedEntity distribution : obj.getDistribution()){
-                Distribution distribution1 = (Distribution) RelationChecker.checkRelation(obj, previousObj, null, distribution, overrideStatus, Distribution.class, false);
-                if(distribution1!=null) {
-                    DistributionDataproduct pi = new DistributionDataproduct();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setDistributionInstance(distribution1);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
+                    DistributionDataproduct.class, Distribution.class,
+                    "dataproductInstance",
+                    DistributionDataproduct::getDistributionInstance,
+                    DistributionDataproduct::setDataproductInstance,
+                    DistributionDataproduct::setDistributionInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        /** SPATIAL **/
+        /** QUALIFIED ATTRIBUTION (DataproductAttribution) **/
+        if (obj.getQualifiedAttribution() != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getQualifiedAttribution(), relationFromUpdate, relationToUpdate,
+                    DataproductAttribution.class, Attribution.class,
+                    "dataproductInstance",
+                    DataproductAttribution::getAttributionInstance,
+                    DataproductAttribution::setDataproductInstance,
+                    DataproductAttribution::setAttributionInstance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
+
+        /** SOURCE (DataproductSource) **/
+        if (obj.getSource() != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getSource(), relationFromUpdate, relationToUpdate,
+                    DataproductSource.class, Dataproduct.class,
+                    "dataproduct1Instance",
+                    DataproductSource::getDataproduct2Instance,
+                    DataproductSource::setDataproduct1Instance,
+                    DataproductSource::setDataproduct2Instance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
+
+        /** HAS PART (DataproductHaspart) **/
+        if (obj.getHasPart() != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getHasPart(), relationFromUpdate, relationToUpdate,
+                    DataproductHaspart.class, Dataproduct.class,
+                    "dataproduct1Instance",
+                    DataproductHaspart::getDataproduct2Instance,
+                    DataproductHaspart::setDataproduct1Instance,
+                    DataproductHaspart::setDataproduct2Instance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
+
+        /** IS PART OF (DataproductIspartof) **/
+        if (obj.getIsPartOf() != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
+                    DataproductIspartof.class, Dataproduct.class,
+                    "dataproduct2Instance", // Parent (Is Part Of)
+                    DataproductIspartof::getDataproduct1Instance,
+                    DataproductIspartof::setDataproduct2Instance,
+                    DataproductIspartof::setDataproduct1Instance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
+
+        /** SPATIAL (DataproductSpatial) **/
         if (obj.getSpatialExtent() != null) {
-            if(relationFromUpdate!=null && obj.getSpatialExtent().contains(relationFromUpdate)){
-                obj.getSpatialExtent().remove(relationFromUpdate);
-                obj.getSpatialExtent().add(relationToUpdate);
-            }
-            for(org.epos.eposdatamodel.LinkedEntity location : obj.getSpatialExtent()){
-                Spatial spatial = (Spatial) RelationChecker.checkRelation(obj, previousObj, null, location, overrideStatus, Spatial.class, false);
-                if(spatial!=null){
-                    DataproductSpatial pi = new DataproductSpatial();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setSpatialInstance(spatial);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                    DataproductSpatial.class, Spatial.class,
+                    "dataproductInstance",
+                    DataproductSpatial::getSpatialInstance,
+                    DataproductSpatial::setDataproductInstance,
+                    DataproductSpatial::setSpatialInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        /** TEMPORAL **/
+        /** TEMPORAL (DataproductTemporal) **/
         if (obj.getTemporalExtent() != null) {
-            if(relationFromUpdate!=null && obj.getTemporalExtent().contains(relationFromUpdate)){
-                obj.getTemporalExtent().remove(relationFromUpdate);
-                obj.getTemporalExtent().add(relationToUpdate);
-            }
-            for(org.epos.eposdatamodel.LinkedEntity periodOfTime : obj.getTemporalExtent()){
-                Temporal temporal = (Temporal) RelationChecker.checkRelation(obj, previousObj, null, periodOfTime, overrideStatus, Temporal.class, false);
-                if(temporal!=null){
-                    DataproductTemporal pi = new DataproductTemporal();
-                    pi.setDataproductInstance(edmobj);
-                    pi.setTemporalInstance(temporal);
-                    EposDataModelDAO.getInstance().updateObject(pi);
-                }
-            }
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
+                    DataproductTemporal.class, Temporal.class,
+                    "dataproductInstance",
+                    DataproductTemporal::getTemporalInstance,
+                    DataproductTemporal::setDataproductInstance,
+                    DataproductTemporal::setTemporalInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        if(obj.getReferencedBy()!=null){
-            for(String accessurl : obj.getReferencedBy()) {
-                createInnerElement(ElementType.REFERENCEDBY, accessurl, edmobj, overrideStatus);
-            }
+        /** IDENTIFIER (DataproductIdentifier) **/
+        if (obj.getIdentifier() != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
+                    DataproductIdentifier.class, Identifier.class,
+                    "dataproductInstance",
+                    DataproductIdentifier::getIdentifierInstance,
+                    DataproductIdentifier::setDataproductInstance,
+                    DataproductIdentifier::setIdentifierInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        if(obj.getLandingPage()!=null){
-            for(String accessurl : obj.getLandingPage()) {
-                createInnerElement(ElementType.LANDINGPAGE, accessurl, edmobj, overrideStatus);
-            }
+        if (obj.getReferencedBy() != null) {
+            for (String val : obj.getReferencedBy()) createInnerElement(ElementType.REFERENCEDBY, val, edmobj, overrideStatus);
         }
-
-        if(obj.getVariableMeasured()!=null){
-            for(String accessurl : obj.getVariableMeasured()) {
-                createInnerElement(ElementType.VARIABLEMEASURED, accessurl, edmobj, overrideStatus);
-            }
+        if (obj.getLandingPage() != null) {
+            for (String val : obj.getLandingPage()) createInnerElement(ElementType.LANDINGPAGE, val, edmobj, overrideStatus);
+        }
+        if (obj.getVariableMeasured() != null) {
+            for (String val : obj.getVariableMeasured()) createInnerElement(ElementType.VARIABLEMEASURED, val, edmobj, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
 
         return new LinkedEntity().entityType(entityName)
-                    .instanceId(edmobj.getInstanceId())
-                    .metaId(edmobj.getMetaId())
-                    .uid(edmobj.getUid());
+                .instanceId(edmobj.getInstanceId())
+                .metaId(edmobj.getMetaId())
+                .uid(edmobj.getUid());
 
     }
 
-    private void createInnerElement(ElementType elementType, String value, Dataproduct edmobj, StatusType overrideStatus){
+    private void createInnerElement(ElementType elementType, String value, Dataproduct edmobj, StatusType overrideStatus) {
+        List<Object> existingRelations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductElement.class);
+        if (existingRelations != null) {
+            for (Object obj : existingRelations) {
+                DataproductElement relation = (DataproductElement) obj;
+                Element existingElement = relation.getElementInstance();
+                if (existingElement != null && existingElement.getType().equals(elementType.name()) && existingElement.getValue().equals(value)) {
+                    return;
+                }
+            }
+        }
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
+        if (edmobj.getVersion().getEditorId() != null)
+            element.setEditorId(edmobj.getVersion().getEditorId());
+        if (edmobj.getVersion().getProvenance() != null)
+            element.setFileProvenance(edmobj.getVersion().getProvenance());
+        if (edmobj.getVersion().getChangeComment() != null)
+            element.setChangeComment(edmobj.getVersion().getChangeComment());
+        if (edmobj.getVersion().getChangeTimestamp() != null)
+            element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
 
-        if(edmobj.getVersion().getEditorId()!=null) element.setEditorId(edmobj.getVersion().getEditorId());
-        if(edmobj.getVersion().getProvenance()!=null) element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if(edmobj.getVersion().getChangeComment()!=null) element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
-
-        ElementAPI api = new ElementAPI(EntityNames.ELEMENT.name(), Element.class);
-        LinkedEntity le = api.create(element, overrideStatus, null, null);
+        LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
-        DataproductElement ce = new DataproductElement();
-        ce.setDataproductInstance(edmobj);
-        ce.setElementInstance(el.get(0));
-        EposDataModelDAO.getInstance().updateObject(ce);
-    }
 
+        if (!el.isEmpty()) {
+            DataproductElement ce = new DataproductElement();
+            ce.setDataproductInstance(edmobj);
+            ce.setElementInstance(el.get(0));
+            EposDataModelDAO.getInstance().updateObject(ce);
+        }
+    }
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(DataproductAttribution.class)){
-            DataproductAttribution item = (DataproductAttribution) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductElement.class)){
-            DataproductElement item = (DataproductElement) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductSource.class)){
-            DataproductSource item = (DataproductSource) object;
-            if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductContactpoint.class)){
-            DataproductContactpoint item = (DataproductContactpoint) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductCategory.class)){
-            DataproductCategory item = (DataproductCategory) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductIspartof.class)){
-            DataproductIspartof item = (DataproductIspartof) object;
-            if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
-            DataproductIdentifier item = (DataproductIdentifier) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductTitle.class)){
-            DataproductTitle item = (DataproductTitle) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductTemporal.class)){
-            DataproductTemporal item = (DataproductTemporal) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductSpatial.class)){
-            DataproductSpatial item = (DataproductSpatial) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DataproductRelation.class)){
-            DataproductRelation item = (DataproductRelation) object;
-            if(item.getDataproduct().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(DataproductPublisher.class)){
-            DataproductPublisher item = (DataproductPublisher) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(DataproductProvenance.class)){
-            DataproductProvenance item = (DataproductProvenance) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(DataproductHaspart.class)){
-            DataproductHaspart item = (DataproductHaspart) object;
-            if(item.getDataproduct1Instance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(DataproductDescription.class)){
-            DataproductDescription item = (DataproductDescription) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        for(Object object : getDbaccess().getAllFromDB(DistributionDataproduct.class)){
-            DistributionDataproduct item = (DistributionDataproduct) object;
-            if(item.getDataproductInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
+        deleteRelations("dataproductInstance", instanceId, DataproductAttribution.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductElement.class);
+        deleteRelations("dataproduct1Instance", instanceId, DataproductSource.class); // Source (as 1)
+        deleteRelations("dataproductInstance", instanceId, DataproductContactpoint.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductCategory.class);
+        deleteRelations("dataproduct1Instance", instanceId, DataproductIspartof.class); // IsPartOf (as 1)
+        deleteRelations("dataproductInstance", instanceId, DataproductIdentifier.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductTitle.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductTemporal.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductSpatial.class);
+        deleteRelations("dataproduct", instanceId, DataproductRelation.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductPublisher.class);
+        deleteRelations("dataproductInstance", instanceId, DataproductProvenance.class);
+        deleteRelations("dataproduct1Instance", instanceId, DataproductHaspart.class); // HasPart (as 1)
+        deleteRelations("dataproductInstance", instanceId, DataproductDescription.class);
+        deleteRelations("dataproductInstance", instanceId, DistributionDataproduct.class);
 
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
-        for(Dataproduct object : elementList){
+        for (Dataproduct object : elementList) {
             EposDataModelDAO.getInstance().deleteObject(object);
         }
-
         return true;
     }
 
+    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
+        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
+        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+    }
 
     @Override
     public org.epos.eposdatamodel.DataProduct retrieve(String instanceId) {
-
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
-        if (elementList == null || elementList.isEmpty()) {
-            return null;
-        }
+        if (elementList == null || elementList.isEmpty()) return null;
 
         Dataproduct edmobj = elementList.get(0);
-
         org.epos.eposdatamodel.DataProduct o = new org.epos.eposdatamodel.DataProduct();
 
         o.setInstanceId(edmobj.getInstanceId());
@@ -502,155 +328,105 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         o.setUid(edmobj.getUid());
         o.setType(edmobj.getType());
         o.setAccrualPeriodicity(edmobj.getAccrualperiodicity());
-        o.setCreated(
-                edmobj.getCreated()
-        );
-        o.setIssued(
-                edmobj.getIssued()
-        );
-        o.setModified(
-                edmobj.getModified()
-        );
+        o.setCreated(edmobj.getCreated());
+        o.setIssued(edmobj.getIssued());
+        o.setModified(edmobj.getModified());
         o.setType(edmobj.getType());
         o.setVersionInfo(edmobj.getVersioninfo());
         o.setDocumentation(edmobj.getDocumentation());
         o.setQualityAssurance(edmobj.getQualityassurance());
         o.setAccessRight(edmobj.getAccessright());
 
-        if(edmobj.getKeywords()!=null && !edmobj.getKeywords().isBlank())
-            for(String item : edmobj.getKeywords().split("\\|"))
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isBlank())
+            for (String item : edmobj.getKeywords().split("\\|"))
                 o.addKeywords(item);
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductAttribution.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductAttribution.class)) {
             DataproductAttribution item = (DataproductAttribution) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-            LinkedEntity le = retrieveAPI(EntityNames.ATTRIBUTION.name()).retrieveLinkedEntity(item.getAttributionInstance().getInstanceId());
-            o.addQualifiedAttribution(le);
-            //}
+            o.addQualifiedAttribution(retrieveAPI(EntityNames.ATTRIBUTION.name()).retrieveLinkedEntity(item.getAttributionInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductCategory.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductCategory.class)) {
             DataproductCategory item = (DataproductCategory) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId());
-                o.addCategory(le);
-            //}
+            o.addCategory(retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductContactpoint.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductContactpoint.class)) {
             DataproductContactpoint item = (DataproductContactpoint) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId());
-                o.addContactPoint(le);
-            //}
+            o.addContactPoint(retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductDescription.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductDescription.class)) {
             DataproductDescription item = (DataproductDescription) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                o.addDescription(item.getDescription());
-            //}
+            o.addDescription(item.getDescription());
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTitle.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductTitle.class)) {
             DataproductTitle item = (DataproductTitle) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                o.addTitle(item.getTitle());
-            //}
+            o.addTitle(item.getTitle());
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductIdentifier.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductIdentifier.class)) {
             DataproductIdentifier item = (DataproductIdentifier) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId());
-                o.addIdentifier(le);
-            //}
+            o.addIdentifier(retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(item.getIdentifierInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductSource.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(), DataproductSource.class)) {
             DataproductSource item = (DataproductSource) object;
-            // if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
-            LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
-            o.addSource(le);
-            //}
+            o.addSource(retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductHaspart.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(), DataproductHaspart.class)) {
             DataproductHaspart item = (DataproductHaspart) object;
-            // if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
-                o.addHasPart(le);
-            //}
+            o.addHasPart(retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(),DataproductIspartof.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproduct1Instance", edmobj.getInstanceId(), DataproductIspartof.class)) {
             DataproductIspartof item = (DataproductIspartof) object;
-            //if(item.getDataproduct1Instance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId());
-                o.addHasPart(le);
-            //}
+            o.addHasPart(retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveLinkedEntity(item.getDataproduct2Instance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductProvenance.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductProvenance.class)) {
             DataproductProvenance item = (DataproductProvenance) object;
-            if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                o.addDescription(item.getProvenance());
-            }
+            o.addDescription(item.getProvenance()); // Check mapping: PROVENANCE field added to description?
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductPublisher.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductPublisher.class)) {
             DataproductPublisher item = (DataproductPublisher) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId());
-                o.addPublisher(le);
-            //}
+            o.addPublisher(retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(item.getOrganizationInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DistributionDataproduct.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DistributionDataproduct.class)) {
             DistributionDataproduct item = (DistributionDataproduct) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveLinkedEntity(item.getDistributionInstance().getInstanceId());
-                o.addDistribution(le);
-            //}
+            o.addDistribution(retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveLinkedEntity(item.getDistributionInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductSpatial.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductSpatial.class)) {
             DataproductSpatial item = (DataproductSpatial) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId());
-                o.addSpatialExtentItem(le);
-            //}
+            o.addSpatialExtentItem(retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductTemporal.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductTemporal.class)) {
             DataproductTemporal item = (DataproductTemporal) object;
-            //if(item.getDataproductInstance().getInstanceId().equals(edmobj.getInstanceId())) {
-                LinkedEntity le = retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId());
-                o.addTemporalExtent(le);
-            //}
+            o.addTemporalExtent(retrieveAPI(EntityNames.PERIODOFTIME.name()).retrieveLinkedEntity(item.getTemporalInstance().getInstanceId()));
         }
 
-        for (Object object : EposDataModelDAO.getInstance().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(),DataproductElement.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("dataproductInstance", edmobj.getInstanceId(), DataproductElement.class)) {
             DataproductElement item = (DataproductElement) object;
-            //if(item.getDistributionInstance().getInstanceId().equals(edmobj.getInstanceId())) {
             Element el = item.getElementInstance();
             if (el.getType().equals(ElementType.REFERENCEDBY.name())) o.addReferencedBy(el.getValue());
             if (el.getType().equals(ElementType.LANDINGPAGE.name())) o.addLandingPage(el.getValue());
             if (el.getType().equals(ElementType.VARIABLEMEASURED.name())) o.addVariableMeasured(el.getValue());
-            //}
         }
 
         o = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.retrieveVersion(o);
-
         return o;
     }
+
     @Override
     public org.epos.eposdatamodel.DataProduct retrieveByUID(String uid) {
         List<Dataproduct> returnList = getDbaccess().getOneFromDBByUID(uid, Dataproduct.class);
-        if (!returnList.isEmpty()) {
-            return retrieve(returnList.get(0).getInstanceId());
-        }
-        return null;
+        return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
     @Override
     public List<DataProduct> retrieveBunch(List<String> entities) {
@@ -664,29 +440,21 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     public List<DataProduct> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Dataproduct.class, status));
     }
-
     private List<DataProduct> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
     }
-
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList != null && !elementList.isEmpty()) {
             Dataproduct edmobj = elementList.get(0);
             LinkedEntity o = new LinkedEntity();
             o.setInstanceId(edmobj.getInstanceId());
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
             o.setEntityType(EntityNames.DATAPRODUCT.name());
-
             return o;
         }
         return null;
     }
-
 }

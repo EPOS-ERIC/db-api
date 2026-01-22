@@ -2,13 +2,12 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
-import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import model.*;
-import org.epos.eposdatamodel.Group;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
-import usermanagementapis.UserGroupManagementAPI;
+import relationsapi.RelationSyncUtil;
 
 import java.util.*;
 import java.util.function.Function;
@@ -22,6 +21,8 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.CategoryScheme obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
 
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
@@ -37,17 +38,13 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
         if(!returnList.isEmpty()){
             CategoryScheme selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
             for (CategoryScheme item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
                     selectedEntity = item;
                     break;
                 }
             }
-
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
@@ -55,7 +52,6 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         }
 
         obj = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.checkVersion(obj, overrideStatus);
-
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         CategoryScheme edmobj = new CategoryScheme();
@@ -74,8 +70,17 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         edmobj.setOrderitemnumber(Optional.ofNullable(obj.getOrderitemnumber()).orElse(""));
         edmobj.setLogo(Optional.ofNullable(obj.getLogo()).orElse(""));
 
-        if (Objects.nonNull(obj.getTopConcepts())) createTopConcepts(obj.getTopConcepts(), edmobj, overrideStatus, obj.getFileProvenance());
-
+        if (Objects.nonNull(obj.getTopConcepts())) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getTopConcepts(), relationFromUpdate, relationToUpdate,
+                    CategoryHastopconcept.class, Category.class,
+                    "categorySchemeInstance",
+                    CategoryHastopconcept::getCategoryInstance,
+                    CategoryHastopconcept::setCategorySchemeInstance,
+                    CategoryHastopconcept::setCategoryInstance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
 
         getDbaccess().updateObject(edmobj);
 
@@ -85,28 +90,10 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
                 .uid(edmobj.getUid());
     }
 
-    private void createTopConcepts(List<LinkedEntity> topConcepts, CategoryScheme edmobj, StatusType overrideStatus, String provenance){
-        for(LinkedEntity topConcept : topConcepts) {
-
-            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(topConcept, overrideStatus, edmobj.getVersion(), provenance);
-
-            CategoryHastopconcept categoryHastopconcept = new CategoryHastopconcept();
-            categoryHastopconcept.setCategorySchemeInstance(edmobj);
-            categoryHastopconcept.setCategoryInstance((Category) getDbaccess().getOneFromDBByInstanceId(le.getInstanceId(), Category.class).get(0));
-
-            getDbaccess().updateObject(categoryHastopconcept);
-        }
-    }
-
     @Override
     public Boolean delete(String instanceId) {
-
-        for(Object object : getDbaccess().getAllFromDB(CategoryHastopconcept.class)){
-            CategoryHastopconcept item = (CategoryHastopconcept) object;
-            if(item.getCategorySchemeInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
+        List<Object> rels = getDbaccess().getOneFromDBBySpecificKey("categorySchemeInstance", instanceId, CategoryHastopconcept.class);
+        if(rels != null) rels.forEach(EposDataModelDAO.getInstance()::deleteObject);
 
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
         for(CategoryScheme object : elementList){
@@ -117,44 +104,36 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public org.epos.eposdatamodel.CategoryScheme retrieve(String instanceId) {
-
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
-        if (elementList == null || elementList.isEmpty()) {
-            return null;
+        if (elementList == null || elementList.isEmpty()) return null;
+
+        CategoryScheme edmobj = elementList.get(0);
+        org.epos.eposdatamodel.CategoryScheme o = new org.epos.eposdatamodel.CategoryScheme();
+
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setTitle(edmobj.getName());
+        o.setDescription(edmobj.getDescription());
+        o.setCode(edmobj.getCode());
+        o.setHomepage(edmobj.getHomepage());
+        o.setLogo(edmobj.getLogo());
+        o.setColor(edmobj.getColor());
+        o.setOrderitemnumber(edmobj.getOrderitemnumber());
+
+        for(Object obj : getDbaccess().getOneFromDBBySpecificKey("categorySchemeInstance", edmobj.getInstanceId(),CategoryHastopconcept.class)){
+            CategoryHastopconcept item = (CategoryHastopconcept) obj;
+            o.addTopConcepts(AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
         }
-            CategoryScheme edmobj = elementList.get(0);
-            org.epos.eposdatamodel.CategoryScheme o = new org.epos.eposdatamodel.CategoryScheme();
 
-
-            o.setInstanceId(edmobj.getInstanceId());
-            o.setMetaId(edmobj.getMetaId());
-            o.setUid(edmobj.getUid());
-            o.setTitle(edmobj.getName());
-            o.setDescription(edmobj.getDescription());
-            o.setCode(edmobj.getCode());
-            o.setHomepage(edmobj.getHomepage());
-            o.setLogo(edmobj.getLogo());
-            o.setColor(edmobj.getColor());
-            o.setOrderitemnumber(edmobj.getOrderitemnumber());
-
-            for(Object obj : getDbaccess().getOneFromDBBySpecificKey("categorySchemeInstance", edmobj.getInstanceId(),CategoryHastopconcept.class)){
-                CategoryHastopconcept item = (CategoryHastopconcept) obj;
-                o.addTopConcepts(AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
-            }
-
-            o = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.retrieveVersion(o);
-
-            return o;
+        o = (org.epos.eposdatamodel.CategoryScheme) VersioningStatusAPI.retrieveVersion(o);
+        return o;
     }
     @Override
     public org.epos.eposdatamodel.CategoryScheme retrieveByUID(String uid) {
         List<CategoryScheme> returnList = getDbaccess().getOneFromDBByUID(uid, CategoryScheme.class);
-        if (!returnList.isEmpty()) {
-            return retrieve(returnList.get(0).getInstanceId());
-        }
-        return null;
+        return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
-
     @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, CategoryScheme.class));
@@ -167,15 +146,9 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(CategoryScheme.class, status));
     }
-
     private List<org.epos.eposdatamodel.CategoryScheme> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
     }
-
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
@@ -186,7 +159,6 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             o.setMetaId(edmobj.getMetaId());
             o.setUid(edmobj.getUid());
             o.setEntityType(EntityNames.CATEGORYSCHEME.name());
-
             return o;
         }
         return null;

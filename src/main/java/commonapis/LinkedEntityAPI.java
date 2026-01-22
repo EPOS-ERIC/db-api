@@ -84,47 +84,37 @@ public class LinkedEntityAPI {
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
 
         if (api != null && edmClass != null) {
-            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                    obj.getInstanceId(),
-                    obj.getMetaId(),
-                    obj.getUid(),
-                    null,
-                    Versioningstatus.class
-            );
 
-            if (returnList.isEmpty()) {
-                EPOSDataModelEntity entity = null;
-                try {
-                    entity = (EPOSDataModelEntity) edmClass.getDeclaredConstructor().newInstance();
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                         NoSuchMethodException e) {
-                    throw new RuntimeException(e);
-                }
-                entity.setInstanceId(Optional.ofNullable(obj.getInstanceId()).orElse(UUID.randomUUID().toString()));
-                entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
-                entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
-                if (provenance != null) entity.setFileProvenance(provenance);
-                if (overrideStatus != null) entity.setStatus(overrideStatus);
-                if(parentVersioningstatus!=null) {
-                    if (parentVersioningstatus.getProvenance() != null)
-                        entity.setFileProvenance(parentVersioningstatus.getProvenance());
-                    if (parentVersioningstatus.getVersion() != null)
-                        entity.setVersion(parentVersioningstatus.getVersion());
-                    if (parentVersioningstatus.getEditorId() != null)
-                        entity.setEditorId(parentVersioningstatus.getEditorId());
-                    if (parentVersioningstatus.getChangeComment() != null)
-                        entity.setChangeComment(parentVersioningstatus.getChangeComment());
-                    if (parentVersioningstatus.getChangeTimestamp() != null)
-                        entity.setChangeTimestamp(parentVersioningstatus.getChangeTimestamp().toLocalDateTime());
-                }
-
-                return api.create(entity, overrideStatus, null, null);
-            } else {
-                Versioningstatus versioningstatus = returnList.get(0);
-                obj.setInstanceId(versioningstatus.getInstanceId());
-                obj.setMetaId(versioningstatus.getMetaId());
-                return obj;
+            // Always instantiate and call API create to leverage Smart Lookup logic
+            EPOSDataModelEntity entity = null;
+            try {
+                entity = (EPOSDataModelEntity) edmClass.getDeclaredConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                     NoSuchMethodException e) {
+                throw new RuntimeException(e);
             }
+
+            entity.setInstanceId(Optional.ofNullable(obj.getInstanceId()).orElse(UUID.randomUUID().toString()));
+            entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
+            entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
+
+            if (provenance != null) entity.setFileProvenance(provenance);
+            if (overrideStatus != null) entity.setStatus(overrideStatus);
+
+            if(parentVersioningstatus != null) {
+                if (parentVersioningstatus.getProvenance() != null)
+                    entity.setFileProvenance(parentVersioningstatus.getProvenance());
+                if (parentVersioningstatus.getVersion() != null)
+                    entity.setVersion(parentVersioningstatus.getVersion());
+                if (parentVersioningstatus.getEditorId() != null)
+                    entity.setEditorId(parentVersioningstatus.getEditorId());
+                if (parentVersioningstatus.getChangeComment() != null)
+                    entity.setChangeComment(parentVersioningstatus.getChangeComment());
+                if (parentVersioningstatus.getChangeTimestamp() != null)
+                    entity.setChangeTimestamp(parentVersioningstatus.getChangeTimestamp().toLocalDateTime());
+            }
+
+            return api.create(entity, overrideStatus, null, null);
         }
         return null;
     }
@@ -147,50 +137,6 @@ public class LinkedEntityAPI {
             }
         } else {
             return createFromLinkedEntity(obj, null, null, null);
-        }
-        return null;
-    }
-
-    public static Object retrieveFromLinkedEntity(LinkedEntity obj, String fileProvenance) {
-        AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
-
-        if (api != null) {
-            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                    obj.getInstanceId(),
-                    obj.getMetaId(),
-                    obj.getUid(),
-                    null,
-                    Versioningstatus.class
-            );
-
-            if (!returnList.isEmpty()) {
-                Versioningstatus edmobj = returnList.get(0);
-                if(edmobj.getProvenance()!=null && edmobj.getProvenance().equals(fileProvenance))
-                    return api.retrieve(edmobj.getInstanceId());
-                else return null;
-            }
-        } else {
-            return createFromLinkedEntity(obj, null, null, fileProvenance);
-        }
-        return null;
-    }
-
-    public static Object retrieveFromLinkedEntityIgnoringProvenance(LinkedEntity obj) {
-        AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
-
-        if (api != null) {
-            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
-                    obj.getInstanceId(),
-                    obj.getMetaId(),
-                    obj.getUid(),
-                    null,
-                    Versioningstatus.class
-            );
-
-            if (!returnList.isEmpty()) {
-                Versioningstatus edmobj = returnList.get(0);
-                return api.retrieve(edmobj.getInstanceId());
-            }
         }
         return null;
     }

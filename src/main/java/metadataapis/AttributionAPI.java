@@ -7,6 +7,7 @@ import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 
 import java.util.*;
 import java.util.function.Function;
@@ -75,38 +76,37 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
             }
         }
 
-        if(obj.getRole()!=null) {
-
-            for(Object organizationContactpoint : getDbaccess().getOneFromDBBySpecificKey("attributionInstance", edmobj.getInstanceId(),AttributionRole.class)){
-                AttributionRole item = (AttributionRole) organizationContactpoint;
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-            for(String role : obj.getRole()) {
-                AttributionRole roleobj = new AttributionRole();
-                roleobj.setAttributionInstance(edmobj);
-                roleobj.setInstanceId(UUID.randomUUID().toString());
-                roleobj.setRoletype(role);
-                roleobj.setMetaId(UUID.randomUUID().toString());//TODO: fix version
-                if(edmobj.getVersion().getEditorId()!=null) roleobj.setEditorId(edmobj.getVersion().getEditorId());
-                if(edmobj.getVersion().getProvenance()!=null) roleobj.setFileProvenance(edmobj.getVersion().getProvenance());
-                if(edmobj.getVersion().getChangeComment()!=null) roleobj.setChangeComment(edmobj.getVersion().getChangeComment());
-                if(edmobj.getVersion().getChangeTimestamp()!=null) roleobj.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
-
-                EposDataModelDAO.getInstance().updateObject(roleobj);
-            }
+        if(obj.getRole() != null) {
+            RelationSyncUtil.syncSimpleOneToMany(
+                    edmobj,
+                    edmobj.getInstanceId(),
+                    obj.getRole(),
+                    model.AttributionRole.class,
+                    "attributionInstance",
+                    "Role",
+                    model.AttributionRole::getRoletype,
+                    model.AttributionRole::setRoletype,
+                    model.AttributionRole::setAttributionInstance
+            );
         }
 
         getDbaccess().updateObject(edmobj);
 
         return new LinkedEntity().entityType(entityName)
-                    .instanceId(edmobj.getInstanceId())
-                    .metaId(edmobj.getMetaId())
-                    .uid(edmobj.getUid());
+                .instanceId(edmobj.getInstanceId())
+                .metaId(edmobj.getMetaId())
+                .uid(edmobj.getUid());
 
     }
 
     @Override
     public Boolean delete(String instanceId) {
+        List<Object> roles = getDbaccess().getOneFromDBBySpecificKey("attributionInstance", instanceId, AttributionRole.class);
+        if (roles != null) {
+            for (Object object : roles) {
+                EposDataModelDAO.getInstance().deleteObject(object);
+            }
+        }
 
         List<Attribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Attribution.class);
         for(Attribution object : elementList){
