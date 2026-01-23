@@ -91,11 +91,9 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 if (!address.isEmpty()) {
                     edmobj.setAddress(address.get(0));
                 } else {
-                    LOG.info("Address entity not found for Person " + edmobj.getUid() + ". Creating pending relation.");
                     createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
                 }
             } else {
-                LOG.info("Address linked entity is null for Person " + edmobj.getUid() + ". Creating pending relation.");
                 createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
             }
         }

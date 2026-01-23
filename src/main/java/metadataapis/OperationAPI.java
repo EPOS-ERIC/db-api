@@ -172,7 +172,6 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     }
 
     private void deleteExistingElements(String operationInstanceId) {
-        // FIX: Use getJoinEntitiesByRelationField which queries the @ManyToOne relationship field
         List<OperationElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
 

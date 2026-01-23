@@ -171,7 +171,6 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
                             joinClass.getMethod("setResourceEntity", String.class).invoke(pi, link.getEntityType());
                             joinClass.getMethod("setEntityInstanceId", String.class).invoke(pi, targetInstanceId);
 
-                            // FIX: Try update, catch exception if it already exists (race condition)
                             EposDataModelDAO.getInstance().updateObject(pi);
 
                         } catch (Exception e) {
@@ -231,7 +230,6 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
             pending.setChangeComment(targetLink.getEntityType());
             pending.setChangeTimestamp(java.time.OffsetDateTime.now());
             EposDataModelDAO.getInstance().createObject(pending);
-            LOG.info("Created pending creator: SoftwareSourceCode " + parentInstanceId + " -> " + targetLink.getUid());
         } catch (Exception e) { LOG.warning("Error creating pending creator: " + e.getMessage()); }
     }
 

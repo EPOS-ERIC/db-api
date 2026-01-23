@@ -74,7 +74,6 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                     edmobj.setAgentId(existingOrg.getInstanceId());
                     edmobj.setAgentType(obj.getAgent().getEntityType());
                 } else {
-                    LOG.info("Agent Organization not found, creating pending relation for UID: " + obj.getAgent().getUid());
                     createPendingAgentRelation(edmobj.getInstanceId(), obj.getAgent());
                 }
             }
@@ -131,7 +130,6 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
             pending.setReviewComment(attributionInstanceId);
             pending.setChangeTimestamp(java.time.OffsetDateTime.now());
             EposDataModelDAO.getInstance().createObject(pending);
-            LOG.info("Created pending agent relation: Attribution " + attributionInstanceId + " -> Organization UID: " + agentLink.getUid());
         } catch (Exception e) {
             LOG.warning("Error creating pending agent relation: " + e.getMessage());
         }
@@ -159,7 +157,6 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                             attribution.setAgentType("ORGANIZATION");
                         }
                         EposDataModelDAO.getInstance().updateObject(attribution);
-                        LOG.info("Resolved pending agent relation: Attribution " + attributionInstanceId + " -> Organization " + organizationInstanceId);
                     }
                     EposDataModelDAO.getInstance().deleteObject(pending);
                 }

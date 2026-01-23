@@ -248,7 +248,6 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             pending.setChangeComment(targetLink.getEntityType());
             pending.setChangeTimestamp(java.time.OffsetDateTime.now());
             EposDataModelDAO.getInstance().createObject(pending);
-            LOG.info("Created pending creator: SoftwareApplication " + parentInstanceId + " -> " + targetLink.getUid());
         } catch (Exception e) { LOG.warning("Error creating pending creator: " + e.getMessage()); }
     }
 

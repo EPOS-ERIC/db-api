@@ -123,7 +123,6 @@ public class LinkedEntityAPI {
                     obj.getInstanceId(), null, null, null, Versioningstatus.class);
             if (!existing.isEmpty()) {
                 Versioningstatus vs = existing.get(0);
-                LOG.fine("Found existing entity by instanceId: " + obj.getInstanceId());
                 return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
             }
         }
@@ -134,7 +133,6 @@ public class LinkedEntityAPI {
                 // Find the version with matching status (if specified) or the latest
                 Object bestMatch = findBestMatchingVersion(existingByUid, overrideStatus);
                 if (bestMatch != null) {
-                    LOG.fine("Found existing entity by UID: " + obj.getUid() + " - reusing instead of creating new");
                     return extractLinkedEntityFromModel(bestMatch, obj.getEntityType());
                 }
             }
@@ -148,7 +146,6 @@ public class LinkedEntityAPI {
                 for (Versioningstatus vs : existingByMeta) {
                     if (overrideStatus == null ||
                             (vs.getStatus() != null && vs.getStatus().toString().equals(overrideStatus.toString()))) {
-                        LOG.fine("Found existing entity by metaId: " + obj.getMetaId());
                         return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
                     }
                 }
@@ -157,9 +154,6 @@ public class LinkedEntityAPI {
                 return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
             }
         }
-
-        LOG.info("Entity not found for UID: " + obj.getUid() +
-                " - returning null (will be handled as pending relation)");
         return null;
     }
 

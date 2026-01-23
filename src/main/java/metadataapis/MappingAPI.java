@@ -128,14 +128,12 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     private void deleteExistingElements(String mappingInstanceId) {
-        // FIX: Use getJoinEntitiesByRelationField which queries the @ManyToOne relationship field
         List<MappingElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("mappingInstance", mappingInstanceId, MappingElement.class);
 
         if (existingRelations != null) {
             for (MappingElement relation : existingRelations) {
                 EposDataModelDAO.getInstance().deleteObject(relation);
-                // Also delete the Element entity
                 if (relation.getElementInstance() != null) {
                     EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
                 }

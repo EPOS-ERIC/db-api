@@ -203,13 +203,11 @@ public class RelationSyncUtil {
                         boolean created = createJoinEntity(joinClass, parentDbObject, targetEntity, parentSetter, targetSetter);
                         // FALLBACK: Se la creazione fallisce (es. target non trovato nel DB anche se RelationChecker l'ha ritornato), crea PENDING
                         if (!created) {
-                            System.out.println("[RelationSyncUtil] Join creation failed for " + targetId + " (" + link.getUid() + "). Falling back to pending relation.");
                             createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
                         }
                     }
                 }
             } else {
-                System.out.println("[RelationSyncUtil] Deferred relation for " + joinClass.getSimpleName() + ": " + link);
                 createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
             }
         }
@@ -359,7 +357,6 @@ public class RelationSyncUtil {
             pending.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
             pending.setReviewComment(sourceInstanceId);
 
-            System.out.println("[RelationSyncUtil] createPendingRelation: " + pending);
             EposDataModelDAO.getInstance().createObject(pending);
         } catch (Exception e) {
             System.err.println("[RelationSyncUtil] Error creating pending relation: " + e.getMessage());
@@ -372,7 +369,6 @@ public class RelationSyncUtil {
      */
     public static void resolvePendingRelations(String entityUid, String entityType, Object entityDbObject) {
         if (entityUid == null || entityType == null) return;
-        System.out.println("[RelationSyncUtil] resolvePendingRelations START. Searching for UID: '" + entityUid + "' Type: '" + entityType + "'");
 
         try {
             List<Versioningstatus> candidates = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeySimpleNoCache("uid", entityUid, Versioningstatus.class);
@@ -404,13 +400,11 @@ public class RelationSyncUtil {
         String joinClassName = pending.getMetaId();
 
         if (sourceEntityType == null) {
-            System.out.println("[RelationSyncUtil] Skipping pending relation: Provenance is NULL.");
             return;
         }
 
         Class<?> sourceClass = AbstractAPI.retrieveClass(sourceEntityType);
         if (sourceClass == null) {
-            System.out.println("[RelationSyncUtil] Skipping pending relation: Unknown source type " + sourceEntityType);
             return;
         }
 
@@ -425,7 +419,6 @@ public class RelationSyncUtil {
         try {
             joinClass = Class.forName(joinClassName);
         } catch (ClassNotFoundException | NullPointerException e) {
-            System.out.println("[RelationSyncUtil] Skipping pending relation: Invalid Join Class '" + joinClassName + "' (Custom resolver needed?)");
             return;
         }
 

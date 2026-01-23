@@ -110,9 +110,6 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         }
     }
 
-    // ========== BACKWARD COMPATIBILITY METHODS (deprecated) ==========
-    // These methods maintain backward compatibility but should be updated to use the new signatures
-
     /**
      * @deprecated Use {@link #createRelation(Equipment, org.epos.eposdatamodel.Equipment, StatusType, EPOSDataModelEntity)} instead
      */

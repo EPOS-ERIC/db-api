@@ -23,9 +23,6 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.OutputMapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        // Note: OutputMapping has no complex relations, only simple fields
-        // Versioning pattern is applied but no relation copying is needed
-
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
             searchInstanceId = null;
