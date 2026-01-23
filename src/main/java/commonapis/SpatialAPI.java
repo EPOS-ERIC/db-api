@@ -7,6 +7,7 @@ import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.Location;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.List;
@@ -52,13 +53,19 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Location) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
-        EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
+        EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
         Spatial edmobj = new Spatial();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -69,6 +76,8 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
         getDbaccess().updateObject(edmobj);
 
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.LOCATION.name(), edmobj);
+
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
@@ -77,7 +86,6 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public Boolean delete(String instanceId) {
-        // Use streams to batch delete spatial-related entities
         List<Object> relatedItems = (List<Object>) getDbaccess().getAllFromDB(DataproductSpatial.class).stream()
                 .filter(item -> ((DataproductSpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
@@ -103,7 +111,6 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
                 .collect(Collectors.toList());
         EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
 
-        // Delete Spatial itself
         List<Spatial> spatialItems = (List<Spatial>) getDbaccess().getAllFromDB(Spatial.class).stream()
                 .filter(item -> ((Spatial)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
@@ -114,7 +121,6 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public org.epos.eposdatamodel.Location retrieve(String instanceId) {
-        // Fetch the Spatial record by instanceId
         List<Spatial> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Spatial.class);
         if (elementList.isEmpty()) {
             return null;
@@ -153,15 +159,11 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     private List<org.epos.eposdatamodel.Location> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
-        // Retrieve the Spatial entity and return a LinkedEntity
         List<Spatial> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Spatial.class);
         if (elementList.isEmpty()) {
             return null;

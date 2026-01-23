@@ -2,11 +2,16 @@ package relationsapi;
 
 import abstractapis.AbstractRelationsAPI;
 import model.*;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
 import relationsapi.RelationSyncUtil;
 
 public class ContactPointRelationsAPI extends AbstractRelationsAPI {
 
-    public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus){
+    /**
+     * Equipment - ContactPoint relation
+     * @param previousObj The previous version of the entity (for versioning support)
+     */
+    public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -15,12 +20,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     EquipmentContactpoint::getContactpointInstance,
                     EquipmentContactpoint::setEquipmentInstance,
                     EquipmentContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
     }
 
-    public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
+    /**
+     * Facility - ContactPoint relation
+     */
+    public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -29,12 +37,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     FacilityContactpoint::getContactpointInstance,
                     FacilityContactpoint::setFacilityInstance,
                     FacilityContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
     }
 
-    public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
+    /**
+     * DataProduct - ContactPoint relation
+     */
+    public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -43,12 +54,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     DataproductContactpoint::getContactpointInstance,
                     DataproductContactpoint::setDataproductInstance,
                     DataproductContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
     }
 
-    public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus){
+    /**
+     * WebService - ContactPoint relation
+     */
+    public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -57,12 +71,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     WebserviceContactpoint::getContactpointInstance,
                     WebserviceContactpoint::setWebserviceInstance,
                     WebserviceContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
     }
 
-    public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus){
+    /**
+     * SoftwareSourceCode - ContactPoint relation
+     */
+    public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -71,12 +88,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     SoftwaresourcecodeContactpoint::getContactpointInstance,
                     SoftwaresourcecodeContactpoint::setSoftwaresourcecodeInstance,
                     SoftwaresourcecodeContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
     }
 
-    public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus){
+    /**
+     * SoftwareApplication - ContactPoint relation
+     */
+    public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -85,8 +105,59 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
                     SoftwareapplicationContactpoint::getContactpointInstance,
                     SoftwareapplicationContactpoint::setSoftwareapplicationInstance,
                     SoftwareapplicationContactpoint::setContactpointInstance,
-                    obj, null, overrideStatus, false
+                    obj, previousObj, overrideStatus, false
             );
         }
+    }
+
+    // ========== BACKWARD COMPATIBILITY METHODS (deprecated) ==========
+    // These methods maintain backward compatibility but should be updated to use the new signatures
+
+    /**
+     * @deprecated Use {@link #createRelation(Equipment, org.epos.eposdatamodel.Equipment, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createRelation(Facility, org.epos.eposdatamodel.Facility, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createRelation(Dataproduct, org.epos.eposdatamodel.DataProduct, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createRelation(Webservice, org.epos.eposdatamodel.WebService, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createRelation(Softwaresourcecode, org.epos.eposdatamodel.SoftwareSourceCode, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createRelation(Softwareapplication, org.epos.eposdatamodel.SoftwareApplication, StatusType, EPOSDataModelEntity)} instead
+     */
+    @Deprecated
+    public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus) {
+        createRelation(edmobj, obj, overrideStatus, null);
     }
 }

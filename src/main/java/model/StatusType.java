@@ -6,5 +6,6 @@ public enum StatusType {
     DISCARDED,
     DRAFT,
     SUBMITTED,
-    PUBLISHED
+    PUBLISHED,
+    PENDING
 }

@@ -6,6 +6,7 @@ import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,10 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.OutputMapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        // Note: OutputMapping has no complex relations, only simple fields
+        // Versioning pattern is applied but no relation copying is needed
+
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
             searchInstanceId = null;
@@ -33,6 +38,7 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
                 null,
                 getEdmClass());
 
+        String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             OutputMapping selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
@@ -42,14 +48,25 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
                     break;
                 }
             }
+            oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.OutputMapping) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        boolean isNewVersion = obj.getInstanceChangedId() != null;
 
         OutputMapping edmobj = new OutputMapping();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -59,19 +76,41 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
         getDbaccess().updateObject(edmobj);
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
+
+        // For simple fields: if new version and field not provided, copy from previous version
+        if (isNewVersion && oldInstanceId != null) {
+            OutputMapping oldEntity = (OutputMapping) getDbaccess().getOneFromDBByInstanceId(oldInstanceId, OutputMapping.class).stream().findFirst().orElse(null);
+            if (oldEntity != null) {
+                edmobj.setLabel(obj.getOutputLabel() != null ? obj.getOutputLabel() : oldEntity.getLabel());
+                edmobj.setValuepattern(obj.getOutputValuePattern() != null ? obj.getOutputValuePattern() : oldEntity.getValuepattern());
+                edmobj.setRequired(obj.getOutputRequired() != null ? Boolean.parseBoolean(obj.getOutputRequired()) : oldEntity.getRequired());
+                edmobj.setRange(obj.getOutputRange() != null ? obj.getOutputRange() : oldEntity.getRange());
+                edmobj.setProperty(obj.getOutputProperty() != null ? obj.getOutputProperty() : oldEntity.getProperty());
+                edmobj.setVariable(obj.getOutputVariable() != null ? obj.getOutputVariable() : oldEntity.getVariable());
+            } else {
+                setFieldsFromInput(edmobj, obj);
+            }
+        } else {
+            setFieldsFromInput(edmobj, obj);
+        }
+
+        getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.OUTPUTMAPPING.name(), edmobj);
+
+        return new LinkedEntity().entityType(entityName)
+                .instanceId(edmobj.getInstanceId())
+                .metaId(edmobj.getMetaId())
+                .uid(edmobj.getUid());
+    }
+
+    private void setFieldsFromInput(OutputMapping edmobj, org.epos.eposdatamodel.OutputMapping obj) {
         edmobj.setLabel(obj.getOutputLabel());
         edmobj.setValuepattern(obj.getOutputValuePattern());
         edmobj.setRequired(obj.getOutputRequired() != null ? Boolean.parseBoolean(obj.getOutputRequired()) : null);
         edmobj.setRange(obj.getOutputRange());
         edmobj.setProperty(obj.getOutputProperty());
         edmobj.setVariable(obj.getOutputVariable());
-
-        getDbaccess().updateObject(edmobj);
-
-        return new LinkedEntity().entityType(entityName)
-                .instanceId(edmobj.getInstanceId())
-                .metaId(edmobj.getMetaId())
-                .uid(edmobj.getUid());
     }
 
     @Override
@@ -115,21 +154,26 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
         List<OutputMapping> returnList = getDbaccess().getOneFromDBByUID(uid, OutputMapping.class);
         return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
+
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, OutputMapping.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(OutputMapping.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(OutputMapping.class, status));
     }
+
     private List<org.epos.eposdatamodel.OutputMapping> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
     }
+
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<OutputMapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, OutputMapping.class);

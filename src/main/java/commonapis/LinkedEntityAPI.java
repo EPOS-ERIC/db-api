@@ -16,11 +16,15 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class LinkedEntityAPI {
 
+    private static final Logger LOG = Logger.getLogger(LinkedEntityAPI.class.getName());
+
     private static final Map<String, AbstractAPI> apiMap = new HashMap<>();
     private static final Map<String, Class<?>> edmClassMap = new HashMap<>();
+    private static final Map<String, Class<?>> modelClassMap = new HashMap<>();
 
     static {
         apiMap.put(EntityNames.ATTRIBUTION.name(), new AttributionAPI(EntityNames.ATTRIBUTION.name(), Attribution.class));
@@ -76,53 +80,98 @@ public class LinkedEntityAPI {
         edmClassMap.put(EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), org.epos.eposdatamodel.SoftwareApplicationOutputParameter.class);
         edmClassMap.put(EntityNames.PAYLOAD.name(), org.epos.eposdatamodel.Payload.class);
         edmClassMap.put(EntityNames.OUTPUTMAPPING.name(), org.epos.eposdatamodel.OutputMapping.class);
+
+        // Model class map for JPA entities
+        modelClassMap.put(EntityNames.ATTRIBUTION.name(), Attribution.class);
+        modelClassMap.put(EntityNames.PERSON.name(), Person.class);
+        modelClassMap.put(EntityNames.MAPPING.name(), Mapping.class);
+        modelClassMap.put(EntityNames.CATEGORY.name(), Category.class);
+        modelClassMap.put(EntityNames.FACILITY.name(), Facility.class);
+        modelClassMap.put(EntityNames.EQUIPMENT.name(), Equipment.class);
+        modelClassMap.put(EntityNames.OPERATION.name(), Operation.class);
+        modelClassMap.put(EntityNames.WEBSERVICE.name(), Webservice.class);
+        modelClassMap.put(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
+        modelClassMap.put(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
+        modelClassMap.put(EntityNames.DISTRIBUTION.name(), Distribution.class);
+        modelClassMap.put(EntityNames.ORGANIZATION.name(), Organization.class);
+        modelClassMap.put(EntityNames.CATEGORYSCHEME.name(), CategoryScheme.class);
+        modelClassMap.put(EntityNames.SOFTWARESOURCECODE.name(), Softwaresourcecode.class);
+        modelClassMap.put(EntityNames.SOFTWAREAPPLICATION.name(), Softwareapplication.class);
+        modelClassMap.put(EntityNames.ADDRESS.name(), Address.class);
+        modelClassMap.put(EntityNames.ELEMENT.name(), Element.class);
+        modelClassMap.put(EntityNames.LOCATION.name(), Spatial.class);
+        modelClassMap.put(EntityNames.PERIODOFTIME.name(), Temporal.class);
+        modelClassMap.put(EntityNames.IDENTIFIER.name(), Identifier.class);
+        modelClassMap.put(EntityNames.QUANTITATIVEVALUE.name(), Quantitativevalue.class);
+        modelClassMap.put(EntityNames.DOCUMENTATION.name(), Element.class);
+        modelClassMap.put(EntityNames.PAYLOAD.name(), Payload.class);
+        modelClassMap.put(EntityNames.OUTPUTMAPPING.name(), OutputMapping.class);
     }
 
-    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus, String provenance){
+    public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus, String provenance) {
 
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
+        Class<?> modelClass = modelClassMap.get(obj.getEntityType().toUpperCase());
 
-        if (api != null && edmClass != null) {
-
-            // Always instantiate and call API create to leverage Smart Lookup logic
-            EPOSDataModelEntity entity = null;
-            try {
-                entity = (EPOSDataModelEntity) edmClass.getDeclaredConstructor().newInstance();
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                     NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            }
-
-            entity.setInstanceId(Optional.ofNullable(obj.getInstanceId()).orElse(UUID.randomUUID().toString()));
-            entity.setMetaId(Optional.ofNullable(obj.getMetaId()).orElse(UUID.randomUUID().toString()));
-            entity.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
-
-            if (provenance != null) entity.setFileProvenance(provenance);
-            if (overrideStatus != null) entity.setStatus(overrideStatus);
-
-            if(parentVersioningstatus != null) {
-                if (parentVersioningstatus.getProvenance() != null)
-                    entity.setFileProvenance(parentVersioningstatus.getProvenance());
-                if (parentVersioningstatus.getVersion() != null)
-                    entity.setVersion(parentVersioningstatus.getVersion());
-                if (parentVersioningstatus.getEditorId() != null)
-                    entity.setEditorId(parentVersioningstatus.getEditorId());
-                if (parentVersioningstatus.getChangeComment() != null)
-                    entity.setChangeComment(parentVersioningstatus.getChangeComment());
-                if (parentVersioningstatus.getChangeTimestamp() != null)
-                    entity.setChangeTimestamp(parentVersioningstatus.getChangeTimestamp().toLocalDateTime());
-            }
-
-            return api.create(entity, overrideStatus, null, null);
+        if (api == null || edmClass == null) {
+            return null;
         }
+
+        if (obj.getInstanceId() != null) {
+            List<Versioningstatus> existing = getDbaccess().getOneFromDB(
+                    obj.getInstanceId(), null, null, null, Versioningstatus.class);
+            if (!existing.isEmpty()) {
+                Versioningstatus vs = existing.get(0);
+                LOG.fine("Found existing entity by instanceId: " + obj.getInstanceId());
+                return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+            }
+        }
+
+        if (obj.getUid() != null && modelClass != null) {
+            List<Object> existingByUid = getDbaccess().getOneFromDBByUID(obj.getUid(), modelClass);
+            if (!existingByUid.isEmpty()) {
+                // Find the version with matching status (if specified) or the latest
+                Object bestMatch = findBestMatchingVersion(existingByUid, overrideStatus);
+                if (bestMatch != null) {
+                    LOG.fine("Found existing entity by UID: " + obj.getUid() + " - reusing instead of creating new");
+                    return extractLinkedEntityFromModel(bestMatch, obj.getEntityType());
+                }
+            }
+        }
+
+        if (obj.getMetaId() != null && obj.getInstanceId() == null) {
+            List<Versioningstatus> existingByMeta = getDbaccess().getOneFromDB(
+                    null, obj.getMetaId(), null, null, Versioningstatus.class);
+            if (!existingByMeta.isEmpty()) {
+                // Find version with matching status
+                for (Versioningstatus vs : existingByMeta) {
+                    if (overrideStatus == null ||
+                            (vs.getStatus() != null && vs.getStatus().toString().equals(overrideStatus.toString()))) {
+                        LOG.fine("Found existing entity by metaId: " + obj.getMetaId());
+                        return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                    }
+                }
+                // If no status match, return the first one
+                Versioningstatus vs = existingByMeta.get(0);
+                return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+            }
+        }
+
+        LOG.info("Entity not found for UID: " + obj.getUid() +
+                " - returning null (will be handled as pending relation)");
         return null;
     }
 
     public static Object retrieveFromLinkedEntity(LinkedEntity obj) {
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
+        Class<?> modelClass = modelClassMap.get(obj.getEntityType().toUpperCase());
 
-        if (api != null) {
+        if (api == null) {
+            return null;
+        }
+
+        if (obj.getInstanceId() != null) {
             List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                     obj.getInstanceId(),
                     obj.getMetaId(),
@@ -135,10 +184,114 @@ public class LinkedEntityAPI {
                 Versioningstatus edmobj = returnList.get(0);
                 return api.retrieve(edmobj.getInstanceId());
             }
-        } else {
-            return createFromLinkedEntity(obj, null, null, null);
+        }
+
+        if (obj.getUid() != null && modelClass != null) {
+            List<Object> existingByUid = getDbaccess().getOneFromDBByUID(obj.getUid(), modelClass);
+            if (!existingByUid.isEmpty()) {
+                // Return the first matching entity (could be enhanced to match by status)
+                Object modelEntity = existingByUid.get(0);
+                String instanceId = extractInstanceId(modelEntity);
+                if (instanceId != null) {
+                    LOG.fine("Found entity by UID lookup: " + obj.getUid() + " -> instanceId: " + instanceId);
+                    return api.retrieve(instanceId);
+                }
+            }
+        }
+
+        if (obj.getMetaId() != null && obj.getInstanceId() == null) {
+            List<Versioningstatus> byMeta = getDbaccess().getOneFromDB(
+                    null, obj.getMetaId(), null, null, Versioningstatus.class);
+            if (!byMeta.isEmpty()) {
+                Versioningstatus edmobj = byMeta.get(0);
+                return api.retrieve(edmobj.getInstanceId());
+            }
+        }
+
+        LOG.fine("Entity not found for LinkedEntity: " + obj.getEntityType() + " uid=" + obj.getUid());
+        return null;
+    }
+
+    private static String extractInstanceId(Object modelEntity) {
+        try {
+            java.lang.reflect.Method method = modelEntity.getClass().getMethod("getInstanceId");
+            Object result = method.invoke(modelEntity);
+            return result != null ? result.toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
+    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus) {
+        if (versions == null || versions.isEmpty()) {
+            return null;
+        }
+
+        // If no target status specified, return the first (usually latest)
+        if (targetStatus == null) {
+            return versions.get(0);
+        }
+
+        // Try to find a version with matching status
+        for (Object v : versions) {
+            String status = getModelVersionStatus(v);
+            if (status != null && status.equals(targetStatus.toString())) {
+                return v;
+            }
+        }
+
+        // No exact match - return the first one
+        return versions.get(0);
+    }
+
+
+    private static String getModelVersionStatus(Object modelEntity) {
+        try {
+            java.lang.reflect.Method getVersion = modelEntity.getClass().getMethod("getVersion");
+            Object versionObj = getVersion.invoke(modelEntity);
+            if (versionObj != null) {
+                java.lang.reflect.Method getStatus = versionObj.getClass().getMethod("getStatus");
+                Object statusObj = getStatus.invoke(versionObj);
+                return statusObj != null ? statusObj.toString() : null;
+            }
+        } catch (Exception e) {
+            // Ignore
         }
         return null;
+    }
+
+    private static LinkedEntity createLinkedEntityFromVersioningstatus(Versioningstatus vs, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(vs.getInstanceId());
+        le.setMetaId(vs.getMetaId());
+        le.setUid(vs.getUid());
+        le.setEntityType(entityType);
+        return le;
+    }
+
+    private static LinkedEntity extractLinkedEntityFromModel(Object modelEntity, String entityType) {
+        try {
+            LinkedEntity le = new LinkedEntity();
+            le.setEntityType(entityType);
+
+            java.lang.reflect.Method getInstanceId = modelEntity.getClass().getMethod("getInstanceId");
+            Object instanceId = getInstanceId.invoke(modelEntity);
+            if (instanceId != null) le.setInstanceId(instanceId.toString());
+
+            java.lang.reflect.Method getMetaId = modelEntity.getClass().getMethod("getMetaId");
+            Object metaId = getMetaId.invoke(modelEntity);
+            if (metaId != null) le.setMetaId(metaId.toString());
+
+            java.lang.reflect.Method getUid = modelEntity.getClass().getMethod("getUid");
+            Object uid = getUid.invoke(modelEntity);
+            if (uid != null) le.setUid(uid.toString());
+
+            return le;
+        } catch (Exception e) {
+            LOG.warning("Could not extract LinkedEntity from model: " + e.getMessage());
+            return null;
+        }
     }
 
     private static EposDataModelDAO getDbaccess() {

@@ -24,6 +24,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 
 import java.io.*;
+import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -292,6 +293,212 @@ public class EposDataModelDAO<T> {
 				} catch (Exception closeEx) {
 					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
 				}
+			}
+		}
+	}
+
+	/**
+	 * Creates a join entity with proper entity attachment.
+	 * Handles @MapsId relationships correctly by re-attaching referenced entities.
+	 */
+	public <J> Boolean createJoinEntity(J joinEntity, String parentInstanceId, Class<?> parentClass,
+										String targetInstanceId, Class<?> targetClass) {
+
+		if (parentInstanceId != null && parentInstanceId.equals(targetInstanceId)) {
+			LOG.info("Skipping self-reference join creation: " + joinEntity.getClass().getSimpleName() +
+					" (ID=" + parentInstanceId + ")");
+			return true; // Return true to indicate "success" (no action needed)
+		}
+
+		EntityManager em = null;
+		EntityTransaction transaction = null;
+
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			transaction = em.getTransaction();
+			transaction.begin();
+
+			// Re-attach parent and target entities
+			Object parent = em.find(parentClass, parentInstanceId);
+			Object target = em.find(targetClass, targetInstanceId);
+
+			if (parent == null || target == null) {
+				LOG.warning("Cannot create join: parent or target not found. Parent=" +
+						(parent != null) + ", Target=" + (target != null));
+				if (transaction.isActive()) transaction.rollback();
+				return false;
+			}
+
+			// Set relationships using reflection
+			for (java.lang.reflect.Method method : joinEntity.getClass().getMethods()) {
+				if (method.getName().startsWith("set") && method.getParameterCount() == 1) {
+					Class<?> paramType = method.getParameterTypes()[0];
+					if (paramType.isAssignableFrom(parentClass)) {
+						method.invoke(joinEntity, parent);
+					} else if (paramType.isAssignableFrom(targetClass)) {
+						method.invoke(joinEntity, target);
+					}
+				}
+			}
+
+			em.persist(joinEntity);
+			em.flush();
+			transaction.commit();
+
+			// Invalidate cache
+			evictCacheByPattern(joinEntity.getClass().getSimpleName());
+
+			LOG.info("Join entity created successfully: " + joinEntity.getClass().getSimpleName());
+			return true;
+
+		} catch (Exception exception) {
+			if (transaction != null && transaction.isActive()) {
+				try {
+					transaction.rollback();
+				} catch (Exception rollbackEx) {
+					LOG.log(Level.WARNING, "Error during transaction rollback", rollbackEx);
+				}
+			}
+
+			String message = getRootCauseMessage(exception);
+			if (message != null && (message.contains("duplicate key") || message.contains("already exists"))) {
+				LOG.info("Join relation already exists: " + joinEntity.getClass().getSimpleName() + " - skipping");
+				return true; // Relation exists, consider it success
+			}
+
+			LOG.log(Level.SEVERE, "Error creating join entity", exception);
+			exception.printStackTrace();
+			return false;
+		} finally {
+			if (em != null) {
+				try {
+					em.close();
+				} catch (Exception closeEx) {
+					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
+				}
+			}
+		}
+	}
+
+	private String getRootCauseMessage(Throwable t) {
+		if (t == null) return null;
+		StringBuilder sb = new StringBuilder();
+		while (t != null) {
+			if (t.getMessage() != null) {
+				sb.append(t.getMessage()).append(" | ");
+			}
+			t = t.getCause();
+		}
+		return sb.toString();
+	}
+
+	/**
+	 * Finds join entities by parent ID.
+	 * Tries "c.id.parentIdField" (EmbeddedId) first, falls back to "c.parentIdField" (IdClass/Direct).
+	 */
+	public <T> List<T> getJoinEntitiesByParentId(String parentIdField, String parentId, Class<T> joinClass) {
+		String cacheKey = generateCacheKey("joinByParent", parentIdField, parentId, joinClass.getSimpleName());
+		List<T> cached = getFromQueryCache(cacheKey);
+		if (cached != null) return cached;
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+
+			List<T> result;
+			try {
+				// Strategy 1: EmbeddedId (e.g., c.id.facilityInstance)
+				String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c.id." + parentIdField + " = :parentId";
+				TypedQuery<T> query = em.createQuery(jpql, joinClass);
+				query.setParameter("parentId", parentId);
+				result = query.getResultList();
+			} catch (Exception e1) {
+				try {
+					// Strategy 2: Direct Field (e.g., c.facilityInstance) - BUT assuming parentId is the Entity object
+					// This often fails if parentId is a String, throwing IllegalArgumentException
+					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :parentId";
+					TypedQuery<T> query = em.createQuery(jpql, joinClass);
+					query.setParameter("parentId", parentId);
+					result = query.getResultList();
+				} catch (Exception e2) {
+					// Strategy 3: Direct Field ID (e.g., c.facilityInstance.instanceId)
+					// This fixes the IllegalArgumentException when parentId is a String
+					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :parentId";
+					TypedQuery<T> query = em.createQuery(jpql, joinClass);
+					query.setParameter("parentId", parentId);
+					result = query.getResultList();
+				}
+			}
+
+			putInQueryCache(cacheKey, result);
+			return result;
+
+		} catch (Exception exception) {
+			LOG.log(Level.SEVERE, "Error in getJoinEntitiesByParentId: " + exception.getMessage());
+			return new ArrayList<>(); // Return empty to avoid NPEs downstream
+		} finally {
+			if (em != null) em.close();
+		}
+	}
+
+	/**
+	 * Gets join entities by parent ID using the relationship field directly.
+	 *
+	 * Use this for entities with @EmbeddedId + @MapsId where the relationship
+	 * field is on the entity, not inside the EmbeddedId.
+	 *
+	 *
+	 * Generated query: SELECT c FROM ContactpointElement c WHERE c.contactpointInstance.instanceId = :parentId
+	 *
+	 * @param relationFieldName The name of the @ManyToOne relationship field (e.g., "contactpointInstance")
+	 * @param parentId The instanceId of the parent entity
+	 * @param joinClass The join table entity class
+	 * @return List of matching join entities, or empty list if none found
+	 */
+	public <T> List<T> getJoinEntitiesByRelationField(String relationFieldName, String parentId, Class<T> joinClass) {
+		String cacheKey = joinClass.getSimpleName() + "_rel_" + relationFieldName + "_" + parentId;
+		List<T> cachedResult = (List<T>) getFromQueryCache(cacheKey);
+		if (cachedResult != null) {
+			return cachedResult;
+		}
+
+		EntityManager em = null;
+		EntityTransaction transaction = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			transaction = em.getTransaction();
+			transaction.begin();
+
+			// Query using the relationship field directly (not through EmbeddedId)
+			// e.g., "SELECT c FROM ContactpointElement c WHERE c.contactpointInstance.instanceId = :parentId"
+			String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c."
+					+ relationFieldName + ".instanceId = :parentId";
+
+			TypedQuery<T> query = em.createQuery(jpql, joinClass);
+			query.setParameter("parentId", parentId);
+			query.setHint("eclipselink.refresh", true);
+
+			List<T> result = query.getResultList();
+
+			transaction.commit();
+
+			putInQueryCache(cacheKey, result);
+			return result;
+
+		} catch (Exception exception) {
+			if (transaction != null && transaction.isActive()) {
+				try {
+					transaction.rollback();
+				} catch (Exception e) {
+					LOG.log(Level.WARNING, "Error during rollback", e);
+				}
+			}
+			LOG.log(Level.SEVERE, "Error in getJoinEntitiesByRelationField", exception);
+			exception.printStackTrace();
+			return new ArrayList<>();
+		} finally {
+			if (em != null) {
+				em.close();
 			}
 		}
 	}
@@ -778,6 +985,86 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
+	 * Retrieves data directly from DB, bypassing internal caches.
+	 * Uses cache usage hints to force fresh data retrieval.
+	 */
+	public List<T> getOneFromDBBySpecificKeySimpleNoCache(String key, String value, Class<T> obj) {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+
+			// Pulisce il contesto di persistenza per evitare dati stale in L1 cache
+			em.clear();
+
+			TypedQuery<T> query = em.createQuery(
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + " = :value",
+					obj);
+			query.setParameter("value", value);
+
+			// Hint standard JPA per ignorare la cache e andare al DB
+			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+			query.setHint("jakarta.persistence.cache.storeMode", "REFRESH"); // Per Jakarta EE
+
+			// Hint specifici per EclipseLink (se usato)
+			query.setHint("eclipselink.refresh", "true");
+			query.setHint("eclipselink.maintain-cache", "false");
+
+			List<T> result = query.getResultList();
+
+			return result;
+
+		} catch (Exception exception) {
+			LOG.log(Level.SEVERE, "Error in getOneFromDBBySpecificKeySimpleNoCache", exception);
+			return new ArrayList<>();
+		} finally {
+			if (em != null)
+				em.close();
+		}
+	}
+
+	/**
+	 * Helper method to check if an entity is in PENDING status.
+	 * Handles both Domain Entities (via getVersion()) and Versioningstatus objects directly.
+	 */
+	private boolean isEntityPending(Object entity) {
+		if (entity == null) return false;
+		try {
+			// Caso 1: L'entità è direttamente un oggetto Versioningstatus
+			if (entity instanceof Versioningstatus) {
+				String status = ((Versioningstatus) entity).getStatus();
+				return "PENDING".equalsIgnoreCase(status);
+			}
+
+			// Caso 2: Entità di dominio (es. Distribution) che ha un metodo getVersion()
+			try {
+				Method getVersion = entity.getClass().getMethod("getVersion");
+				Object versionObj = getVersion.invoke(entity);
+				if (versionObj != null) {
+					Method getStatus = versionObj.getClass().getMethod("getStatus");
+					Object statusObj = getStatus.invoke(versionObj);
+					if (statusObj != null && "PENDING".equalsIgnoreCase(statusObj.toString())) {
+						return true;
+					}
+				}
+			} catch (NoSuchMethodException e) {
+				// L'oggetto non ha getVersion(), proviamo getStatus() diretto per sicurezza (fallback)
+				try {
+					Method getStatus = entity.getClass().getMethod("getStatus");
+					Object statusObj = getStatus.invoke(entity);
+					if (statusObj != null && "PENDING".equalsIgnoreCase(statusObj.toString())) {
+						return true;
+					}
+				} catch (NoSuchMethodException ignored) {
+					// Non è un'entità versionata
+				}
+			}
+		} catch (Exception e) {
+			// Ignora errori di riflessione
+		}
+		return false;
+	}
+
+	/**
 	 * REPLACES: getFromDBByUsingMultipleKeys
 	 */
 	public List<T> getFromDBByUsingMultipleKeys(Map<String, Object> keyValues, Class<T> obj) {
@@ -940,6 +1227,7 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * REPLACES: getOneFromDBByUID
+	 * MODIFIED: Filters out PENDING entities to prevent conflicts with relation signals.
 	 */
 	public List<T> getOneFromDBByUID(String uid, Class<T> obj) {
 		if (uid == null || uid.trim().isEmpty())
@@ -961,8 +1249,18 @@ public class EposDataModelDAO<T> {
 			query.setParameter("uid", uid);
 
 			List<T> result = query.getResultList();
-			putInEntityCache(cacheKey, result);
-			return result;
+
+			// --- MODIFICA: Filtra via i record PENDING ---
+			List<T> filteredResult = new ArrayList<>();
+			for (T entity : result) {
+				if (!isEntityPending(entity)) {
+					filteredResult.add(entity);
+				}
+			}
+			// ---------------------------------------------
+
+			putInEntityCache(cacheKey, filteredResult);
+			return filteredResult;
 
 		} catch (Exception exception) {
 			LOG.log(Level.SEVERE, "Error in getOneFromDBByUID", exception);
@@ -1010,22 +1308,29 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * REPLACES: getOneFromDB
+	 * MODIFIED: Ensures pending records are filtered out from generic searches.
 	 */
 	public List<T> getOneFromDB(String instanceId, String metaId, String uid, String versionId, Class<T> obj) {
+		List<T> results = new ArrayList<>();
+
 		// Priority: instanceId > metaId > uid > versionId
 		if (instanceId != null && !instanceId.trim().isEmpty()) {
-			return getOneFromDBByInstanceId(instanceId, obj);
+			results = getOneFromDBByInstanceId(instanceId, obj);
+		} else if (metaId != null && !metaId.trim().isEmpty()) {
+			results = getOneFromDBByMetaId(metaId, obj);
+		} else if (uid != null && !uid.trim().isEmpty()) {
+			results = getOneFromDBByUID(uid, obj);
+		} else if (versionId != null && !versionId.trim().isEmpty()) {
+			results = getOneFromDBByVersionID(versionId, obj);
 		}
-		if (metaId != null && !metaId.trim().isEmpty()) {
-			return getOneFromDBByMetaId(metaId, obj);
+
+		// --- MODIFICA: Pulizia finale dei PENDING ---
+		if (!results.isEmpty()) {
+			results.removeIf(this::isEntityPending);
 		}
-		if (uid != null && !uid.trim().isEmpty()) {
-			return getOneFromDBByUID(uid, obj);
-		}
-		if (versionId != null && !versionId.trim().isEmpty()) {
-			return getOneFromDBByVersionID(versionId, obj);
-		}
-		return new ArrayList<>();
+		// --------------------------------------------
+
+		return results;
 	}
 
 	/**
@@ -1326,14 +1631,12 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
-	 * Invalidate cache for specific entity
+	 * Invalidates all caches - use sparingly for critical operations
 	 */
-	public void invalidateCacheForEntity(String entityName) {
-		queryCache.asMap().keySet().removeIf(key -> key.contains(entityName));
-		entityCache.asMap().keySet().removeIf(key -> key.contains(entityName));
-		countCache.asMap().keySet().removeIf(key -> key.contains(entityName));
-
-		// LOG.info("Cache invalidated for entity: " + entityName);
+	public void invalidateAllCachesForClass(String className) {
+		queryCache.asMap().keySet().removeIf(key -> key.contains(className));
+		entityCache.asMap().keySet().removeIf(key -> key.contains(className));
+		countCache.asMap().keySet().removeIf(key -> key.contains(className));
 	}
 
 	/**

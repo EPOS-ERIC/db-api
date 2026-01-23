@@ -7,6 +7,7 @@ import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.SoftwareApplicationParameter;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.List;
@@ -34,7 +35,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
                 obj.getMetaId(),
                 obj.getUid(),
                 null,
-                getEdmClass());
+                Parameter.class);
 
         if(!returnList.isEmpty()){
             Parameter selectedEntity = returnList.get(0);
@@ -52,10 +53,17 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -70,6 +78,8 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         edmobj.setAction(obj.getAction());
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), edmobj);
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())

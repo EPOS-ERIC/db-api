@@ -4,15 +4,12 @@ import abstractapis.AbstractAPI;
 import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
 import model.*;
-import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
-import usermanagementapis.UserGroupManagementAPI;
+import relationsapi.RelationSyncUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,10 +50,17 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Identifier) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -70,6 +74,8 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
         getDbaccess().updateObject(edmobj);
 
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.IDENTIFIER.name(), edmobj);
+
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
@@ -78,35 +84,30 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public Boolean delete(String instanceId) {
-
         for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
             DataproductIdentifier item = (DataproductIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
                 EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
-
         for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
             WebserviceIdentifier item = (WebserviceIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
                 EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
-
         for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
             OrganizationIdentifier item = (OrganizationIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
                 EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
-
         for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
             PersonIdentifier item = (PersonIdentifier) object;
             if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
                 EposDataModelDAO.getInstance().deleteObject(item);
             }
         }
-        // Delete Identifier itself
         List<Identifier> identifierList = getDbaccess().getAllFromDB(Identifier.class);
         identifierList.stream()
                 .filter(item -> item.getInstanceId().equals(instanceId))
@@ -155,10 +156,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     private List<org.epos.eposdatamodel.Identifier> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
 
     @Override

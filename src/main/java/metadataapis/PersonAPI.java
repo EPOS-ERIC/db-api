@@ -6,14 +6,18 @@ import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
-import relationsapi.RelationChecker;
 import relationsapi.RelationSyncUtil;
 
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
+
+    private static final Logger LOG = Logger.getLogger(PersonAPI.class.getName());
 
     public PersonAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -23,6 +27,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     public LinkedEntity create(org.epos.eposdatamodel.Person obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
@@ -48,11 +53,22 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Person) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        // Determine if this is a new version or updating same instance
+        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
 
         Person edmobj = new Person();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -67,11 +83,21 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         edmobj.setCvurl(obj.getCVURL());
         edmobj.setQualifications(obj.getQualifications() != null ? String.join(", ", obj.getQualifications()) : null);
 
-        // ADDRESS
+        // ADDRESS - FIX: Added null check and Pending Relation creation
         if (obj.getAddress() != null) {
             LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
-            List<Address> address = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
-            if (!address.isEmpty()) edmobj.setAddress(address.get(0));
+            if (le != null && le.getInstanceId() != null) {
+                List<Address> address = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
+                if (!address.isEmpty()) {
+                    edmobj.setAddress(address.get(0));
+                } else {
+                    LOG.info("Address entity not found for Person " + edmobj.getUid() + ". Creating pending relation.");
+                    createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
+                }
+            } else {
+                LOG.info("Address linked entity is null for Person " + edmobj.getUid() + ". Creating pending relation.");
+                createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
+            }
         }
 
         // IDENTIFIER
@@ -104,14 +130,14 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             );
         }
 
-        if (obj.getTelephone() != null) {
-            for (String tel : obj.getTelephone()) createInnerElement(ElementType.TELEPHONE, tel, edmobj, overrideStatus);
-        }
-        if (obj.getEmail() != null) {
-            for (String email : obj.getEmail()) createInnerElement(ElementType.EMAIL, email, edmobj, overrideStatus);
-        }
+        // ELEMENTS (telephone, email) - with proper sync
+        syncElements(edmobj, obj.getTelephone(), ElementType.TELEPHONE, overrideStatus, isNewVersion);
+        syncElements(edmobj, obj.getEmail(), ElementType.EMAIL, overrideStatus, isNewVersion);
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.PERSON.name(), edmobj);
+        resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -119,19 +145,102 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 .uid(edmobj.getUid());
     }
 
-    private void createInnerElement(ElementType elementType, String value, Person edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = EposDataModelDAO.getInstance()
+    private void createPendingAddressRelation(String personInstanceId, LinkedEntity addressLink) {
+        if (addressLink == null || addressLink.getUid() == null) return;
+        try {
+            Versioningstatus pending = new Versioningstatus();
+            pending.setVersionId(UUID.randomUUID().toString());
+            pending.setInstanceId(UUID.randomUUID().toString());
+            pending.setReviewComment(personInstanceId);
+            pending.setUid(addressLink.getUid());
+            pending.setMetaId("PERSON_ADDRESS");
+            pending.setStatus(StatusType.PENDING.name());
+            pending.setProvenance(EntityNames.PERSON.name());
+            pending.setChangeComment("ADDRESS_REF");
+            pending.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+            EposDataModelDAO.getInstance().createObject(pending);
+        } catch (Exception e) {
+            LOG.warning("Error creating pending address relation: " + e.getMessage());
+        }
+    }
+
+    public static void resolvePendingAddressRelationsForAddress(String addressUid, String addressInstanceId) {
+        try {
+            List<Versioningstatus> candidates = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeySimpleNoCache("uid", addressUid, Versioningstatus.class);
+            if (candidates == null) return;
+
+            Address addressEntity = null;
+
+            for (Versioningstatus vs : candidates) {
+                if (StatusType.PENDING.name().equals(vs.getStatus()) && "PERSON_ADDRESS".equals(vs.getMetaId())) {
+                    String personInstanceId = vs.getReviewComment();
+                    List<Person> personList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(personInstanceId, Person.class);
+
+                    if (!personList.isEmpty()) {
+                        if (addressEntity == null) {
+                            List<Address> addrList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(addressInstanceId, Address.class);
+                            if (!addrList.isEmpty()) addressEntity = addrList.get(0);
+                        }
+                        if (addressEntity != null) {
+                            Person p = personList.get(0);
+                            p.setAddress(addressEntity);
+                            EposDataModelDAO.getInstance().updateObject(p);
+                            EposDataModelDAO.getInstance().deleteObject(vs);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.warning("Error resolving pending address relations: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Sync elements with proper delete/add logic
+     */
+    private void syncElements(Person edmobj, List<String> values, ElementType elementType, StatusType overrideStatus, boolean isNewVersion) {
+        if (values == null) values = new ArrayList<>();
+
+        // Get existing elements of this type
+        Set<String> existingValues = new HashSet<>();
+        List<PersonElement> existingRelations = new ArrayList<>();
+
+        List<Object> relations = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKey("personInstance", edmobj.getInstanceId(), PersonElement.class);
-        if (existingRelations != null) {
-            for (Object obj : existingRelations) {
+
+        if (relations != null) {
+            for (Object obj : relations) {
                 PersonElement relation = (PersonElement) obj;
                 Element existingElement = relation.getElementInstance();
-                if (existingElement != null && existingElement.getType().equals(elementType.name()) && existingElement.getValue().equals(value)) {
-                    return;
+                if (existingElement != null && existingElement.getType().equals(elementType.name())) {
+                    existingValues.add(existingElement.getValue());
+                    existingRelations.add(relation);
                 }
             }
         }
 
+        Set<String> newValues = new HashSet<>(values);
+
+        // Delete elements that are no longer present (only if not creating new version)
+        if (!isNewVersion) {
+            for (PersonElement relation : existingRelations) {
+                String value = relation.getElementInstance().getValue();
+                if (!newValues.contains(value)) {
+                    EposDataModelDAO.getInstance().deleteObject(relation);
+                    // Optionally delete the element itself if orphaned
+                }
+            }
+        }
+
+        // Add elements that don't exist yet
+        for (String value : values) {
+            if (!existingValues.contains(value)) {
+                createInnerElement(elementType, value, edmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void createInnerElement(ElementType elementType, String value, Person edmobj, StatusType overrideStatus) {
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);

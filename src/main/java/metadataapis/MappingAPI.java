@@ -6,7 +6,9 @@ import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +23,10 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Mapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        // Capture if fields were explicitly set BEFORE any processing
+        boolean paramValueExplicitlySet = isFieldExplicitlySet(obj, "paramValue");
+
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
             searchInstanceId = null;
@@ -33,6 +39,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 null,
                 getEdmClass());
 
+        String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             Mapping selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
@@ -42,14 +49,26 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                     break;
                 }
             }
+            oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Mapping) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        boolean isNewVersion = obj.getInstanceChangedId() != null;
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
 
         Mapping edmobj = new Mapping();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -72,25 +91,35 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         edmobj.setVariable(obj.getVariable());
         edmobj.setHealthcheckvalue(obj.getHealthCheckVariable());
 
-        if (obj.getParamValue() != null) {
-            List<Object> existingRaw = getDbaccess().getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
-            if (existingRaw != null) {
-                for (Object o : existingRaw) {
-                    MappingElement me = (MappingElement) o;
-                    if (me.getElementInstance() != null &&
-                            ElementType.PARAMVALUE.name().equals(me.getElementInstance().getType()) &&
-                            !obj.getParamValue().contains(me.getElementInstance().getValue())) {
+        if (isUpdate && !isNewVersion) {
+            deleteExistingElements(oldInstanceId);
+        }
 
-                        EposDataModelDAO.getInstance().deleteObject(me);
+        // PARAM VALUE (Elements)
+        if (paramValueExplicitlySet || !isNewVersion) {
+            if (obj.getParamValue() != null && !obj.getParamValue().isEmpty()) {
+                List<Object> existingRaw = getDbaccess().getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
+                if (existingRaw != null) {
+                    for (Object o : existingRaw) {
+                        MappingElement me = (MappingElement) o;
+                        if (me.getElementInstance() != null &&
+                                ElementType.PARAMVALUE.name().equals(me.getElementInstance().getType()) &&
+                                !obj.getParamValue().contains(me.getElementInstance().getValue())) {
+                            EposDataModelDAO.getInstance().deleteObject(me);
+                        }
                     }
                 }
+                for (String paramvalue : obj.getParamValue()) {
+                    createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
+                }
             }
-            for(String paramvalue : obj.getParamValue()) {
-                createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
-            }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PARAMVALUE, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.MAPPING.name(), edmobj);
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -98,9 +127,39 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 .uid(edmobj.getUid());
     }
 
+    private void deleteExistingElements(String mappingInstanceId) {
+        // FIX: Use getJoinEntitiesByRelationField which queries the @ManyToOne relationship field
+        List<MappingElement> existingRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("mappingInstance", mappingInstanceId, MappingElement.class);
+
+        if (existingRelations != null) {
+            for (MappingElement relation : existingRelations) {
+                EposDataModelDAO.getInstance().deleteObject(relation);
+                // Also delete the Element entity
+                if (relation.getElementInstance() != null) {
+                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                }
+            }
+        }
+    }
+
+    private void copyElementsFromPreviousVersion(String oldInstanceId, Mapping newEdmobj, ElementType elementType, StatusType overrideStatus) {
+        List<Object> oldRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("mappingInstance", oldInstanceId, MappingElement.class);
+        if (oldRelations == null) return;
+
+        for (Object obj : oldRelations) {
+            MappingElement oldRelation = (MappingElement) obj;
+            Element oldElement = oldRelation.getElementInstance();
+            if (oldElement != null && oldElement.getType().equals(elementType.name())) {
+                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
+            }
+        }
+    }
+
     private void createInnerElement(ElementType elementType, String value, Mapping edmobj, StatusType overrideStatus) {
         List<Object> existingRelations = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
+                .getJoinEntitiesByRelationField("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
 
         if (existingRelations != null) {
             for (Object obj : existingRelations) {
@@ -128,12 +187,37 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         LinkedEntity le = new commonapis.ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
 
-        if(!el.isEmpty()){
+        if (!el.isEmpty()) {
             MappingElement ce = new MappingElement();
             ce.setMappingInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
         }
+    }
+
+    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
+        try {
+            Field field = findField(obj.getClass(), fieldName);
+            if (field != null) {
+                field.setAccessible(true);
+                Object value = field.get(obj);
+                return value != null;
+            }
+        } catch (Exception e) {
+            // Fallback: assume not explicitly set
+        }
+        return false;
+    }
+
+    private Field findField(Class<?> clazz, String fieldName) {
+        while (clazz != null) {
+            try {
+                return clazz.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        return null;
     }
 
     @Override
@@ -193,21 +277,26 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         List<Mapping> returnList = getDbaccess().getOneFromDBByUID(uid, Mapping.class);
         return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Mapping.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Mapping.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Mapping.class, status));
     }
+
     private List<org.epos.eposdatamodel.Mapping> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
     }
+
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);

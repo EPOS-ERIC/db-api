@@ -46,7 +46,7 @@ public class FakedIngestionDataproductDistributionTest extends TestcontainersLif
             System.out.println(object);
         }
 
-        for(Object object : AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveAll()){
+        for(Object object : AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveAll()){
             System.out.println(object);
         }
         System.out.println("-------------------- first ingestion --------------------");
