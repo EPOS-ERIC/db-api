@@ -199,18 +199,36 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     }
 
     private Category findOrCreateStub(LinkedEntity link, StatusType status) {
+
         List<Category> found = getDbaccess().getOneFromDBByUID(link.getUid(), Category.class);
         if (!found.isEmpty()) return found.get(0);
 
+        String instanceId = UUID.randomUUID().toString();
+        String metaId = UUID.randomUUID().toString();
+        String versionId = UUID.randomUUID().toString();
+        StatusType finalStatus = status != null ? status : StatusType.DRAFT;
+
+        model.Versioningstatus vs = new model.Versioningstatus();
+        vs.setInstanceId(instanceId);
+        vs.setMetaId(metaId);
+        vs.setVersionId(versionId);
+        vs.setUid(link.getUid());
+        vs.setStatus(finalStatus.toString());
+        vs.setChangeTimestamp(java.time.OffsetDateTime.now());
+        vs.setChangeComment("Auto-created stub for pending relation");
+
+        getDbaccess().createObject(vs);
+
         Category stub = new Category();
         stub.setUid(link.getUid());
-        stub.setInstanceId(UUID.randomUUID().toString());
-        stub.setMetaId(UUID.randomUUID().toString());
-        model.Versioningstatus vs = new model.Versioningstatus();
-        vs.setStatus(status != null ? status.toString() : StatusType.DRAFT.toString());
+        stub.setInstanceId(instanceId);
+        stub.setMetaId(metaId);
         stub.setVersion(vs);
 
         getDbaccess().createObject(stub);
+
+        commonapis.EposDataModelEntityIDAPI.addEntityToEDMEntityID(metaId, EntityNames.CATEGORY.name());
+
         return stub;
     }
 

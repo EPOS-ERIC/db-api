@@ -25,6 +25,8 @@ public class RelationSyncUtil {
         Set<String> newValuesSet = new HashSet<>(newValues);
         newValuesSet.remove(null);
 
+        StatusType parentStatus = getStatusFromEntity(parentEntity);
+
         List<Object> rawObjects = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
 
@@ -49,7 +51,7 @@ public class RelationSyncUtil {
             if (!existingMap.containsKey(newValue)) {
                 try {
                     C newEntity = childClass.getDeclaredConstructor().newInstance();
-                    setStandardFields(newEntity, uidPrefix);
+                    setStandardFields(newEntity, uidPrefix, parentStatus);  // FIX: Passa lo status del parent
                     valueSetter.accept(newEntity, newValue);
                     parentSetter.accept(newEntity, parentEntity);
                     EposDataModelDAO.getInstance().updateObject(newEntity);
@@ -68,13 +70,15 @@ public class RelationSyncUtil {
         List<Object> oldRelations = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, oldParentInstanceId, childClass);
         if (oldRelations == null || oldRelations.isEmpty()) return;
+        
+        StatusType parentStatus = getStatusFromEntity(newParentEntity);
 
         for (Object obj : oldRelations) {
             C oldEntity = childClass.cast(obj);
             String value = valueGetter.apply(oldEntity);
             try {
                 C newEntity = childClass.getDeclaredConstructor().newInstance();
-                setStandardFields(newEntity, uidPrefix);
+                setStandardFields(newEntity, uidPrefix, parentStatus);  // FIX: Passa lo status del parent
                 valueSetter.accept(newEntity, value);
                 parentSetter.accept(newEntity, newParentEntity);
                 EposDataModelDAO.getInstance().updateObject(newEntity);
@@ -85,6 +89,10 @@ public class RelationSyncUtil {
     }
 
     private static void setStandardFields(Object entity, String uidPrefix) {
+        setStandardFields(entity, uidPrefix, null);
+    }
+
+    private static void setStandardFields(Object entity, String uidPrefix, StatusType parentStatus) {
         try {
             invokeSetter(entity, "setInstanceId", UUID.randomUUID().toString());
             invokeSetter(entity, "setMetaId", UUID.randomUUID().toString());
@@ -97,9 +105,10 @@ public class RelationSyncUtil {
                 vs.setVersionId(UUID.randomUUID().toString());
                 vs.setInstanceId(UUID.randomUUID().toString());
                 vs.setUid((uidPrefix != null ? uidPrefix + "/" : "") + UUID.randomUUID().toString());
-                vs.setStatus(model.StatusType.DRAFT.name());
+                StatusType statusToUse = parentStatus != null ? parentStatus : StatusType.DRAFT;
+                vs.setStatus(statusToUse.name());
                 vs.setChangeTimestamp(java.time.OffsetDateTime.now());
-                vs.setMetaId(entity.getClass().getSimpleName()); // Usa il nome classe come riferimento
+                vs.setMetaId(entity.getClass().getSimpleName());
 
                 setVersion.invoke(entity, vs);
             } catch (NoSuchMethodException ignored) {}
@@ -124,6 +133,31 @@ public class RelationSyncUtil {
                 } catch (Exception ignored) {}
             }
         }
+    }
+
+    private static StatusType getStatusFromEntity(Object entity) {
+        if (entity == null) return null;
+
+        try {
+            Method getVersion = entity.getClass().getMethod("getVersion");
+            Object versionObj = getVersion.invoke(entity);
+
+            if (versionObj instanceof Versioningstatus) {
+                Versioningstatus vs = (Versioningstatus) versionObj;
+                String statusStr = vs.getStatus();
+                if (statusStr != null) {
+                    try {
+                        return StatusType.valueOf(statusStr);
+                    } catch (IllegalArgumentException e) {
+                    }
+                }
+            }
+        } catch (NoSuchMethodException e) {
+        } catch (Exception e) {
+            System.err.println("[RelationSyncUtil] Error getting status from entity: " + e.getMessage());
+        }
+
+        return null;
     }
 
     private static void invokeSetter(Object obj, String methodName, String value) {
@@ -299,6 +333,11 @@ public class RelationSyncUtil {
 
     private static void createPendingRelation(String sourceInstanceId, String sourceEntityType, String targetUid, String targetEntityType, String joinClassName) {
         try {
+            if (pendingRelationExists(sourceInstanceId, targetUid, joinClassName)) {
+                //System.out.println("[RelationSyncUtil] Pending relation already exists for UID: " + targetUid);
+                return;
+            }
+
             Versioningstatus pending = new Versioningstatus();
             pending.setVersionId(UUID.randomUUID().toString());
             pending.setInstanceId(UUID.randomUUID().toString());
@@ -311,9 +350,29 @@ public class RelationSyncUtil {
             pending.setReviewComment(sourceInstanceId);
 
             EposDataModelDAO.getInstance().createObject(pending);
+            //System.out.println("[RelationSyncUtil] Created pending relation for UID: " + targetUid);
         } catch (Exception e) {
             System.err.println("[RelationSyncUtil] Error creating pending relation: " + e.getMessage());
         }
+    }
+
+    private static boolean pendingRelationExists(String sourceInstanceId, String targetUid, String joinClassName) {
+        try {
+            List<Versioningstatus> existing = EposDataModelDAO.getInstance()
+                    .getOneFromDBBySpecificKeySimpleNoCache("uid", targetUid, Versioningstatus.class);
+
+            if (existing != null) {
+                for (Versioningstatus vs : existing) {
+                    if (StatusType.PENDING.name().equals(vs.getStatus()) &&
+                            joinClassName.equals(vs.getMetaId()) &&
+                            sourceInstanceId.equals(vs.getReviewComment())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return false;
     }
 
     public static void resolvePendingRelations(String entityUid, String entityType, Object entityDbObject) {
@@ -330,6 +389,7 @@ public class RelationSyncUtil {
                     try {
                         resolveSinglePendingRelation(vs, entityDbObject);
                         EposDataModelDAO.getInstance().deleteObject(vs);
+                        //System.out.println("[RelationSyncUtil] Resolved pending relation for UID: " + entityUid);
                     } catch (Exception e) {
                         System.err.println("[RelationSyncUtil] Error resolving pending relation " + vs.getVersionId() + ": " + e.getMessage());
                     }
@@ -366,15 +426,92 @@ public class RelationSyncUtil {
             return;
         }
 
+        String sourceId = getModelId(sourceEntity);
+        String targetId = getModelId(targetEntity);
+
+        if (joinRelationAlreadyExists(joinClass, sourceId, targetId, sourceEntity, targetEntity)) {
+            //System.out.println("[RelationSyncUtil] Join relation already exists, skipping: " +
+                    //joinClass.getSimpleName() + " (" + sourceId + " <-> " + targetId + ")");
+            return;
+        }
+
         Object newJoin = joinClass.getDeclaredConstructor().newInstance();
         initializeEmbeddedId(newJoin, sourceEntity, targetEntity);
         setJoinRelationship(newJoin, sourceEntity);
         setJoinRelationship(newJoin, targetEntity);
 
-        String sourceId = getModelId(sourceEntity);
-        String targetId = getModelId(targetEntity);
+        try {
+            EposDataModelDAO.getInstance().createJoinEntity(newJoin, sourceId, sourceEntity.getClass(), targetId, targetEntity.getClass());
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("duplicate key") ||
+                    msg.contains("already exists") ||
+                    msg.contains("unique constraint"))) {
+                //System.out.println("[RelationSyncUtil] Relation already exists (caught on insert): " +
+                        //joinClass.getSimpleName());
+            } else {
+                throw e;
+            }
+        }
+    }
 
-        EposDataModelDAO.getInstance().createJoinEntity(newJoin, sourceId, sourceEntity.getClass(), targetId, targetEntity.getClass());
+    private static boolean joinRelationAlreadyExists(Class<?> joinClass, String sourceId, String targetId,
+                                                     Object sourceEntity, Object targetEntity) {
+        try {
+            String sourceClassName = sourceEntity.getClass().getSimpleName().toLowerCase();
+            String targetClassName = targetEntity.getClass().getSimpleName().toLowerCase();
+
+            String sourceFieldName = sourceClassName + "Instance";
+            List<Object> existing = null;
+
+            try {
+                existing = EposDataModelDAO.getInstance()
+                        .getOneFromDBBySpecificKeyNoCache(sourceFieldName, sourceId, joinClass);
+            } catch (Exception e) {
+                try {
+                    existing = EposDataModelDAO.getInstance()
+                            .getOneFromDBBySpecificKeyNoCache(sourceClassName + "1Instance", sourceId, joinClass);
+                } catch (Exception e2) {
+                }
+            }
+
+            if (existing != null && !existing.isEmpty()) {
+                for (Object obj : existing) {
+                    String existingTargetId = extractRelatedEntityId(obj, targetClassName);
+                    if (targetId.equals(existingTargetId)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String extractRelatedEntityId(Object joinEntity, String targetClassName) {
+        String[] patterns = {
+                "get" + capitalize(targetClassName) + "Instance",
+                "get" + capitalize(targetClassName) + "2Instance", 
+        };
+
+        for (String getterName : patterns) {
+            try {
+                Method getter = joinEntity.getClass().getMethod(getterName);
+                Object related = getter.invoke(joinEntity);
+                if (related != null) {
+                    return getModelId(related);
+                }
+            } catch (Exception e) {
+            }
+        }
+        return null;
+    }
+
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     private static void setJoinRelationship(Object joinEntity, Object relatedEntity) throws Exception {

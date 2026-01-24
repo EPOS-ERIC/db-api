@@ -36,6 +36,8 @@ public class VersioningStatusAPI {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
             for (Versioningstatus vs : list) {
                 if (isPendingRelationMarker(vs)) {
+                    LOG.fine("Skipping pending relation marker for UID: " + obj.getUid() +
+                            " (metaId=" + vs.getMetaId() + ")");
                     continue;
                 }
                 edmobj = vs;
@@ -47,6 +49,10 @@ public class VersioningStatusAPI {
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
+
+            //System.out.println("DEBUG checkVersion: Found ID=" + edmobj.getInstanceId() +
+                    //" Status=" + currentDbStatus + " -> Target=" + targetStatus);
+
             if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
                 createNewVersion(obj, edmobj, targetStatus);
             }
@@ -180,7 +186,7 @@ public class VersioningStatusAPI {
         edmobj.setVersionId(UUID.randomUUID().toString());
         obj.setVersionId(edmobj.getVersionId());
 
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse("entity/" + UUID.randomUUID().toString()));
         edmobj.setInstanceChangeId(null);
         edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
         edmobj.setChangeComment(obj.getChangeComment());
@@ -192,27 +198,62 @@ public class VersioningStatusAPI {
     }
 
     public static EPOSDataModelEntity retrieveVersion(EPOSDataModelEntity obj) {
-        List<Versioningstatus> returnList = null;
-        if(obj.getInstanceId() == null)
-            returnList = getDbaccess().getOneFromDB(
+        Versioningstatus vs = null;
+
+        if (obj.getInstanceId() != null) {
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
+            if (returnList.isEmpty()) {
+                returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
+            }
+
+            for (Versioningstatus candidate : returnList) {
+                if (!isPendingRelationMarker(candidate)) {
+                    vs = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (vs == null && obj.getUid() != null) {
+            List<Versioningstatus> uidList = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
+            for (Versioningstatus candidate : uidList) {
+                if (!isPendingRelationMarker(candidate)) {
+                    vs = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (vs == null) {
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                     obj.getInstanceId(),
                     obj.getMetaId(),
                     obj.getUid(),
                     obj.getVersionId(),
                     Versioningstatus.class
             );
-        else {
-            returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
-            if (returnList.isEmpty()) {
-                returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
+            for (Versioningstatus candidate : returnList) {
+                if (!isPendingRelationMarker(candidate)) {
+                    vs = candidate;
+                    break;
+                }
             }
         }
 
-        if (returnList.isEmpty()) return null;
+        if (vs == null) {
+            LOG.warning("[VersioningStatusAPI] No Versioningstatus found for entity - " +
+                    "instanceId=" + obj.getInstanceId() + ", uid=" + obj.getUid() +
+                    ". Returning entity with default status.");
+            if (obj.getStatus() == null) {
+                obj.setStatus(DRAFT);
+            }
+            return obj;
+        }
 
-        Versioningstatus vs = returnList.get(0);
         obj.setChangeComment(vs.getChangeComment());
-        obj.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+        if (vs.getChangeTimestamp() != null) {
+            obj.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+        }
         obj.setEditorId(vs.getEditorId());
         obj.setFileProvenance(vs.getProvenance());
         obj.setVersion(vs.getVersion());
@@ -242,9 +283,5 @@ public class VersioningStatusAPI {
 
     private static EposDataModelDAO<Versioningstatus> getDbaccess() {
         return EposDataModelDAO.getInstance();
-    }
-
-    private static Class<?> getEdmClass() {
-        return Versioningstatus.class;
     }
 }
