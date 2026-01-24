@@ -221,14 +221,9 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Creates entity with intelligent cache invalidation
-	 * REPLACES: createObject(T entity)
 	 */
 	public Boolean createObject(T entity) {
-		if (entity == null) {
-			LOG.warning("Attempted to save null entity");
-			return false;
-		}
-
+		if (entity == null) return false;
 		EntityManager em = null;
 		EntityTransaction transaction = null;
 
@@ -237,112 +232,116 @@ public class EposDataModelDAO<T> {
 			transaction = em.getTransaction();
 			transaction.begin();
 
-			em.persist(entity);
+			sanitizeVersionStatus(em, entity);
+
+			em.merge(entity);
 			transaction.commit();
-
-			// Intelligent cache invalidation for related data
-			String entityName = entity.getClass().getSimpleName();
-			evictCacheByPattern(entityName);
-
+			evictCacheByPattern(entity.getClass().getSimpleName());
 			return true;
-
 		} catch (Exception exception) {
-			if (transaction != null && transaction.isActive()) {
-				try {
-					transaction.rollback();
-				} catch (Exception rollbackEx) {
-					LOG.log(Level.SEVERE, "Error during transaction rollback", rollbackEx);
-				}
-			}
-			LOG.log(Level.SEVERE, "Error saving entity", exception);
+			if (transaction != null && transaction.isActive()) transaction.rollback();
 			return false;
 		} finally {
-			if (em != null) {
+			if (em != null) em.close();
+		}
+	}
+
+	private void sanitizeVersionStatus(EntityManager em, Object entity) {
+		try {
+			Method getVersion = entity.getClass().getMethod("getVersion");
+			Object vsObj = getVersion.invoke(entity);
+
+			if (vsObj instanceof Versioningstatus) {
+				Versioningstatus vs = (Versioningstatus) vsObj;
+				if (vs.getVersionId() == null) vs.setVersionId(UUID.randomUUID().toString());
+				if (vs.getInstanceId() == null) vs.setInstanceId(UUID.randomUUID().toString());
+				if (vs.getStatus() == null) vs.setStatus(model.StatusType.DRAFT.name());
+				if (vs.getChangeTimestamp() == null) vs.setChangeTimestamp(java.time.OffsetDateTime.now());
+
+				em.merge(vs);
+			}
+		} catch (Exception ignored) {}
+	}
+
+	private void ensureListsAreInitialized(Object entity) {
+		if (entity == null) return;
+		for (java.lang.reflect.Method m : entity.getClass().getMethods()) {
+			if (m.getName().startsWith("get") && m.getReturnType().equals(List.class)) {
 				try {
-					em.close();
-				} catch (Exception closeEx) {
-					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
-				}
+					Object value = m.invoke(entity);
+					if (value == null) {
+						String setterName = m.getName().replace("get", "set");
+						java.lang.reflect.Method setter = entity.getClass().getMethod(setterName, List.class);
+						setter.invoke(entity, new ArrayList<>());
+						LOG.finest("Initialized null list via: " + setterName);
+					}
+				} catch (Exception ignored) {}
 			}
 		}
+	}
+
+	private void persistDependentVersionStatus(EntityManager em, Object entity) {
+		try {
+			Method getVersion = entity.getClass().getMethod("getVersion");
+			Object vsObj = getVersion.invoke(entity);
+
+			if (vsObj instanceof Versioningstatus) {
+				Versioningstatus vs = (Versioningstatus) vsObj;
+
+				// Verifica di sicurezza pre-persistenza
+				if (vs.getVersionId() == null) {
+					vs.setVersionId(UUID.randomUUID().toString());
+				}
+				if (vs.getInstanceId() == null) {
+					vs.setInstanceId(UUID.randomUUID().toString());
+				}
+				if (vs.getStatus() == null) {
+					vs.setStatus(model.StatusType.DRAFT.name());
+				}
+				if (vs.getChangeTimestamp() == null) {
+					vs.setChangeTimestamp(java.time.OffsetDateTime.now());
+				}
+
+				em.merge(vs);
+			}
+		} catch (Exception ignored) {}
 	}
 
 	/**
 	 * Creates a join entity with proper entity attachment.
 	 * Handles @MapsId relationships correctly by re-attaching referenced entities.
 	 */
-	public <J> Boolean createJoinEntity(J joinEntity, String parentInstanceId, Class<?> parentClass,
-										String targetInstanceId, Class<?> targetClass) {
-
-		if (parentInstanceId != null && parentInstanceId.equals(targetInstanceId)) {
-			return true; // Return true to indicate "success" (no action needed)
-		}
-
+	public <J> Boolean createJoinEntity(J joinEntity, String parentId, Class<?> pClass, String targetId, Class<?> tClass) {
 		EntityManager em = null;
 		EntityTransaction transaction = null;
-
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			transaction = em.getTransaction();
 			transaction.begin();
 
-			// Re-attach parent and target entities
-			Object parent = em.find(parentClass, parentInstanceId);
-			Object target = em.find(targetClass, targetInstanceId);
+			Object p = em.find(pClass, parentId);
+			Object t = em.find(tClass, targetId);
 
-			if (parent == null || target == null) {
-				LOG.warning("Cannot create join: parent or target not found. Parent=" +
-						(parent != null) + ", Target=" + (target != null));
-				if (transaction.isActive()) transaction.rollback();
-				return false;
-			}
+			if (p == null || t == null) return false;
 
-			// Set relationships using reflection
-			for (java.lang.reflect.Method method : joinEntity.getClass().getMethods()) {
-				if (method.getName().startsWith("set") && method.getParameterCount() == 1) {
-					Class<?> paramType = method.getParameterTypes()[0];
-					if (paramType.isAssignableFrom(parentClass)) {
-						method.invoke(joinEntity, parent);
-					} else if (paramType.isAssignableFrom(targetClass)) {
-						method.invoke(joinEntity, target);
-					}
+			persistDependentVersionStatus(em, p);
+			persistDependentVersionStatus(em, t);
+
+			for (Method m : joinEntity.getClass().getMethods()) {
+				if (m.getName().startsWith("set") && m.getParameterCount() == 1) {
+					if (m.getParameterTypes()[0].isAssignableFrom(pClass)) m.invoke(joinEntity, p);
+					else if (m.getParameterTypes()[0].isAssignableFrom(tClass)) m.invoke(joinEntity, t);
 				}
 			}
 
 			em.persist(joinEntity);
-			em.flush();
 			transaction.commit();
-
-			// Invalidate cache
-			evictCacheByPattern(joinEntity.getClass().getSimpleName());
-
 			return true;
-
-		} catch (Exception exception) {
-			if (transaction != null && transaction.isActive()) {
-				try {
-					transaction.rollback();
-				} catch (Exception rollbackEx) {
-					LOG.log(Level.WARNING, "Error during transaction rollback", rollbackEx);
-				}
-			}
-
-			String message = getRootCauseMessage(exception);
-			if (message != null && (message.contains("duplicate key") || message.contains("already exists"))) {
-				return true; // Relation exists, consider it success
-			}
-
-			LOG.log(Level.SEVERE, "Error creating join entity", exception);
-			exception.printStackTrace();
+		} catch (Exception e) {
+			if (transaction != null && transaction.isActive()) transaction.rollback();
 			return false;
 		} finally {
-			if (em != null) {
-				try {
-					em.close();
-				} catch (Exception closeEx) {
-					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
-				}
-			}
+			if (em != null) em.close();
 		}
 	}
 
@@ -654,17 +653,16 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-
 			TypedQuery<T> query = em.createQuery(
 					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :instanceId",
 					obj);
 			query.setParameter("instanceId", instanceId);
-
 			List<T> result = query.getResultList();
 
-			// Populate both cache layers
-			putInQueryCache(cacheKey, result);
-			putInEntityCache(cacheKey, result);
+			// Inizializzazione post-caricamento per sicurezza (Sanitization)
+			for (T entity : result) {
+				ensureListsAreInitialized(entity);
+			}
 
 			return result;
 
@@ -887,33 +885,31 @@ public class EposDataModelDAO<T> {
 	 * BYPASS CACHE: Find by UID directly from DB.
 	 */
 	public List<T> getOneFromDBByUIDNoCache(String uid, Class<T> obj) {
-		if (uid == null || uid.trim().isEmpty()) {
-			return new ArrayList<>();
-		}
+		if (uid == null || uid.trim().isEmpty()) return new ArrayList<>();
 
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 
-
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid = :uid",
-					obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid = :uid", obj);
 			query.setParameter("uid", uid);
 
-			return query.getResultList();
+			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+			query.setHint("eclipselink.refresh", "true");
 
+			List<T> result = query.getResultList();
+
+			for (T entity : result) {
+				ensureListsAreInitialized(entity);
+			}
+
+			return result;
 		} catch (Exception exception) {
 			LOG.log(Level.SEVERE, "Error in getOneFromDBByUIDNoCache", exception);
 			return new ArrayList<>();
 		} finally {
-			if (em != null) {
-				try {
-					em.close();
-				} catch (Exception closeEx) {
-					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
-				}
-			}
+			if (em != null) em.close();
 		}
 	}
 
@@ -1174,42 +1170,27 @@ public class EposDataModelDAO<T> {
 	 * Filters out PENDING entities to prevent conflicts with relation signals.
 	 */
 	public List<T> getOneFromDBByUID(String uid, Class<T> obj) {
-		if (uid == null || uid.trim().isEmpty())
-			return new ArrayList<>();
-
-		String cacheKey = generateCacheKey("uid", uid, obj.getSimpleName());
-
-		List<T> cached = getFromEntityCache(cacheKey);
-		if (cached != null)
-			return cached;
+		if (uid == null || uid.trim().isEmpty()) return new ArrayList<>();
 
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid LIKE :uid",
-					obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid LIKE :uid", obj);
 			query.setParameter("uid", uid);
+			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+			query.setHint("eclipselink.refresh", "true");
 
 			List<T> result = query.getResultList();
 
-			List<T> filteredResult = new ArrayList<>();
 			for (T entity : result) {
-				if (!isEntityPending(entity)) {
-					filteredResult.add(entity);
-				}
+				ensureListsAreInitialized(entity);
 			}
 
-			putInEntityCache(cacheKey, filteredResult);
-			return filteredResult;
-
-		} catch (Exception exception) {
-			LOG.log(Level.SEVERE, "Error in getOneFromDBByUID", exception);
-			return new ArrayList<>();
+			return result;
 		} finally {
-			if (em != null)
-				em.close();
+			if (em != null) em.close();
 		}
 	}
 

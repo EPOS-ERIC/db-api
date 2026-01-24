@@ -89,12 +89,40 @@ public class RelationSyncUtil {
             invokeSetter(entity, "setInstanceId", UUID.randomUUID().toString());
             invokeSetter(entity, "setMetaId", UUID.randomUUID().toString());
             invokeSetter(entity, "setUid", (uidPrefix != null ? uidPrefix + "/" : "") + UUID.randomUUID().toString());
+
             try {
                 Method setVersion = entity.getClass().getMethod("setVersion", model.Versioningstatus.class);
-                setVersion.invoke(entity, (Object) null);
-            } catch (NoSuchMethodException | SecurityException ignored) {}
+                Versioningstatus vs = new Versioningstatus();
+
+                vs.setVersionId(UUID.randomUUID().toString());
+                vs.setInstanceId(UUID.randomUUID().toString());
+                vs.setUid((uidPrefix != null ? uidPrefix + "/" : "") + UUID.randomUUID().toString());
+                vs.setStatus(model.StatusType.DRAFT.name());
+                vs.setChangeTimestamp(java.time.OffsetDateTime.now());
+                vs.setMetaId(entity.getClass().getSimpleName()); // Usa il nome classe come riferimento
+
+                setVersion.invoke(entity, vs);
+            } catch (NoSuchMethodException ignored) {}
+
+            for (Method m : entity.getClass().getMethods()) {
+                if (m.getName().startsWith("set") && m.getParameterCount() == 1
+                        && m.getParameterTypes()[0].equals(List.class)) {
+                    try {
+                        m.invoke(entity, new ArrayList<>());
+                    } catch (Exception ignored) {}
+                }
+            }
         } catch (Exception e) {
             throw new RuntimeException("Cannot set standard fields on " + entity.getClass().getName(), e);
+        }
+
+        for (java.lang.reflect.Method m : entity.getClass().getMethods()) {
+            if (m.getName().startsWith("set") && m.getParameterCount() == 1
+                    && m.getParameterTypes()[0].equals(List.class)) {
+                try {
+                    m.invoke(entity, new ArrayList<>());
+                } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -208,20 +236,13 @@ public class RelationSyncUtil {
             Class<J> joinClass, P parentDbObject, T targetEntity,
             BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter
     ) {
-        try {
-            J newJoin = joinClass.getDeclaredConstructor().newInstance();
+        try {J newJoin = joinClass.getDeclaredConstructor().newInstance();
             String parentId = getModelId(parentDbObject);
             String targetId = getModelId(targetEntity);
 
             if (parentId != null && parentId.equals(targetId)) return true;
 
             initializeEmbeddedId(newJoin, parentDbObject, targetEntity);
-
-            if (parentSetter != null) parentSetter.accept(newJoin, parentDbObject);
-            else setJoinRelationship(newJoin, parentDbObject);
-
-            if (targetSetter != null) targetSetter.accept(newJoin, targetEntity);
-            else setJoinRelationship(newJoin, targetEntity);
 
             Boolean result = EposDataModelDAO.getInstance().createJoinEntity(
                     newJoin, parentId, parentDbObject.getClass(), targetId, targetEntity.getClass()

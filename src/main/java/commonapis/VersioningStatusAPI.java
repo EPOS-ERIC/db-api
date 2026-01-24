@@ -22,8 +22,6 @@ public class VersioningStatusAPI {
 
         Versioningstatus edmobj = null;
 
-        // 1. Recupero stato attuale (Cache -> Fallback NoCache)
-        // Qui usiamo la cache per performance in lettura, ma con fallback se non troviamo nulla
         if (obj.getInstanceId() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
             if (!list.isEmpty()) {
@@ -34,20 +32,21 @@ public class VersioningStatusAPI {
             }
         }
 
-        // 2. Fallback UID (Solo NoCache per sicurezza)
         if (edmobj == null && obj.getUid() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
-            if (!list.isEmpty()) edmobj = list.get(0);
+            for (Versioningstatus vs : list) {
+                if (isPendingRelationMarker(vs)) {
+                    continue;
+                }
+                edmobj = vs;
+                break;
+            }
         }
 
         if (edmobj != null) {
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
-
-            System.out.println("DEBUG checkVersion: Found ID=" + edmobj.getInstanceId() +
-                    " Status=" + currentDbStatus + " -> Target=" + targetStatus);
-
             if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
                 createNewVersion(obj, edmobj, targetStatus);
             }
@@ -71,6 +70,31 @@ public class VersioningStatusAPI {
         }
     }
 
+    private static boolean isPendingRelationMarker(Versioningstatus vs) {
+        if (vs == null) return false;
+
+        if (!StatusType.PENDING.name().equals(vs.getStatus())) {
+            return false;
+        }
+
+        String metaId = vs.getMetaId();
+        if (metaId != null && metaId.contains(".")) {
+            return true;
+        }
+
+        String provenance = vs.getProvenance();
+        String changeComment = vs.getChangeComment();
+        if (provenance != null && changeComment != null) {
+            if (provenance.equals(provenance.toUpperCase()) &&
+                    changeComment.equals(changeComment.toUpperCase()) &&
+                    provenance.length() > 3 && changeComment.length() > 3) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static boolean isValidTransition(StatusType oldStatus, StatusType newStatus) {
         if (oldStatus == newStatus) return true;
         if (oldStatus == DRAFT && newStatus == SUBMITTED) return true;
@@ -88,6 +112,8 @@ public class VersioningStatusAPI {
 
         for (Versioningstatus rawVs : allVersionsRaw) {
             if (rawVs.getVersionId().equals(currentVersionId)) continue;
+
+            if (isPendingRelationMarker(rawVs)) continue;
 
             if (PUBLISHED.toString().equals(rawVs.getStatus())) {
                 rawVs.setStatus(ARCHIVED.toString());
@@ -154,7 +180,7 @@ public class VersioningStatusAPI {
         edmobj.setVersionId(UUID.randomUUID().toString());
         obj.setVersionId(edmobj.getVersionId());
 
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setInstanceChangeId(null);
         edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
         edmobj.setChangeComment(obj.getChangeComment());
@@ -200,7 +226,6 @@ public class VersioningStatusAPI {
         return obj;
     }
 
-    // *** FIX FINALE: Usa SEMPRE NoCache se abbiamo l'ID ***
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
         List<Versioningstatus> returnList = null;
 
@@ -209,9 +234,6 @@ public class VersioningStatusAPI {
                     obj.getInstanceId(), obj.getMetaId(), obj.getUid(), obj.getVersionId(), Versioningstatus.class
             );
         } else {
-            // BYPASS CACHE OBBLIGATORIO:
-            // Assicura che DataProductAPI riceva l'oggetto appena aggiornato a PUBLISHED
-            // e non una copia vecchia (DRAFT) dalla cache.
             returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
         }
 
@@ -220,5 +242,9 @@ public class VersioningStatusAPI {
 
     private static EposDataModelDAO<Versioningstatus> getDbaccess() {
         return EposDataModelDAO.getInstance();
+    }
+
+    private static Class<?> getEdmClass() {
+        return Versioningstatus.class;
     }
 }

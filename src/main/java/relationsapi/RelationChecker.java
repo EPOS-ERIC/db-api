@@ -134,7 +134,7 @@ public class RelationChecker {
                     (mainEntity != null ? mainEntity.getStatus() : null);
 
             if (targetStatus != null) {
-                List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUID(relationEntity.getUid(), clazz);
+                List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(relationEntity.getUid(), clazz);
 
                 if (allVersions.isEmpty()) {
                     allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(relationEntity.getUid(), clazz);
@@ -202,7 +202,7 @@ public class RelationChecker {
                 } else {
                     if (linkedEntity.getUid() != null) {
                         List<Object> byUid = EposDataModelDAO.getInstance()
-                                .getOneFromDBByUID(linkedEntity.getUid(), clazz);
+                                .getOneFromDBByUIDNoCache(linkedEntity.getUid(), clazz);
 
                         if (byUid.isEmpty()) {
                             byUid = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(linkedEntity.getUid(), clazz);
