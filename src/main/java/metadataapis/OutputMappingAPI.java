@@ -24,9 +24,6 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
     public LinkedEntity create(org.epos.eposdatamodel.OutputMapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<OutputMapping> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

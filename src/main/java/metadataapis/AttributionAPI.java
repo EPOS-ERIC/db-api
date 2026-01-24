@@ -30,7 +30,6 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) searchInstanceId = null;
 
         List<Attribution> returnList = getDbaccess().getOneFromDB(searchInstanceId, obj.getMetaId(), obj.getUid(), null, getEdmClass());
         String oldInstanceId = null;

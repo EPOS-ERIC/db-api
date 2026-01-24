@@ -29,9 +29,6 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<CategoryScheme> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

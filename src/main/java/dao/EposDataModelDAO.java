@@ -19,41 +19,18 @@ import model.StatusType;
 import model.Versioningstatus;
 import model.Webservice;
 
-import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 
 import java.io.*;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.time.Duration;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-/**
- * Optimized DAO for EPOS Data Model - CAFFEINE CACHE VERSION
- *
- * Advanced features implemented:
- * - High-performance Caffeine caching
- * - Automatic TTL management
- * - Intelligent eviction policies
- * - Detailed cache statistics
- * - Fully thread-safe operations
- * - Multi-layer cache strategy
- *
- * Performance improvements over original DAO:
- * - 95% reduction in database connections
- * - 500-2000% faster query execution
- * - 70% reduction in memory usage
- * - Zero N+1 query problems
- * - Automatic cache warming and maintenance
- *
- * @param <T> Entity type
- */
 public class EposDataModelDAO<T> {
 
 	private static final Logger LOG = Logger.getLogger(EposDataModelDAO.class.getName());
@@ -61,10 +38,10 @@ public class EposDataModelDAO<T> {
 
 	// Primary cache for query results with optimized configuration
 	private final Cache<String, Object> queryCache = Caffeine.newBuilder()
-			.maximumSize(1_000_000_000) // Maximum 10k entries
-			.expireAfterWrite(Duration.ofMinutes(120)) //queryCache TTL 120 minutes
-			.expireAfterAccess(Duration.ofMinutes(60)) // Idle timeout 60 minutes
-			.recordStats() // Enable detailed statistics
+			.maximumSize(1_000_000_000)
+			.expireAfterWrite(Duration.ofMinutes(120))
+			.expireAfterAccess(Duration.ofMinutes(60))
+			.recordStats()
 			.build();
 
 	// Separate cache for count queries (shorter TTL due to volatility)
@@ -212,7 +189,6 @@ public class EposDataModelDAO<T> {
 			os.flush();
 			os.close();
 			int responseCode = con.getResponseCode();
-			// LOG.info("POST Response Code :: " + responseCode);
 
 			if (responseCode == HttpURLConnection.HTTP_OK) { // success
 				BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
@@ -223,14 +199,9 @@ public class EposDataModelDAO<T> {
 					response.append(inputLine);
 				}
 				in.close();
-
-				// print result
-				// LOG.info("Sent invalidation to "+ inputURL +" successfully");
 			} else {
-				// LOG.info("POST request for "+ inputURL+" did not work.");
 			}
 		} catch (IOException e) {
-			//LOG.log(Level.WARNING, "Sending invalidation to " + inputURL + " unsuccessful, cause: " + e.getMessage());
 		}
 
 	}
@@ -273,7 +244,6 @@ public class EposDataModelDAO<T> {
 			String entityName = entity.getClass().getSimpleName();
 			evictCacheByPattern(entityName);
 
-			// LOG.info("Entity saved successfully: " + entityName);
 			return true;
 
 		} catch (Exception exception) {
@@ -305,8 +275,6 @@ public class EposDataModelDAO<T> {
 										String targetInstanceId, Class<?> targetClass) {
 
 		if (parentInstanceId != null && parentInstanceId.equals(targetInstanceId)) {
-			LOG.info("Skipping self-reference join creation: " + joinEntity.getClass().getSimpleName() +
-					" (ID=" + parentInstanceId + ")");
 			return true; // Return true to indicate "success" (no action needed)
 		}
 
@@ -348,7 +316,6 @@ public class EposDataModelDAO<T> {
 			// Invalidate cache
 			evictCacheByPattern(joinEntity.getClass().getSimpleName());
 
-			LOG.info("Join entity created successfully: " + joinEntity.getClass().getSimpleName());
 			return true;
 
 		} catch (Exception exception) {
@@ -362,7 +329,6 @@ public class EposDataModelDAO<T> {
 
 			String message = getRootCauseMessage(exception);
 			if (message != null && (message.contains("duplicate key") || message.contains("already exists"))) {
-				LOG.info("Join relation already exists: " + joinEntity.getClass().getSimpleName() + " - skipping");
 				return true; // Relation exists, consider it success
 			}
 
@@ -407,21 +373,17 @@ public class EposDataModelDAO<T> {
 
 			List<T> result;
 			try {
-				// Strategy 1: EmbeddedId (e.g., c.id.facilityInstance)
 				String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c.id." + parentIdField + " = :parentId";
 				TypedQuery<T> query = em.createQuery(jpql, joinClass);
 				query.setParameter("parentId", parentId);
 				result = query.getResultList();
 			} catch (Exception e1) {
 				try {
-					// Strategy 2: Direct Field ID (e.g., c.facilityInstance.instanceId)
-					// This fixes the IllegalArgumentException when parentId is a String
 					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :parentId";
 					TypedQuery<T> query = em.createQuery(jpql, joinClass);
 					query.setParameter("parentId", parentId);
 					result = query.getResultList();
 				} catch (Exception e2) {
-					// Strategy 3: Direct Field (Fallback)
 					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :parentId";
 					TypedQuery<T> query = em.createQuery(jpql, joinClass);
 					query.setParameter("parentId", parentId);
@@ -433,7 +395,6 @@ public class EposDataModelDAO<T> {
 			return result;
 
 		} catch (Exception exception) {
-			// Log but don't crash - return empty to allow clean continue
 			LOG.log(Level.WARNING, "Warning in getJoinEntitiesByParentId: " + exception.getMessage());
 			return new ArrayList<>();
 		} finally {
@@ -504,75 +465,7 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
-	 * Batch create with optimized cache invalidation
-	 * NEW METHOD for high-volume operations
-	 */
-	public Boolean createObjects(List<T> entities) {
-		if (entities == null || entities.isEmpty()) {
-			return true;
-		}
-
-		EntityManager em = null;
-		EntityTransaction transaction = null;
-
-		try {
-			em = EntityManagerService.getInstance().createEntityManager();
-			transaction = em.getTransaction();
-			transaction.begin();
-
-			String entityName = null;
-
-			for (int i = 0; i < entities.size(); i++) {
-				T entity = entities.get(i);
-				if (entityName == null) {
-					entityName = entity.getClass().getSimpleName();
-				}
-
-				em.persist(entity);
-
-				// Periodic flush to prevent OutOfMemory errors
-				if (i % BATCH_SIZE == 0 && i > 0) {
-					em.flush();
-					em.clear();
-				}
-			}
-
-			em.flush();
-			transaction.commit();
-
-			// Single cache invalidation for entire batch
-			if (entityName != null) {
-				evictCacheByPattern(entityName);
-			}
-
-			// LOG.info("Batch create completed: " + entities.size() + " entities of type "
-			// + entityName);
-			return true;
-
-		} catch (Exception exception) {
-			if (transaction != null && transaction.isActive()) {
-				try {
-					transaction.rollback();
-				} catch (Exception rollbackEx) {
-					LOG.log(Level.SEVERE, "Error during transaction rollback", rollbackEx);
-				}
-			}
-			LOG.log(Level.SEVERE, "Error during batch create operation", exception);
-			return false;
-		} finally {
-			if (em != null) {
-				try {
-					em.close();
-				} catch (Exception closeEx) {
-					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
-				}
-			}
-		}
-	}
-
-	/**
 	 * Update with precise cache invalidation
-	 * REPLACES: updateObject(T obj)
 	 */
 	public Boolean updateObject(T obj) {
 		if (obj == null) {
@@ -594,7 +487,6 @@ public class EposDataModelDAO<T> {
 			// Invalidate related cache entries
 			evictCacheByPattern(obj.getClass().getSimpleName());
 
-			// LOG.info("Entity updated successfully");
 			return true;
 
 		} catch (Exception exception) {
@@ -605,7 +497,6 @@ public class EposDataModelDAO<T> {
 					LOG.log(Level.SEVERE, "Error during transaction rollback", rollbackEx);
 				}
 			}
-			LOG.log(Level.SEVERE, "Error updating entity", exception);
 			return false;
 		} finally {
 			if (em != null) {
@@ -644,7 +535,6 @@ public class EposDataModelDAO<T> {
 
 			evictCacheByPattern(obj.getClass().getSimpleName());
 
-			// LOG.info("Entity deleted successfully");
 			return true;
 
 		} catch (Exception exception) {
@@ -711,7 +601,6 @@ public class EposDataModelDAO<T> {
 				evictCacheByPattern(entityName);
 			}
 
-			// LOG.info("Batch delete completed: " + objects.size() + " entities");
 			return true;
 
 		} catch (Exception exception) {
@@ -739,7 +628,6 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Find by Instance ID with entity-level caching
-	 * REPLACES: getOneFromDBByInstanceId
 	 */
 	public List<T> getOneFromDBByInstanceId(String instanceId, Class<T> obj) {
 		if (instanceId == null || instanceId.trim().isEmpty()) {
@@ -796,7 +684,6 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Get all with conditional caching (only for small datasets)
-	 * REPLACES: getAllFromDB
 	 */
 	public List<T> getAllFromDB(Class<T> obj) {
 		String cacheKey = generateCacheKey("allFromDB", obj.getSimpleName());
@@ -857,10 +744,7 @@ public class EposDataModelDAO<T> {
 
             List<T> result = query.getResultList();
 
-            // Cache only if dataset is not too large
-            //if (result.size() < 5000) {
             putInQueryCache(cacheKey, result);
-            //}
 
             return result;
 
@@ -880,7 +764,6 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Count with dedicated cache
-	 * NEW METHOD with count-specific caching
 	 */
 	public Long countAll(Class<T> obj) {
 		String cacheKey = generateCacheKey("countAll", obj.getSimpleName());
@@ -920,9 +803,24 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	/**
-	 * REPLACES: getOneFromDBBySpecificKey
-	 */
+	public List<T> getOneFromDBBySpecificKeyNoCache(String key, String value, Class<T> obj) {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			em.clear(); // Clear L1 cache
+			TypedQuery<T> query = em.createQuery("SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + ".instanceId = :value", obj);
+			query.setParameter("value", value);
+			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+			query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
+			return query.getResultList();
+		} catch (Exception exception) {
+			LOG.log(Level.SEVERE, "Error in getOneFromDBBySpecificKeyNoCache", exception);
+			return new ArrayList<>();
+		} finally {
+			if (em != null) em.close();
+		}
+	}
+
 	public List<T> getOneFromDBBySpecificKey(String key, String value, Class<T> obj) {
 		String cacheKey = generateCacheKey("specificKey", key, value, obj.getSimpleName());
 
@@ -953,8 +851,72 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
-	 * REPLACES: getOneFromDBBySpecificKeySimple
+	 * BYPASS CACHE: Find by Instance ID directly from DB.
 	 */
+	public List<T> getOneFromDBByInstanceIdNoCache(String instanceId, Class<T> obj) {
+		if (instanceId == null || instanceId.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+
+			TypedQuery<T> query = em.createQuery(
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :instanceId",
+					obj);
+			query.setParameter("instanceId", instanceId);
+
+			return query.getResultList();
+
+		} catch (Exception exception) {
+			LOG.log(Level.SEVERE, "Error in getOneFromDBByInstanceIdNoCache", exception);
+			return new ArrayList<>();
+		} finally {
+			if (em != null) {
+				try {
+					em.close();
+				} catch (Exception closeEx) {
+					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
+				}
+			}
+		}
+	}
+
+	/**
+	 * BYPASS CACHE: Find by UID directly from DB.
+	 */
+	public List<T> getOneFromDBByUIDNoCache(String uid, Class<T> obj) {
+		if (uid == null || uid.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+
+
+			TypedQuery<T> query = em.createQuery(
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid = :uid",
+					obj);
+			query.setParameter("uid", uid);
+
+			return query.getResultList();
+
+		} catch (Exception exception) {
+			LOG.log(Level.SEVERE, "Error in getOneFromDBByUIDNoCache", exception);
+			return new ArrayList<>();
+		} finally {
+			if (em != null) {
+				try {
+					em.close();
+				} catch (Exception closeEx) {
+					LOG.log(Level.WARNING, "Error closing EntityManager", closeEx);
+				}
+			}
+		}
+	}
+
 	public List<T> getOneFromDBBySpecificKeySimple(String key, String value, Class<T> obj) {
 		String cacheKey = generateCacheKey("specificKeySimple", key, value, obj.getSimpleName());
 
@@ -993,7 +955,6 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 
-			// Pulisce il contesto di persistenza per evitare dati stale in L1 cache
 			em.clear();
 
 			TypedQuery<T> query = em.createQuery(
@@ -1001,11 +962,9 @@ public class EposDataModelDAO<T> {
 					obj);
 			query.setParameter("value", value);
 
-			// Hint standard JPA per ignorare la cache e andare al DB
 			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
 			query.setHint("jakarta.persistence.cache.storeMode", "REFRESH"); // Per Jakarta EE
 
-			// Hint specifici per EclipseLink (se usato)
 			query.setHint("eclipselink.refresh", "true");
 			query.setHint("eclipselink.maintain-cache", "false");
 
@@ -1029,13 +988,11 @@ public class EposDataModelDAO<T> {
 	private boolean isEntityPending(Object entity) {
 		if (entity == null) return false;
 		try {
-			// Caso 1: L'entità è direttamente un oggetto Versioningstatus
 			if (entity instanceof Versioningstatus) {
 				String status = ((Versioningstatus) entity).getStatus();
 				return "PENDING".equalsIgnoreCase(status);
 			}
 
-			// Caso 2: Entità di dominio (es. Distribution) che ha un metodo getVersion()
 			try {
 				Method getVersion = entity.getClass().getMethod("getVersion");
 				Object versionObj = getVersion.invoke(entity);
@@ -1047,7 +1004,6 @@ public class EposDataModelDAO<T> {
 					}
 				}
 			} catch (NoSuchMethodException e) {
-				// L'oggetto non ha getVersion(), proviamo getStatus() diretto per sicurezza (fallback)
 				try {
 					Method getStatus = entity.getClass().getMethod("getStatus");
 					Object statusObj = getStatus.invoke(entity);
@@ -1055,18 +1011,13 @@ public class EposDataModelDAO<T> {
 						return true;
 					}
 				} catch (NoSuchMethodException ignored) {
-					// Non è un'entità versionata
 				}
 			}
 		} catch (Exception e) {
-			// Ignora errori di riflessione
 		}
 		return false;
 	}
 
-	/**
-	 * REPLACES: getFromDBByUsingMultipleKeys
-	 */
 	public List<T> getFromDBByUsingMultipleKeys(Map<String, Object> keyValues, Class<T> obj) {
 		if (keyValues == null || keyValues.isEmpty())
 			return new ArrayList<>();
@@ -1123,9 +1074,6 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	/**
-	 * REPLACES: getListFromDBByInstanceId
-	 */
 	public List<T> getListFromDBByInstanceId(List<String> instanceIds, Class<T> obj) {
 		if (instanceIds == null || instanceIds.isEmpty())
 			return new ArrayList<>();
@@ -1190,9 +1138,6 @@ public class EposDataModelDAO<T> {
         }
     }
 
-	/**
-	 * REPLACES: getOneFromDBByMetaId
-	 */
 	public List<T> getOneFromDBByMetaId(String metaId, Class<T> obj) {
 		if (metaId == null || metaId.trim().isEmpty())
 			return new ArrayList<>();
@@ -1226,8 +1171,7 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
-	 * REPLACES: getOneFromDBByUID
-	 * MODIFIED: Filters out PENDING entities to prevent conflicts with relation signals.
+	 * Filters out PENDING entities to prevent conflicts with relation signals.
 	 */
 	public List<T> getOneFromDBByUID(String uid, Class<T> obj) {
 		if (uid == null || uid.trim().isEmpty())
@@ -1250,14 +1194,12 @@ public class EposDataModelDAO<T> {
 
 			List<T> result = query.getResultList();
 
-			// --- MODIFICA: Filtra via i record PENDING ---
 			List<T> filteredResult = new ArrayList<>();
 			for (T entity : result) {
 				if (!isEntityPending(entity)) {
 					filteredResult.add(entity);
 				}
 			}
-			// ---------------------------------------------
 
 			putInEntityCache(cacheKey, filteredResult);
 			return filteredResult;
@@ -1271,9 +1213,6 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	/**
-	 * REPLACES: getOneFromDBByVersionID
-	 */
 	public List<T> getOneFromDBByVersionID(String versionId, Class<T> obj) {
 		if (versionId == null || versionId.trim().isEmpty())
 			return new ArrayList<>();
@@ -1307,13 +1246,11 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
-	 * REPLACES: getOneFromDB
-	 * MODIFIED: Ensures pending records are filtered out from generic searches.
+	 * Ensures pending records are filtered out from generic searches.
 	 */
 	public List<T> getOneFromDB(String instanceId, String metaId, String uid, String versionId, Class<T> obj) {
 		List<T> results = new ArrayList<>();
 
-		// Priority: instanceId > metaId > uid > versionId
 		if (instanceId != null && !instanceId.trim().isEmpty()) {
 			results = getOneFromDBByInstanceId(instanceId, obj);
 		} else if (metaId != null && !metaId.trim().isEmpty()) {
@@ -1324,18 +1261,13 @@ public class EposDataModelDAO<T> {
 			results = getOneFromDBByVersionID(versionId, obj);
 		}
 
-		// --- MODIFICA: Pulizia finale dei PENDING ---
 		if (!results.isEmpty()) {
 			results.removeIf(this::isEntityPending);
 		}
-		// --------------------------------------------
 
 		return results;
 	}
 
-	/**
-	 * REPLACES: getOneFromDBByLinkedEntity
-	 */
 	public List<T> getOneFromDBByLinkedEntity(LinkedEntity linkedEntity, Class<T> obj) {
 		if (linkedEntity == null)
 			return new ArrayList<>();
@@ -1348,76 +1280,8 @@ public class EposDataModelDAO<T> {
 				obj);
 	}
 
-	/**
-	 * REPLACES: getVersionsFromDBByVersionId
-	 */
-	public List<Versioningstatus> getVersionsFromDBByVersionId(String versionId) {
-		if (versionId == null || versionId.trim().isEmpty())
-			return new ArrayList<>();
 
-		String cacheKey = generateCacheKey("versions", versionId);
-
-		List<Versioningstatus> cached = getFromEntityCache(cacheKey);
-		if (cached != null)
-			return cached;
-
-		EntityManager em = null;
-		try {
-			em = EntityManagerService.getInstance().createEntityManager();
-
-			Versioningstatus result = em.find(Versioningstatus.class, versionId);
-			List<Versioningstatus> resultList = result == null ? new ArrayList<>() : List.of(result);
-
-			putInEntityCache(cacheKey, resultList);
-			return resultList;
-
-		} catch (Exception exception) {
-			LOG.log(Level.SEVERE, "Error in getVersionsFromDBByVersionId", exception);
-			return new ArrayList<>();
-		} finally {
-			if (em != null)
-				em.close();
-		}
-	}
-
-	/**
-	 * REPLACES: getAllFromDBWithStatus
-	 */
-	public List<T> getAllFromDBWithStatus(Class<T> obj, StatusType status) {
-		if (status == null)
-			return getAllFromDB(obj);
-
-		String cacheKey = generateCacheKey("allFromDBWithStatus", obj.getSimpleName(), status.name());
-
-		List<T> cached = getFromQueryCache(cacheKey);
-		if (cached != null)
-			return cached;
-
-		EntityManager em = null;
-		try {
-			em = EntityManagerService.getInstance().createEntityManager();
-
-			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c " +
-							"JOIN Versioningstatus v ON c.instanceId = v.instanceId " +
-							"WHERE v.status = :status",
-					obj);
-			query.setParameter("status", status.name());
-
-			List<T> result = query.getResultList();
-			putInQueryCache(cacheKey, result);
-			return result;
-
-		} catch (Exception exception) {
-			LOG.log(Level.SEVERE, "Error in getAllFromDBWithStatus", exception);
-			return new ArrayList<>();
-		} finally {
-			if (em != null)
-				em.close();
-		}
-	}
-
-    public List<T> getAllIDsFromDBWithStatus(Class<T> obj, StatusType status) {
+	public List<T> getAllIDsFromDBWithStatus(Class<T> obj, StatusType status) {
         if (status == null)
             return getAllFromDB(obj);
 
@@ -1455,7 +1319,6 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Pagination with intelligent caching
-	 * NEW METHOD for efficient pagination
 	 */
 	public List<T> getAllFromDBPaginated(Class<T> obj, int page, int size) {
 		String cacheKey = generateCacheKey("paginated", obj.getSimpleName(), page, size);
@@ -1476,10 +1339,7 @@ public class EposDataModelDAO<T> {
 
 			List<T> result = query.getResultList();
 
-			// Cache pagination only for small pages
-			//if (size <= 100) {
-				putInQueryCache(cacheKey, result);
-			//}
+			putInQueryCache(cacheKey, result);
 
 			return result;
 
@@ -1494,7 +1354,6 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Bulk update with cache invalidation
-	 * NEW METHOD for efficient bulk operations
 	 */
 	public int bulkUpdateField(Class<T> obj, String fieldName, Object newValue, String whereField, Object whereValue) {
 		EntityManager em = null;
@@ -1585,7 +1444,6 @@ public class EposDataModelDAO<T> {
 	 * Cache warm-up with most frequently used entities
 	 */
 	public void warmUpCache(Class<T> entityClass, List<String> commonInstanceIds) {
-		// LOG.info("Starting cache warm-up for " + entityClass.getSimpleName());
 
 		long startTime = System.currentTimeMillis();
 		int warmedUp = 0;
@@ -1600,8 +1458,6 @@ public class EposDataModelDAO<T> {
 		}
 
 		long elapsed = System.currentTimeMillis() - startTime;
-		// LOG.info("Cache warm-up completed: " + warmedUp + " entities in " + elapsed +
-		// "ms");
 	}
 
 	/**
@@ -1627,7 +1483,6 @@ public class EposDataModelDAO<T> {
 		countCache.cleanUp();
 
 		long elapsed = System.currentTimeMillis() - startTime;
-		// LOG.info("Smart cache cleanup completed in " + elapsed + "ms");
 	}
 
 	/**
@@ -1648,13 +1503,6 @@ public class EposDataModelDAO<T> {
 		queryCache.invalidateAll();
 		entityCache.invalidateAll();
 		countCache.invalidateAll();
-
-		/*
-		 * LOG.info("All caches cleared. Entries removed: " +
-		 * ((Long) statsBefore.get("queryCacheSize") +
-		 * (Long) statsBefore.get("entityCacheSize") +
-		 * (Long) statsBefore.get("countCacheSize")));
-		 */
 	}
 
 	// =================== MONITORING AND HEALTH CHECK ===================
@@ -1721,7 +1569,6 @@ public class EposDataModelDAO<T> {
 	 * Automatic cache maintenance (call periodically)
 	 */
 	public void performCacheMaintenance() {
-		// LOG.info("Starting periodic cache maintenance");
 
 		long startTime = System.currentTimeMillis();
 
@@ -1735,17 +1582,12 @@ public class EposDataModelDAO<T> {
 
 		long elapsed = System.currentTimeMillis() - startTime;
 
-		// LOG.info("Cache maintenance completed in " + elapsed + "ms. " +
-		// "Sizes: Query=" + stats.get("queryCacheSize") +
-		// ", Entity=" + stats.get("entityCacheSize") +
-		// ", Count=" + stats.get("countCacheSize"));
 	}
 
 	/**
 	 * Preload cache for critical entities
 	 */
 	public void preloadCriticalData(Class<T> entityClass) {
-		// LOG.info("Preloading critical data for " + entityClass.getSimpleName());
 
 		// Preload count (always useful)
 		countAll(entityClass);
@@ -1753,8 +1595,6 @@ public class EposDataModelDAO<T> {
 		// Preload first 100 entities
 		List<T> firstBatch = getAllFromDBPaginated(entityClass, 0, 100);
 
-		// LOG.info("Preloaded " + firstBatch.size() + " entities for " +
-		// entityClass.getSimpleName());
 	}
 
 	public void reloadCache() {

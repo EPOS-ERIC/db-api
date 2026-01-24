@@ -51,9 +51,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Dataproduct> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

@@ -4,7 +4,7 @@ import abstractapis.AbstractAPI;
 import commonapis.LinkedEntityAPI;
 import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
-import model.StatusType;
+import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import utilities.OperationWebserviceInDistributionSingleton;
@@ -24,10 +24,47 @@ public class RelationChecker {
     private static final ThreadLocal<Set<String>> processingEntities =
             ThreadLocal.withInitial(HashSet::new);
 
+    private static final Set<String> REFERENCE_ENTITIES = Set.of(
+            EntityNames.ATTRIBUTION.name(),
+        EntityNames.PERSON.name(),
+        EntityNames.MAPPING.name(),
+        EntityNames.CATEGORY.name(),
+        EntityNames.FACILITY.name(),
+        EntityNames.EQUIPMENT.name(),
+        EntityNames.OPERATION.name(),
+        EntityNames.WEBSERVICE.name(),
+        EntityNames.DATAPRODUCT.name(),
+        EntityNames.CONTACTPOINT.name(),
+        EntityNames.DISTRIBUTION.name(),
+        EntityNames.ORGANIZATION.name(),
+        EntityNames.CATEGORYSCHEME.name(),
+        EntityNames.SOFTWARESOURCECODE.name(),
+        EntityNames.SOFTWAREAPPLICATION.name(),
+        EntityNames.ADDRESS.name(),
+        EntityNames.ELEMENT.name(),
+        EntityNames.LOCATION.name(),
+        EntityNames.PERIODOFTIME.name(),
+        EntityNames.IDENTIFIER.name(),
+        EntityNames.QUANTITATIVEVALUE.name(),
+        EntityNames.DOCUMENTATION.name(),
+        EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(),
+        EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(),
+        EntityNames.OUTPUTMAPPING.name(),
+        EntityNames.PAYLOAD.name()
+    );
+
     private static String getEntityKey(LinkedEntity linkedEntity) {
-        return linkedEntity.getEntityType() + ":" +
-                linkedEntity.getInstanceId() + ":" +
-                linkedEntity.getMetaId();
+        String base = linkedEntity.getEntityType() + ":";
+
+        if (linkedEntity.getUid() != null && !linkedEntity.getUid().trim().isEmpty()) {
+            return base + linkedEntity.getUid();
+        }
+
+        if (linkedEntity.getMetaId() != null && !linkedEntity.getMetaId().trim().isEmpty()) {
+            return base + linkedEntity.getMetaId();
+        }
+
+        return base + linkedEntity.getInstanceId();
     }
 
     public static Object checkRelation(EPOSDataModelEntity mainEntity,
@@ -44,7 +81,6 @@ public class RelationChecker {
         boolean isInCycle = processing.contains(entityKey);
 
         if (isInCycle) {
-            // CRITICAL FIX: Return null or existing DB entity to break recursion.
             return handleCycleCase(linkedEntity, clazz);
         }
 
@@ -99,6 +135,11 @@ public class RelationChecker {
 
             if (targetStatus != null) {
                 List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUID(relationEntity.getUid(), clazz);
+
+                if (allVersions.isEmpty()) {
+                    allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(relationEntity.getUid(), clazz);
+                }
+
                 for (Object v : allVersions) {
                     String statusStr = getModelVersionStatus(v);
                     if (statusStr != null && statusStr.equals(targetStatus.toString())) {
@@ -123,7 +164,10 @@ public class RelationChecker {
                         && relationEntity.getStatus() != null
                         && !mainEntity.getStatus().equals(relationEntity.getStatus());
 
-                if (statusMismatch) {
+                boolean isReference = linkedEntity.getEntityType() != null &&
+                        REFERENCE_ENTITIES.contains(linkedEntity.getEntityType().toUpperCase());
+
+                if (statusMismatch && !isReference) {
                     relationEntity.setStatus(mainEntity.getStatus());
 
                     if (Boolean.TRUE.equals(enableStore)) {
@@ -149,12 +193,20 @@ public class RelationChecker {
                 List<Object> results = EposDataModelDAO.getInstance()
                         .getOneFromDBByLinkedEntity(linkedEntity, clazz);
 
+                if (results.isEmpty() && linkedEntity.getInstanceId() != null) {
+                    results = EposDataModelDAO.getInstance().getOneFromDBByInstanceIdNoCache(linkedEntity.getInstanceId(), clazz);
+                }
+
                 if (!results.isEmpty()) {
                     obj = linkedEntity;
                 } else {
                     if (linkedEntity.getUid() != null) {
                         List<Object> byUid = EposDataModelDAO.getInstance()
                                 .getOneFromDBByUID(linkedEntity.getUid(), clazz);
+
+                        if (byUid.isEmpty()) {
+                            byUid = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(linkedEntity.getUid(), clazz);
+                        }
 
                         if (!byUid.isEmpty()) {
                             Object existing = findBestMatchingVersion(byUid,
@@ -171,7 +223,6 @@ public class RelationChecker {
                         }
                     }
 
-                    // IMPLICIT STUB CREATION (Robust Version)
                     if (obj == null) {
                         if (Boolean.TRUE.equals(enableStore) && linkedEntity.getEntityType() != null) {
                             try {

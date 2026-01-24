@@ -30,9 +30,6 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
     public LinkedEntity create(Documentation obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

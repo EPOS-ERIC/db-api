@@ -80,18 +80,18 @@ public class EntityManagerService {
             try {
                 String resolvedUrl = resolveConnectionString(connectionString);
                 hikariConfig.setJdbcUrl(resolvedUrl);
-                LOG.info("Using resolved connection string: " + maskPassword(resolvedUrl));
+                LOG.fine("Using resolved connection string: " + maskPassword(resolvedUrl));
             } catch (Exception e) {
                 LOG.warning("Failed to resolve connection string, using as-is: " + e.getMessage());
                 hikariConfig.setJdbcUrl(connectionString);
-                LOG.info("Using original connection string");
+                LOG.fine("Using original connection string");
             }
         } else {
             // Build connection string with dynamic host resolution
             try {
                 String dburl = buildDynamicJdbcUrl(postgresqlHost, postgresqlDBName);
                 hikariConfig.setJdbcUrl(dburl);
-                LOG.info("Built dynamic JDBC URL: " + maskPassword(dburl));
+                LOG.fine("Built dynamic JDBC URL: " + maskPassword(dburl));
             } catch (Exception e) {
                 LOG.severe("Failed to build dynamic JDBC URL: " + e.getMessage());
                 // Fallback to simple URL
@@ -109,7 +109,7 @@ public class EntityManagerService {
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
 
-        LOG.info("EntityManagerService initialized successfully");
+        LOG.fine("EntityManagerService initialized successfully");
     }
 
     /**
@@ -118,7 +118,7 @@ public class EntityManagerService {
      * the URL with primary targeting parameters.
      */
     private String resolveConnectionString(String jdbcUrl) throws Exception {
-        LOG.info("Resolving connection string: " + maskPassword(jdbcUrl));
+        LOG.fine("Resolving connection string: " + maskPassword(jdbcUrl));
 
         // Parse JDBC URL format: jdbc:postgresql://host1:port1,host2:port2/database?params
         if (!jdbcUrl.startsWith("jdbc:postgresql://")) {
@@ -166,16 +166,15 @@ public class EntityManagerService {
                 hostname = host;
             }
 
-            LOG.info("Resolving hostname: " + hostname);
+            LOG.fine("Resolving hostname: " + hostname);
 
             try {
                 // Resolve all IPs for this hostname
                 InetAddress[] addresses = InetAddress.getAllByName(hostname);
-                LOG.info("Found " + addresses.length + " IP(s) for " + hostname);
+                LOG.fine("Found " + addresses.length + " IP(s) for " + hostname);
 
                 // Add all resolved IPs
                 for (int j = 0; j < addresses.length; j++) {
-                    // FIX: Filter out IPv6 to prevent connection refused errors with Testcontainers/Docker
                     if (addresses[j] instanceof java.net.Inet6Address) {
                         LOG.warning("Skipping IPv6 address: " + addresses[j].getHostAddress());
                         continue;
@@ -187,7 +186,6 @@ public class EntityManagerService {
                     resolvedHosts.append(addresses[j].getHostAddress()).append(":").append(port);
                 }
 
-                // Fallback: If no IPv4 addresses were found (unlikely), revert to original hostname
                 if (resolvedHosts.length() == 0) {
                     resolvedHosts.append(hostname).append(":").append(port);
                 }
@@ -223,7 +221,7 @@ public class EntityManagerService {
             resolvedUrl += "?" + newParams;
         }
 
-        LOG.info("Resolved to: " + maskPassword(resolvedUrl));
+        LOG.fine("Resolved to: " + maskPassword(resolvedUrl));
         return resolvedUrl;
     }
 
@@ -265,12 +263,12 @@ public class EntityManagerService {
             hostname = host;
         }
 
-        LOG.info("Resolving DNS for hostname: " + hostname);
+        LOG.fine("Resolving DNS for hostname: " + hostname);
 
         // Resolve all IPs for the hostname (important for Kubernetes headless services)
         InetAddress[] addresses = InetAddress.getAllByName(hostname);
 
-        LOG.info("Found " + addresses.length + " IP address(es) for " + hostname);
+        LOG.fine("Found " + addresses.length + " IP address(es) for " + hostname);
 
         if (addresses.length == 0) {
             throw new UnknownHostException("No IP addresses found for host: " + hostname);
@@ -281,13 +279,13 @@ public class EntityManagerService {
         if (addresses.length == 1) {
             // Single host - simple URL
             hosts = addresses[0].getHostAddress() + ":" + port;
-            LOG.info("Single host detected: " + hosts);
+            LOG.fine("Single host detected: " + hosts);
         } else {
             // Multiple hosts - build comma-separated list
             hosts = Arrays.stream(addresses)
                     .map(addr -> addr.getHostAddress() + ":" + port)
                     .collect(Collectors.joining(","));
-            LOG.info("Multiple hosts detected: " + hosts);
+            LOG.fine("Multiple hosts detected: " + hosts);
         }
 
         // Build JDBC URL with primary targeting
@@ -427,7 +425,7 @@ public class EntityManagerService {
 
         public EntityManagerService build(){
             if (instance != null && instance.isOpen()) {
-                LOG.info("EntityManagerService already initialized, reusing existing instance");
+                LOG.fine("EntityManagerService already initialized, reusing existing instance");
                 return null;
             }
             return new EntityManagerService(this);
@@ -447,7 +445,7 @@ public class EntityManagerService {
         if (hikariDataSource != null && !hikariDataSource.isClosed()) {
             hikariDataSource.close();
         }
-        LOG.info("EntityManagerService closed");
+        LOG.fine("EntityManagerService closed");
     }
 
 }

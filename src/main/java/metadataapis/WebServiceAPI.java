@@ -43,9 +43,6 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Webservice> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

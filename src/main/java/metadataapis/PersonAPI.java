@@ -30,9 +30,6 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Person> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

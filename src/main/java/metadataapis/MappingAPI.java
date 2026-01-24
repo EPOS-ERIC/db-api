@@ -28,9 +28,6 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         boolean paramValueExplicitlySet = isFieldExplicitlySet(obj, "paramValue");
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Mapping> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

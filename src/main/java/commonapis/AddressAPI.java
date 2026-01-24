@@ -28,9 +28,6 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     public LinkedEntity create(org.epos.eposdatamodel.Address obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Address> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

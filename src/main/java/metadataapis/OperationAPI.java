@@ -32,9 +32,6 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Operation> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

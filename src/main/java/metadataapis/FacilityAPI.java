@@ -38,9 +38,6 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Facility> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

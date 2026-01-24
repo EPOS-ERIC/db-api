@@ -33,9 +33,6 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
         String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Payload> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -94,7 +91,6 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         // SUPPORTED OPERATION
         if (obj.getSupportedOperation() != null) {
-            // FIX: RelationChecker may return a DTO, not a JPA entity
             Object resolvedObj = RelationChecker.checkRelation(obj, previousObj, null, obj.getSupportedOperation(), overrideStatus, Operation.class, true);
 
             if (resolvedObj != null) {

@@ -26,9 +26,6 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
     public LinkedEntity create(QuantitativeValue obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Quantitativevalue> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

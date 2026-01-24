@@ -34,7 +34,6 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) searchInstanceId = null;
 
         List<Softwareapplication> returnList = getDbaccess().getOneFromDB(searchInstanceId, obj.getMetaId(), obj.getUid(), null, getEdmClass());
 

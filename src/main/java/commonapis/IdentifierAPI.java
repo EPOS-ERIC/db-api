@@ -23,9 +23,6 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     public LinkedEntity create(org.epos.eposdatamodel.Identifier obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Identifier> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

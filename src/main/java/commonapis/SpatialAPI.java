@@ -26,9 +26,6 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
     public LinkedEntity create(Location obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Spatial> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

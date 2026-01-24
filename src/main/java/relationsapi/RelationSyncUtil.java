@@ -16,22 +16,6 @@ import java.util.stream.Collectors;
 
 public class RelationSyncUtil {
 
-    /**
-     * Synchronizes a "simple" One-To-Many relationship for classes in the model.* package.
-     * Uses reflection for standard fields (InstanceId, MetaId, Uid) to avoid inheritance constraints.
-     *
-     * @param <P>                 Type of the Parent entity (e.g., model.Dataproduct)
-     * @param <C>                 Type of the Child entity (e.g., model.DistributionTitle)
-     * @param parentEntity        The parent instance
-     * @param parentInstanceId    The parent ID (passed explicitly for safety)
-     * @param newValues           The list of new values (e.g., titles)
-     * @param childClass          The child class
-     * @param foreignKeyFieldName Name of the FK field in the DB (e.g., "distributionInstance")
-     * @param uidPrefix           Prefix for the UID (e.g., "Title")
-     * @param valueGetter         Lambda to retrieve the value (e.g., DistributionTitle::getTitle)
-     * @param valueSetter         Lambda to set the value (e.g., DistributionTitle::setTitle)
-     * @param parentSetter        Lambda to link the parent (e.g., DistributionTitle::setDistributionInstance)
-     */
     public static <P, C> void syncSimpleOneToMany(
             P parentEntity, String parentInstanceId, List<String> newValues, Class<C> childClass,
             String foreignKeyFieldName, String uidPrefix,
@@ -42,7 +26,7 @@ public class RelationSyncUtil {
         newValuesSet.remove(null);
 
         List<Object> rawObjects = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey(foreignKeyFieldName, parentInstanceId, childClass);
+                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
 
         List<C> existingEntities = new ArrayList<>();
         if (rawObjects != null) {
@@ -70,23 +54,19 @@ public class RelationSyncUtil {
                     parentSetter.accept(newEntity, parentEntity);
                     EposDataModelDAO.getInstance().updateObject(newEntity);
                 } catch (Exception e) {
-                    throw new RuntimeException("Errore sync relazione per " + childClass.getSimpleName(), e);
+                    throw new RuntimeException("Error syncing relation for " + childClass.getSimpleName(), e);
                 }
             }
         }
     }
 
-    /**
-     * Copies simple one-to-many relations from a previous version to a new version.
-     * Used when creating a DRAFT from PUBLISHED.
-     */
     public static <P, C> void copySimpleOneToMany(
             String oldParentInstanceId, P newParentEntity, String newParentInstanceId, Class<C> childClass,
             String foreignKeyFieldName, String uidPrefix, Function<C, String> valueGetter,
             BiConsumer<C, String> valueSetter, BiConsumer<C, P> parentSetter
     ) {
         List<Object> oldRelations = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey(foreignKeyFieldName, oldParentInstanceId, childClass);
+                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, oldParentInstanceId, childClass);
         if (oldRelations == null || oldRelations.isEmpty()) return;
 
         for (Object obj : oldRelations) {
@@ -114,10 +94,9 @@ public class RelationSyncUtil {
                 setVersion.invoke(entity, (Object) null);
             } catch (NoSuchMethodException | SecurityException ignored) {}
         } catch (Exception e) {
-            throw new RuntimeException("Impossibile settare i campi ID su " + entity.getClass().getName(), e);
+            throw new RuntimeException("Cannot set standard fields on " + entity.getClass().getName(), e);
         }
     }
-
 
     private static void invokeSetter(Object obj, String methodName, String value) {
         try {
@@ -126,31 +105,6 @@ public class RelationSyncUtil {
         } catch (Exception ignored) { }
     }
 
-    /**
-     * Synchronizes a "complex" One-To-Many / Many-To-Many relation involving a Join Class.
-     * Manages the lifecycle of the join entity (creation, deletion) based on the input list.
-     * Supports deferred relations when target doesn't exist yet.
-     * Supports copying relations from previous version when creating DRAFT from PUBLISHED.
-     *
-     * @param <P>                  Parent entity type (e.g., model.Distribution)
-     * @param <J>                  Join entity type (e.g., model.WebserviceDistribution)
-     * @param <T>                  Target entity type (e.g., model.Webservice)
-     * @param parentDbObject       Parent DB Object (e.g., Distribution edmobj)
-     * @param parentId             Parent ID (NEW instanceId)
-     * @param inputLinks           Input list (e.g., obj.getAccessService()) - can be null if copying from previous
-     * @param relationFromUpdate   Parameter for swap/update source
-     * @param relationToUpdate     Parameter for swap/update target
-     * @param joinClass            Join Class (e.g., WebserviceDistribution.class)
-     * @param targetClass          Target DB Class (e.g., Webservice.class)
-     * @param parentFieldName      Parent field name in the Join (e.g., "distributionInstance")
-     * @param targetGetter         Getter for the target from the Join
-     * @param parentSetter         Setter for the parent in the Join
-     * @param targetSetter         Setter for the target in the Join
-     * @param mainEntity           Main DTO (obj)
-     * @param previousEntity       Previous DTO (previousObj) - used for relation copying
-     * @param overrideStatus       Override Status
-     * @param enableStore          Flag for RelationChecker
-     */
     public static <P, J, T> void syncComplexRelation(
             P parentDbObject, String parentId, List<LinkedEntity> inputLinks,
             LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate,
@@ -174,7 +128,8 @@ public class RelationSyncUtil {
             inputLinks.add(relationToUpdate);
         }
 
-        List<Object> existingRaw = EposDataModelDAO.getInstance().getOneFromDBBySpecificKey(parentFieldName, parentId, joinClass);
+        List<Object> existingRaw = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+
         Map<String, J> existingMap = new HashMap<>();
         if (existingRaw != null) {
             for (Object o : existingRaw) {
@@ -201,7 +156,6 @@ public class RelationSyncUtil {
 
                     if (!existingMap.containsKey(targetId)) {
                         boolean created = createJoinEntity(joinClass, parentDbObject, targetEntity, parentSetter, targetSetter);
-                        // FALLBACK: Se la creazione fallisce (es. target non trovato nel DB anche se RelationChecker l'ha ritornato), crea PENDING
                         if (!created) {
                             createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
                         }
@@ -219,15 +173,11 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Copies complex (many-to-many) relations from a previous version to the new version.
-     * Used when creating a DRAFT from PUBLISHED.
-     */
     private static <P, J, T> void copyComplexRelationsFromPreviousVersion(
             String oldParentInstanceId, P newParentDbObject, String newParentId,
             Class<J> joinClass, Class<T> targetClass, String parentFieldName, Function<J, T> targetGetter
     ) {
-        List<Object> oldRelations = EposDataModelDAO.getInstance().getOneFromDBBySpecificKey(parentFieldName, oldParentInstanceId, joinClass);
+        List<Object> oldRelations = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
         if (oldRelations == null || oldRelations.isEmpty()) {
             try {
                 String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
@@ -254,9 +204,6 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Creates a join entity with properly initialized EmbeddedId
-     */
     private static <P, J, T> boolean createJoinEntity(
             Class<J> joinClass, P parentDbObject, T targetEntity,
             BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter
@@ -270,7 +217,6 @@ public class RelationSyncUtil {
 
             initializeEmbeddedId(newJoin, parentDbObject, targetEntity);
 
-            // Usiamo reflection se i setter sono null (backward compatibility) o usiamo i setter se forniti
             if (parentSetter != null) parentSetter.accept(newJoin, parentDbObject);
             else setJoinRelationship(newJoin, parentDbObject);
 
@@ -290,9 +236,6 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Initializes the EmbeddedId for join entities like WebserviceDistribution
-     */
     private static <P, T> void initializeEmbeddedId(Object joinEntity, P parent, T target) {
         try {
             Method getIdMethod = null;
@@ -333,24 +276,13 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Creates a pending relation record using Versioningstatus table with PENDING status.
-     *
-     * Field mapping:
-     * - instanceId = sourceInstanceId
-     * - uid = targetUid
-     * - metaId = joinClassName
-     * - status = PENDING
-     * - provenance = sourceEntityType
-     * - changeComment = targetEntityType
-     */
     private static void createPendingRelation(String sourceInstanceId, String sourceEntityType, String targetUid, String targetEntityType, String joinClassName) {
         try {
             Versioningstatus pending = new Versioningstatus();
             pending.setVersionId(UUID.randomUUID().toString());
             pending.setInstanceId(UUID.randomUUID().toString());
             pending.setUid(targetUid);
-            pending.setMetaId(joinClassName); // FIX: Salviamo solo il nome della classe
+            pending.setMetaId(joinClassName);
             pending.setStatus(StatusType.PENDING.name());
             pending.setProvenance(sourceEntityType);
             pending.setChangeComment(targetEntityType);
@@ -363,15 +295,13 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Resolves all pending relations for a newly created entity.
-     * Call this at the END of every entity's create() method.
-     */
     public static void resolvePendingRelations(String entityUid, String entityType, Object entityDbObject) {
         if (entityUid == null || entityType == null) return;
 
         try {
-            List<Versioningstatus> candidates = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeySimpleNoCache("uid", entityUid, Versioningstatus.class);
+            List<Versioningstatus> candidates = EposDataModelDAO.getInstance()
+                    .getOneFromDBBySpecificKeySimpleNoCache("uid", entityUid, Versioningstatus.class);
+
             if (candidates == null || candidates.isEmpty()) return;
 
             for (Versioningstatus vs : candidates) {
@@ -389,9 +319,6 @@ public class RelationSyncUtil {
         }
     }
 
-    /**
-     * Resolves a single pending relation by creating the join entity
-     */
     private static void resolveSinglePendingRelation(Versioningstatus pending, Object targetEntity) throws Exception {
         String sourceInstanceId = pending.getReviewComment();
         if (sourceInstanceId == null) sourceInstanceId = pending.getInstanceId();
@@ -399,14 +326,10 @@ public class RelationSyncUtil {
         String sourceEntityType = pending.getProvenance();
         String joinClassName = pending.getMetaId();
 
-        if (sourceEntityType == null) {
-            return;
-        }
+        if (sourceEntityType == null) return;
 
         Class<?> sourceClass = AbstractAPI.retrieveClass(sourceEntityType);
-        if (sourceClass == null) {
-            return;
-        }
+        if (sourceClass == null) return;
 
         List<Object> sourceList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(sourceInstanceId, sourceClass);
         if (sourceList == null || sourceList.isEmpty()) {
@@ -433,9 +356,6 @@ public class RelationSyncUtil {
         EposDataModelDAO.getInstance().createJoinEntity(newJoin, sourceId, sourceEntity.getClass(), targetId, targetEntity.getClass());
     }
 
-    /**
-     * Sets a relationship on a join entity by finding the appropriate setter
-     */
     private static void setJoinRelationship(Object joinEntity, Object relatedEntity) throws Exception {
         String entityName = relatedEntity.getClass().getSimpleName();
         for (Method method : joinEntity.getClass().getMethods()) {

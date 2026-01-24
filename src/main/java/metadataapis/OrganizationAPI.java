@@ -36,7 +36,6 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) searchInstanceId = null;
 
         List<Organization> returnList = getDbaccess().getOneFromDB(searchInstanceId, obj.getMetaId(), obj.getUid(), null, getEdmClass());
 

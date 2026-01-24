@@ -27,9 +27,6 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     public LinkedEntity create(org.epos.eposdatamodel.Element obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,

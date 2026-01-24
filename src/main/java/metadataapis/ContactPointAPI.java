@@ -32,9 +32,6 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Contactpoint> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
