@@ -5,6 +5,7 @@ import commonapis.*;
 import dao.EposDataModelDAO;
 import model.*;
 import model.Attribution;
+import model.Category;
 import model.Dataproduct;
 import model.Distribution;
 import model.Element;
@@ -124,19 +125,32 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         // CATEGORY
         if (categoryExplicitlySet || !isNewVersion) {
             if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-                CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
+                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getCategory(), relationFromUpdate, relationToUpdate,
+                        DataproductCategory.class, Category.class, "dataproductInstance", DataproductCategory::getCategoryInstance,
+                        DataproductCategory::setDataproductInstance, DataproductCategory::setCategoryInstance, obj, previousObj, overrideStatus, true);
             }
         } else if (isNewVersion && oldInstanceId != null) {
-            copyDataproductCategoryRelations(oldInstanceId, edmobj);
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    DataproductCategory.class, Category.class,
+                    "dataproductInstance",
+                    DataproductCategory::getCategoryInstance,
+                    DataproductCategory::setDataproductInstance,
+                    DataproductCategory::setCategoryInstance,
+                    obj, previousObj, overrideStatus, true);
         }
 
         // CONTACTPOINT
         if (contactPointExplicitlySet || !isNewVersion) {
             if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
+                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
+                        DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
+                        DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
             }
         } else if (isNewVersion && oldInstanceId != null) {
-            copyDataproductContactPointRelations(oldInstanceId, edmobj);
+            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
+                    DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
+                    DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
         }
 
         /** TITLE **/
@@ -200,7 +214,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                         DataproductPublisher::getOrganizationInstance,
                         DataproductPublisher::setDataproductInstance,
                         DataproductPublisher::setOrganizationInstance,
-                        obj, previousObj, overrideStatus, false
+                        obj, previousObj, overrideStatus, true
                 );
             }
         } else if (isNewVersion && oldInstanceId != null) {
@@ -211,7 +225,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductPublisher::getOrganizationInstance,
                     DataproductPublisher::setDataproductInstance,
                     DataproductPublisher::setOrganizationInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 
@@ -250,7 +264,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                         DataproductAttribution::getAttributionInstance,
                         DataproductAttribution::setDataproductInstance,
                         DataproductAttribution::setAttributionInstance,
-                        obj, previousObj, overrideStatus, false
+                        obj, previousObj, overrideStatus, true
                 );
             }
         } else if (isNewVersion && oldInstanceId != null) {
@@ -261,7 +275,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                     DataproductAttribution::getAttributionInstance,
                     DataproductAttribution::setDataproductInstance,
                     DataproductAttribution::setAttributionInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 

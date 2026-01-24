@@ -44,7 +44,7 @@ public class RelationChecker {
         boolean isInCycle = processing.contains(entityKey);
 
         if (isInCycle) {
-            // FIX: Remove recursive create call to prevent StackOverflow
+            // CRITICAL FIX: Return null or existing DB entity to break recursion.
             return handleCycleCase(linkedEntity, clazz);
         }
 
@@ -61,7 +61,6 @@ public class RelationChecker {
     }
 
     private static Object handleCycleCase(LinkedEntity linkedEntity, Class clazz) {
-        // Simply try to retrieve existing state from DB/Cache
         List<Object> results = EposDataModelDAO.getInstance()
                 .getOneFromDBByLinkedEntity(linkedEntity, clazz);
         return results.isEmpty() ? null : results.get(0);
@@ -102,7 +101,6 @@ public class RelationChecker {
                 List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUID(relationEntity.getUid(), clazz);
                 for (Object v : allVersions) {
                     String statusStr = getModelVersionStatus(v);
-
                     if (statusStr != null && statusStr.equals(targetStatus.toString())) {
                         try {
                             obj = new LinkedEntity();
@@ -164,7 +162,6 @@ public class RelationChecker {
                                             (mainEntity != null ? mainEntity.getStatus() : null));
 
                             if (existing != null) {
-                                LOG.fine("Found existing entity by UID: " + linkedEntity.getUid());
                                 obj = new LinkedEntity();
                                 obj.setInstanceId(getModelStrProperty(existing, "getInstanceId"));
                                 obj.setMetaId(getModelStrProperty(existing, "getMetaId"));
@@ -178,13 +175,12 @@ public class RelationChecker {
                     if (obj == null) {
                         if (Boolean.TRUE.equals(enableStore) && linkedEntity.getEntityType() != null) {
                             try {
-                                //LOG.info("Implicitly creating stub entity for UID: " + linkedEntity.getUid());
+                                LOG.info("Implicitly creating stub entity for UID: " + linkedEntity.getUid());
 
                                 String apiName = EntityNames.valueOf(linkedEntity.getEntityType().toUpperCase(Locale.ROOT)).name();
                                 AbstractAPI api = AbstractAPI.retrieveAPI(apiName);
 
                                 if (api != null) {
-                                    // Use Reflection to find the DTO class accepted by api.create()
                                     Class<?> dtoClass = null;
                                     for (Method m : api.getClass().getMethods()) {
                                         if (m.getName().equals("create") && m.getParameterCount() == 4) {
@@ -209,19 +205,11 @@ public class RelationChecker {
                                         if (createdLe != null) {
                                             obj = createdLe;
                                         }
-                                    } else {
-                                        LOG.warning("Could not determine DTO class for API: " + apiName);
                                     }
                                 }
                             } catch (Exception e) {
                                 LOG.warning("Failed to implicitly create stub entity: " + e.getMessage());
                             }
-                        }
-
-                        if (obj == null) {
-                            //LOG.info("Entity not found for relation: " + linkedEntity.getEntityType() +
-                            //        " uid=" + linkedEntity.getUid() + " - returning null (will be deferred)");
-                            return null;
                         }
                     }
                 }
@@ -230,8 +218,7 @@ public class RelationChecker {
 
         if (obj == null) return null;
 
-        List<Object> results = EposDataModelDAO.getInstance()
-                .getOneFromDBByLinkedEntity(obj, clazz);
+        List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(obj, clazz);
         return results.isEmpty() ? null : results.get(0);
     }
 

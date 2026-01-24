@@ -108,13 +108,13 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
                         OrganizationContactpoint.class, Contactpoint.class, "organizationInstance",
                         OrganizationContactpoint::getContactpointInstance, OrganizationContactpoint::setOrganizationInstance,
-                        OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, false);
+                        OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
             }
         } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     OrganizationContactpoint.class, Contactpoint.class, "organizationInstance",
                     OrganizationContactpoint::getContactpointInstance, OrganizationContactpoint::setOrganizationInstance,
-                    OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, false);
+                    OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
         }
 
         // IDENTIFIER
@@ -209,10 +209,16 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         if (elements != null) {
             for (Object obj : elements) {
                 OrganizationElement oe = (OrganizationElement) obj;
-                if (oe.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(oe.getElementInstance());
-                }
+
                 EposDataModelDAO.getInstance().deleteObject(oe);
+
+                if (oe.getElementInstance() != null) {
+                    try {
+                        EposDataModelDAO.getInstance().deleteObject(oe.getElementInstance());
+                    } catch (Exception e) {
+                        // Ignore if element is used elsewhere
+                    }
+                }
             }
         }
     }

@@ -394,7 +394,7 @@ public class EposDataModelDAO<T> {
 
 	/**
 	 * Finds join entities by parent ID.
-	 * Tries "c.id.parentIdField" (EmbeddedId) first, falls back to "c.parentIdField" (IdClass/Direct).
+	 * Tries multiple strategies to handle EmbeddedId vs Direct Relationship vs String ID mismatch.
 	 */
 	public <T> List<T> getJoinEntitiesByParentId(String parentIdField, String parentId, Class<T> joinClass) {
 		String cacheKey = generateCacheKey("joinByParent", parentIdField, parentId, joinClass.getSimpleName());
@@ -414,16 +414,15 @@ public class EposDataModelDAO<T> {
 				result = query.getResultList();
 			} catch (Exception e1) {
 				try {
-					// Strategy 2: Direct Field (e.g., c.facilityInstance) - BUT assuming parentId is the Entity object
-					// This often fails if parentId is a String, throwing IllegalArgumentException
-					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :parentId";
+					// Strategy 2: Direct Field ID (e.g., c.facilityInstance.instanceId)
+					// This fixes the IllegalArgumentException when parentId is a String
+					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :parentId";
 					TypedQuery<T> query = em.createQuery(jpql, joinClass);
 					query.setParameter("parentId", parentId);
 					result = query.getResultList();
 				} catch (Exception e2) {
-					// Strategy 3: Direct Field ID (e.g., c.facilityInstance.instanceId)
-					// This fixes the IllegalArgumentException when parentId is a String
-					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :parentId";
+					// Strategy 3: Direct Field (Fallback)
+					String jpql = "SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :parentId";
 					TypedQuery<T> query = em.createQuery(jpql, joinClass);
 					query.setParameter("parentId", parentId);
 					result = query.getResultList();
@@ -434,8 +433,9 @@ public class EposDataModelDAO<T> {
 			return result;
 
 		} catch (Exception exception) {
-			LOG.log(Level.SEVERE, "Error in getJoinEntitiesByParentId: " + exception.getMessage());
-			return new ArrayList<>(); // Return empty to avoid NPEs downstream
+			// Log but don't crash - return empty to allow clean continue
+			LOG.log(Level.WARNING, "Warning in getJoinEntitiesByParentId: " + exception.getMessage());
+			return new ArrayList<>();
 		} finally {
 			if (em != null) em.close();
 		}
