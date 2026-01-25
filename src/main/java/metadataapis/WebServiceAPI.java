@@ -110,7 +110,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 if (relationFromUpdate != null && obj.getProvider().equals(relationFromUpdate)) {
                     obj.setProvider(relationToUpdate);
                 }
-                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class, false);
+                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class, true);
                 if (organization1 != null) {
                     edmobj.setProvider(organization1.getInstanceId());
                     getDbaccess().updateObject(edmobj);

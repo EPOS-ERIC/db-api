@@ -16,6 +16,117 @@ import java.util.stream.Collectors;
 
 public class RelationSyncUtil {
 
+    // =========================================================================
+    // METODO PUBBLICO: Propaga lo status del parent a tutte le entità figlie
+    // Può essere chiamato esplicitamente dalle API dopo un cambio di status
+    // =========================================================================
+
+    /**
+     * Propaga lo status del parent a tutte le entità figlie di un determinato tipo.
+     * Utile quando il parent cambia stato (es. DRAFT → SUBMITTED → PUBLISHED)
+     * e le entità figlie devono essere allineate.
+     *
+     * @param parentEntity L'entità parent
+     * @param parentInstanceId L'instanceId del parent
+     * @param childClass La classe delle entità figlie
+     * @param foreignKeyFieldName Il nome del campo che referenzia il parent
+     */
+    public static <P, C> void propagateStatusToChildren(
+            P parentEntity, String parentInstanceId, Class<C> childClass, String foreignKeyFieldName
+    ) {
+        StatusType parentStatus = getStatusFromEntity(parentEntity);
+        if (parentStatus == null) {
+            System.out.println("[RelationSyncUtil] Cannot propagate status: parent status is null");
+            return;
+        }
+
+        List<Object> rawObjects = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
+
+        if (rawObjects == null || rawObjects.isEmpty()) {
+            return;
+        }
+
+        System.out.println("[RelationSyncUtil] Propagating status " + parentStatus +
+                " to " + rawObjects.size() + " " + childClass.getSimpleName() + " entities");
+
+        for (Object obj : rawObjects) {
+            if (childClass.isInstance(obj)) {
+                updateChildEntityStatus(obj, parentStatus);
+            }
+        }
+    }
+
+    /**
+     * DEBUG: Stampa lo status di tutte le entità figlie di un parent.
+     * Utile per diagnosticare problemi di propagazione status.
+     */
+    public static <C> void debugChildStatuses(String parentInstanceId, Class<C> childClass, String foreignKeyFieldName) {
+        System.out.println("=== DEBUG: Child statuses for parent " + parentInstanceId + " ===");
+
+        List<Object> rawObjects = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
+
+        if (rawObjects == null || rawObjects.isEmpty()) {
+            System.out.println("  No " + childClass.getSimpleName() + " found for this parent");
+            return;
+        }
+
+        System.out.println("  Found " + rawObjects.size() + " " + childClass.getSimpleName() + " entities:");
+
+        for (Object obj : rawObjects) {
+            try {
+                String instanceId = "?";
+                String status = "?";
+                String value = "?";
+
+                try {
+                    Method getInstanceId = obj.getClass().getMethod("getInstanceId");
+                    instanceId = String.valueOf(getInstanceId.invoke(obj));
+                } catch (Exception ignored) {}
+
+                try {
+                    Method getVersion = obj.getClass().getMethod("getVersion");
+                    Object vs = getVersion.invoke(obj);
+                    if (vs instanceof Versioningstatus) {
+                        status = ((Versioningstatus) vs).getStatus();
+                    }
+                } catch (Exception ignored) {
+                    // Try to get from DB
+                    try {
+                        List<Versioningstatus> vsList = EposDataModelDAO.getInstance()
+                                .getOneFromDBByInstanceId(instanceId, Versioningstatus.class);
+                        if (vsList != null && !vsList.isEmpty()) {
+                            status = vsList.get(0).getStatus();
+                        }
+                    } catch (Exception e2) {}
+                }
+
+                // Try to get a value field (title, description, etc.)
+                for (Method m : obj.getClass().getMethods()) {
+                    if (m.getName().startsWith("get") && m.getParameterCount() == 0
+                            && m.getReturnType() == String.class
+                            && !m.getName().equals("getInstanceId")
+                            && !m.getName().equals("getClass")) {
+                        try {
+                            Object v = m.invoke(obj);
+                            if (v != null && !v.toString().isEmpty()) {
+                                value = v.toString();
+                                if (value.length() > 50) value = value.substring(0, 50) + "...";
+                                break;
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                System.out.println("    - instanceId=" + instanceId + ", status=" + status + ", value=" + value);
+            } catch (Exception e) {
+                System.out.println("    - Error reading entity: " + e.getMessage());
+            }
+        }
+        System.out.println("=== END DEBUG ===");
+    }
+
     public static <P, C> void syncSimpleOneToMany(
             P parentEntity, String parentInstanceId, List<String> newValues, Class<C> childClass,
             String foreignKeyFieldName, String uidPrefix,
@@ -25,6 +136,7 @@ public class RelationSyncUtil {
         Set<String> newValuesSet = new HashSet<>(newValues);
         newValuesSet.remove(null);
 
+        // FIX: Leggi lo status dal parent entity
         StatusType parentStatus = getStatusFromEntity(parentEntity);
 
         List<Object> rawObjects = EposDataModelDAO.getInstance()
@@ -49,16 +161,104 @@ public class RelationSyncUtil {
 
         for (String newValue : newValuesSet) {
             if (!existingMap.containsKey(newValue)) {
+                // Crea nuova entità
                 try {
                     C newEntity = childClass.getDeclaredConstructor().newInstance();
-                    setStandardFields(newEntity, uidPrefix, parentStatus);  // FIX: Passa lo status del parent
+                    setStandardFields(newEntity, uidPrefix, parentStatus);
                     valueSetter.accept(newEntity, newValue);
                     parentSetter.accept(newEntity, parentEntity);
                     EposDataModelDAO.getInstance().updateObject(newEntity);
                 } catch (Exception e) {
                     throw new RuntimeException("Error syncing relation for " + childClass.getSimpleName(), e);
                 }
+            } else {
+                // FIX: Aggiorna lo status dell'entità esistente se diverso dal parent
+                C existingEntity = existingMap.get(newValue);
+                updateChildEntityStatus(existingEntity, parentStatus);
             }
+        }
+    }
+
+    /**
+     * Aggiorna lo status di un'entità figlia per allinearlo al parent.
+     * Questo è necessario quando il parent cambia stato (es. DRAFT → SUBMITTED → PUBLISHED)
+     */
+    private static void updateChildEntityStatus(Object childEntity, StatusType newStatus) {
+        if (childEntity == null || newStatus == null) return;
+
+        String childClassName = childEntity.getClass().getSimpleName();
+
+        try {
+            // Prima prova a ottenere il Versioningstatus tramite getVersion()
+            Method getVersion = childEntity.getClass().getMethod("getVersion");
+            Object versionObj = getVersion.invoke(childEntity);
+
+            if (versionObj instanceof Versioningstatus) {
+                Versioningstatus vs = (Versioningstatus) versionObj;
+                String currentStatus = vs.getStatus();
+
+                // Aggiorna solo se lo status è diverso
+                if (!newStatus.name().equals(currentStatus)) {
+                    System.out.println("[RelationSyncUtil] Updating " + childClassName +
+                            " status: " + currentStatus + " → " + newStatus.name() +
+                            " (instanceId=" + vs.getInstanceId() + ")");
+
+                    vs.setStatus(newStatus.name());
+                    vs.setChangeTimestamp(OffsetDateTime.now());
+                    EposDataModelDAO.getInstance().updateObject(vs);
+                } else {
+                    System.out.println("[RelationSyncUtil] " + childClassName +
+                            " already has status " + currentStatus + ", skipping update");
+                }
+            } else {
+                // Se getVersion() non restituisce un Versioningstatus valido,
+                // prova a cercare il Versioningstatus nel DB tramite instanceId
+                updateChildStatusByInstanceId(childEntity, newStatus, childClassName);
+            }
+        } catch (NoSuchMethodException e) {
+            // Entity non ha getVersion(), prova con instanceId
+            updateChildStatusByInstanceId(childEntity, newStatus, childClassName);
+        } catch (Exception e) {
+            System.err.println("[RelationSyncUtil] Error updating " + childClassName + " status: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Aggiorna lo status di un'entità figlia cercando il Versioningstatus nel DB tramite instanceId.
+     * Fallback usato quando getVersion() non funziona.
+     */
+    private static void updateChildStatusByInstanceId(Object childEntity, StatusType newStatus, String childClassName) {
+        try {
+            Method getInstanceId = childEntity.getClass().getMethod("getInstanceId");
+            Object instanceIdObj = getInstanceId.invoke(childEntity);
+
+            if (instanceIdObj != null) {
+                String instanceId = instanceIdObj.toString();
+                List<Versioningstatus> vsList = EposDataModelDAO.getInstance()
+                        .getOneFromDBByInstanceId(instanceId, Versioningstatus.class);
+
+                if (vsList != null && !vsList.isEmpty()) {
+                    Versioningstatus vs = vsList.get(0);
+                    String currentStatus = vs.getStatus();
+
+                    if (!newStatus.name().equals(currentStatus)) {
+                        System.out.println("[RelationSyncUtil] Updating " + childClassName +
+                                " status via instanceId: " + currentStatus + " → " + newStatus.name() +
+                                " (instanceId=" + instanceId + ")");
+
+                        vs.setStatus(newStatus.name());
+                        vs.setChangeTimestamp(OffsetDateTime.now());
+                        EposDataModelDAO.getInstance().updateObject(vs);
+                    }
+                } else {
+                    System.err.println("[RelationSyncUtil] No Versioningstatus found for " +
+                            childClassName + " instanceId=" + instanceId);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[RelationSyncUtil] Error updating " + childClassName +
+                    " status by instanceId: " + e.getMessage());
         }
     }
 
@@ -70,7 +270,8 @@ public class RelationSyncUtil {
         List<Object> oldRelations = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, oldParentInstanceId, childClass);
         if (oldRelations == null || oldRelations.isEmpty()) return;
-        
+
+        // FIX: Leggi lo status dal parent entity
         StatusType parentStatus = getStatusFromEntity(newParentEntity);
 
         for (Object obj : oldRelations) {
@@ -105,10 +306,11 @@ public class RelationSyncUtil {
                 vs.setVersionId(UUID.randomUUID().toString());
                 vs.setInstanceId(UUID.randomUUID().toString());
                 vs.setUid((uidPrefix != null ? uidPrefix + "/" : "") + UUID.randomUUID().toString());
+                // FIX: Eredita lo status dal parent, default DRAFT se non specificato
                 StatusType statusToUse = parentStatus != null ? parentStatus : StatusType.DRAFT;
                 vs.setStatus(statusToUse.name());
                 vs.setChangeTimestamp(java.time.OffsetDateTime.now());
-                vs.setMetaId(entity.getClass().getSimpleName());
+                vs.setMetaId(entity.getClass().getSimpleName()); // Usa il nome classe come riferimento
 
                 setVersion.invoke(entity, vs);
             } catch (NoSuchMethodException ignored) {}
@@ -135,9 +337,37 @@ public class RelationSyncUtil {
         }
     }
 
+    /**
+     * Estrae lo StatusType dal parent entity.
+     * Prima prova entity.getStatus() (più affidabile dopo checkVersion()),
+     * poi fallback a entity.getVersion().getStatus().
+     */
     private static StatusType getStatusFromEntity(Object entity) {
         if (entity == null) return null;
 
+        // FIX: Prima prova getStatus() direttamente sull'entity
+        // Questo è più affidabile perché checkVersion() chiama obj.setStatus(targetStatus)
+        try {
+            Method getStatus = entity.getClass().getMethod("getStatus");
+            Object statusObj = getStatus.invoke(entity);
+
+            if (statusObj instanceof StatusType) {
+                return (StatusType) statusObj;
+            } else if (statusObj instanceof model.StatusType) {
+                return (model.StatusType) statusObj;
+            } else if (statusObj != null) {
+                // Potrebbe essere una stringa o enum diverso
+                try {
+                    return StatusType.valueOf(statusObj.toString());
+                } catch (IllegalArgumentException ignored) {}
+            }
+        } catch (NoSuchMethodException e) {
+            // Entity non ha getStatus(), prova getVersion()
+        } catch (Exception e) {
+            // Ignora e prova il fallback
+        }
+
+        // Fallback: prova getVersion().getStatus()
         try {
             Method getVersion = entity.getClass().getMethod("getVersion");
             Object versionObj = getVersion.invoke(entity);
@@ -149,10 +379,12 @@ public class RelationSyncUtil {
                     try {
                         return StatusType.valueOf(statusStr);
                     } catch (IllegalArgumentException e) {
+                        // Status non valido
                     }
                 }
             }
         } catch (NoSuchMethodException e) {
+            // Entity non ha getVersion()
         } catch (Exception e) {
             System.err.println("[RelationSyncUtil] Error getting status from entity: " + e.getMessage());
         }
@@ -331,10 +563,14 @@ public class RelationSyncUtil {
         }
     }
 
+    // =========================================================================
+    // FIX: Aggiunta verifica per evitare duplicati nelle pending relations
+    // =========================================================================
     private static void createPendingRelation(String sourceInstanceId, String sourceEntityType, String targetUid, String targetEntityType, String joinClassName) {
         try {
+            // FIX: Verifica se esiste già una pending relation per questa combinazione
             if (pendingRelationExists(sourceInstanceId, targetUid, joinClassName)) {
-                //System.out.println("[RelationSyncUtil] Pending relation already exists for UID: " + targetUid);
+                System.out.println("[RelationSyncUtil] Pending relation already exists for UID: " + targetUid);
                 return;
             }
 
@@ -350,12 +586,15 @@ public class RelationSyncUtil {
             pending.setReviewComment(sourceInstanceId);
 
             EposDataModelDAO.getInstance().createObject(pending);
-            //System.out.println("[RelationSyncUtil] Created pending relation for UID: " + targetUid);
+            System.out.println("[RelationSyncUtil] Created pending relation for UID: " + targetUid);
         } catch (Exception e) {
             System.err.println("[RelationSyncUtil] Error creating pending relation: " + e.getMessage());
         }
     }
 
+    // =========================================================================
+    // FIX: Nuovo metodo per verificare esistenza pending relation
+    // =========================================================================
     private static boolean pendingRelationExists(String sourceInstanceId, String targetUid, String joinClassName) {
         try {
             List<Versioningstatus> existing = EposDataModelDAO.getInstance()
@@ -371,6 +610,7 @@ public class RelationSyncUtil {
                 }
             }
         } catch (Exception e) {
+            // Ignora errori e procedi con la creazione
         }
         return false;
     }
@@ -389,7 +629,7 @@ public class RelationSyncUtil {
                     try {
                         resolveSinglePendingRelation(vs, entityDbObject);
                         EposDataModelDAO.getInstance().deleteObject(vs);
-                        //System.out.println("[RelationSyncUtil] Resolved pending relation for UID: " + entityUid);
+                        System.out.println("[RelationSyncUtil] Resolved pending relation for UID: " + entityUid);
                     } catch (Exception e) {
                         System.err.println("[RelationSyncUtil] Error resolving pending relation " + vs.getVersionId() + ": " + e.getMessage());
                     }
@@ -400,6 +640,9 @@ public class RelationSyncUtil {
         }
     }
 
+    // =========================================================================
+    // FIX: Aggiunta verifica esistenza relazione prima di crearla
+    // =========================================================================
     private static void resolveSinglePendingRelation(Versioningstatus pending, Object targetEntity) throws Exception {
         String sourceInstanceId = pending.getReviewComment();
         if (sourceInstanceId == null) sourceInstanceId = pending.getInstanceId();
@@ -429,9 +672,10 @@ public class RelationSyncUtil {
         String sourceId = getModelId(sourceEntity);
         String targetId = getModelId(targetEntity);
 
+        // FIX: Verifica se la relazione esiste già prima di crearla
         if (joinRelationAlreadyExists(joinClass, sourceId, targetId, sourceEntity, targetEntity)) {
-            //System.out.println("[RelationSyncUtil] Join relation already exists, skipping: " +
-                    //joinClass.getSimpleName() + " (" + sourceId + " <-> " + targetId + ")");
+            System.out.println("[RelationSyncUtil] Join relation already exists, skipping: " +
+                    joinClass.getSimpleName() + " (" + sourceId + " <-> " + targetId + ")");
             return;
         }
 
@@ -443,24 +687,29 @@ public class RelationSyncUtil {
         try {
             EposDataModelDAO.getInstance().createJoinEntity(newJoin, sourceId, sourceEntity.getClass(), targetId, targetEntity.getClass());
         } catch (Exception e) {
+            // FIX: Gestisci duplicate key silenziosamente
             String msg = e.getMessage();
             if (msg != null && (msg.contains("duplicate key") ||
                     msg.contains("already exists") ||
                     msg.contains("unique constraint"))) {
-                //System.out.println("[RelationSyncUtil] Relation already exists (caught on insert): " +
-                        //joinClass.getSimpleName());
+                System.out.println("[RelationSyncUtil] Relation already exists (caught on insert): " +
+                        joinClass.getSimpleName());
             } else {
                 throw e;
             }
         }
     }
 
+    // =========================================================================
+    // FIX: Nuovi metodi helper per verificare esistenza relazione
+    // =========================================================================
     private static boolean joinRelationAlreadyExists(Class<?> joinClass, String sourceId, String targetId,
                                                      Object sourceEntity, Object targetEntity) {
         try {
             String sourceClassName = sourceEntity.getClass().getSimpleName().toLowerCase();
             String targetClassName = targetEntity.getClass().getSimpleName().toLowerCase();
 
+            // Prova con il campo source
             String sourceFieldName = sourceClassName + "Instance";
             List<Object> existing = null;
 
@@ -468,10 +717,12 @@ public class RelationSyncUtil {
                 existing = EposDataModelDAO.getInstance()
                         .getOneFromDBBySpecificKeyNoCache(sourceFieldName, sourceId, joinClass);
             } catch (Exception e) {
+                // Prova nome alternativo (es. category1Instance per relazioni ricorsive)
                 try {
                     existing = EposDataModelDAO.getInstance()
                             .getOneFromDBBySpecificKeyNoCache(sourceClassName + "1Instance", sourceId, joinClass);
                 } catch (Exception e2) {
+                    // Ignora
                 }
             }
 
@@ -491,9 +742,10 @@ public class RelationSyncUtil {
     }
 
     private static String extractRelatedEntityId(Object joinEntity, String targetClassName) {
+        // Prova vari pattern di nomi getter
         String[] patterns = {
                 "get" + capitalize(targetClassName) + "Instance",
-                "get" + capitalize(targetClassName) + "2Instance", 
+                "get" + capitalize(targetClassName) + "2Instance",  // Per relazioni ricorsive
         };
 
         for (String getterName : patterns) {
@@ -504,6 +756,7 @@ public class RelationSyncUtil {
                     return getModelId(related);
                 }
             } catch (Exception e) {
+                // Prova il prossimo pattern
             }
         }
         return null;
