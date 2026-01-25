@@ -60,7 +60,8 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         OutputMapping edmobj = new OutputMapping();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

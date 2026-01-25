@@ -77,8 +77,8 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Equipment edmobj = new Equipment();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

@@ -69,7 +69,8 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         CategoryScheme edmobj = new CategoryScheme();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

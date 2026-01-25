@@ -72,8 +72,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Operation edmobj = new Operation();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

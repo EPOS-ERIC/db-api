@@ -67,8 +67,8 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        // Determine if this is a new version or updating same instance
-        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Payload edmobj = new Payload();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

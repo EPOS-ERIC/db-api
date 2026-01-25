@@ -60,7 +60,8 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Softwaresourcecode edmobj = new Softwaresourcecode();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

@@ -72,8 +72,8 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Contactpoint edmobj = new Contactpoint();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

@@ -55,7 +55,9 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         if (obj.getMetaId() == null) obj.setMetaId(UUID.randomUUID().toString());
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = obj.getInstanceChangedId() != null;
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
+
         String newInstanceId = obj.getInstanceId();
 
         Attribution edmobj = new Attribution();

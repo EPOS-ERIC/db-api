@@ -411,58 +411,125 @@ public class RelationSyncUtil {
         String previousInstanceId = mainEntity.getInstanceChangedId();
         boolean isNewVersion = previousInstanceId != null && !previousInstanceId.equals(parentId);
 
-        if ((inputLinks == null || inputLinks.isEmpty()) && isNewVersion) {
-            copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId, joinClass, targetClass, parentFieldName, targetGetter);
-            return;
-        }
-        if (inputLinks == null) return;
+        System.out.println("[RelationSyncUtil] Syncing complex relation " + joinClass.getSimpleName() +
+                " for " + parentId + " (isNewVersion=" + isNewVersion + ", overrideStatus=" + overrideStatus + ")");
 
-        if (relationFromUpdate != null && inputLinks.contains(relationFromUpdate)) {
-            inputLinks.remove(relationFromUpdate);
-            inputLinks.add(relationToUpdate);
-        }
-
-        List<Object> existingRaw = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
-
-        Map<String, J> existingMap = new HashMap<>();
-        if (existingRaw != null) {
-            for (Object o : existingRaw) {
-                J joinEntity = joinClass.cast(o);
-                T target = targetGetter.apply(joinEntity);
-                String targetId = getModelId(target);
-                if (targetId != null) existingMap.put(targetId, joinEntity);
+        // Se è una nuova versione, aggiungi il parent ai set di protezione PRIMA del cascade
+        // per evitare che relazioni bidirezionali creino duplicati
+        String parentMetaId = null;
+        if (isNewVersion) {
+            parentMetaId = getMetaId(parentDbObject);
+            if (parentMetaId != null) {
+                cascadeInProgress.get().add(parentMetaId);
+                // Aggiungi anche alla cache delle versioni create
+                String cacheKey = parentMetaId + "_" + (overrideStatus != null ? overrideStatus.name() : mainEntity.getStatus().name());
+                cascadeCreatedVersions.get().put(cacheKey, parentId);
             }
         }
 
-        Set<String> processedIds = new HashSet<>();
-        String sourceEntityType = parentDbObject.getClass().getSimpleName().toUpperCase();
-
-        for (LinkedEntity link : inputLinks) {
-            Object rawTarget = relationsapi.RelationChecker.checkRelation(mainEntity, previousEntity, null, link, overrideStatus, targetClass, enableStore);
-
-            if (rawTarget != null) {
-                T targetEntity = targetClass.cast(rawTarget);
-                String targetId = getModelId(targetEntity);
-
-                if (targetId != null) {
-                    if (targetId.equals(parentId)) continue;
-                    processedIds.add(targetId);
-
-                    if (!existingMap.containsKey(targetId)) {
-                        boolean created = createJoinEntity(joinClass, parentDbObject, targetEntity, parentSetter, targetSetter);
-                        if (!created) {
-                            createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
+        try {
+            // Gestione lista null o vuota
+            if (inputLinks == null || inputLinks.isEmpty()) {
+                if (isNewVersion) {
+                    // Nuova versione: CASCADE - crea nuove versioni delle entità correlate
+                    // Determina lo status per il cascade (usa quello del parent)
+                    StatusType cascadeStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
+                    System.out.println("[RelationSyncUtil] CASCADE: Creating new versions with status " + cascadeStatus);
+                    copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
+                            joinClass, targetClass, parentFieldName, targetGetter, cascadeStatus);
+                } else if (overrideStatus != null) {
+                    // Update senza lista: propaga status alle relazioni esistenti
+                    List<Object> existingRaw = EposDataModelDAO.getInstance()
+                            .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+                    if (existingRaw != null) {
+                        for (Object o : existingRaw) {
+                            T target = targetGetter.apply(joinClass.cast(o));
+                            if (target != null) {
+                                updateChildEntityStatus(target, overrideStatus);
+                            }
                         }
                     }
                 }
-            } else {
-                createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
+                return;
             }
-        }
 
-        for (Map.Entry<String, J> entry : existingMap.entrySet()) {
-            if (!processedIds.contains(entry.getKey())) {
-                EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+            if (relationFromUpdate != null && inputLinks.contains(relationFromUpdate)) {
+                inputLinks.remove(relationFromUpdate);
+                inputLinks.add(relationToUpdate);
+            }
+
+            List<Object> existingRaw = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+
+            Map<String, J> existingMap = new HashMap<>();
+            if (existingRaw != null) {
+                for (Object o : existingRaw) {
+                    J joinEntity = joinClass.cast(o);
+                    T target = targetGetter.apply(joinEntity);
+                    String targetId = getModelId(target);
+                    if (targetId != null) existingMap.put(targetId, joinEntity);
+                }
+            }
+
+            Set<String> processedIds = new HashSet<>();
+            String sourceEntityType = parentDbObject.getClass().getSimpleName().toUpperCase();
+
+            // Determina se fare cascade (nuova versione del parent)
+            // Il controllo per evitare duplicati è fatto in createCascadeVersion via ThreadLocal
+            StatusType cascadeStatus = isNewVersion ?
+                    (overrideStatus != null ? overrideStatus : mainEntity.getStatus()) : null;
+
+            for (LinkedEntity link : inputLinks) {
+                Object rawTarget = relationsapi.RelationChecker.checkRelation(mainEntity, previousEntity, null, link, overrideStatus, targetClass, enableStore);
+
+                if (rawTarget != null) {
+                    T targetEntity = targetClass.cast(rawTarget);
+                    String targetId = getModelId(targetEntity);
+
+                    if (targetId != null) {
+                        if (targetId.equals(parentId)) continue;
+
+                        T targetForJoin = targetEntity;
+                        String targetIdForJoin = targetId;
+
+                        // CASCADE: Se è una nuova versione del parent, crea nuove versioni delle entità correlate
+                        if (cascadeStatus != null) {
+                            T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus);
+                            if (newVersionTarget != null) {
+                                targetForJoin = newVersionTarget;
+                                targetIdForJoin = getModelId(newVersionTarget);
+                                System.out.println("[RelationSyncUtil] CASCADE: Created new " + targetClass.getSimpleName() +
+                                        " version " + targetIdForJoin + " with status " + cascadeStatus);
+                            }
+                        }
+
+                        processedIds.add(targetIdForJoin);
+
+                        if (!existingMap.containsKey(targetIdForJoin)) {
+                            boolean created = createJoinEntity(joinClass, parentDbObject, targetForJoin, parentSetter, targetSetter);
+                            if (!created) {
+                                createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
+                            }
+                        }
+                    }
+                } else {
+                    createPendingRelation(parentId, sourceEntityType, link.getUid(), link.getEntityType(), joinClass.getName());
+                }
+            }
+
+            for (Map.Entry<String, J> entry : existingMap.entrySet()) {
+                if (!processedIds.contains(entry.getKey())) {
+                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+                }
+            }
+
+        } finally {
+            // Rimuovi il parent dal set di protezione quando abbiamo finito
+            if (parentMetaId != null) {
+                cascadeInProgress.get().remove(parentMetaId);
+                if (cascadeInProgress.get().isEmpty()) {
+                    cascadeInProgress.remove();
+                    cascadeCreatedVersions.remove();
+                }
             }
         }
     }
@@ -470,6 +537,22 @@ public class RelationSyncUtil {
     private static <P, J, T> void copyComplexRelationsFromPreviousVersion(
             String oldParentInstanceId, P newParentDbObject, String newParentId,
             Class<J> joinClass, Class<T> targetClass, String parentFieldName, Function<J, T> targetGetter
+    ) {
+        copyComplexRelationsFromPreviousVersion(
+                oldParentInstanceId, newParentDbObject, newParentId,
+                joinClass, targetClass, parentFieldName, targetGetter,
+                null  // No status override = just copy references
+        );
+    }
+
+    /**
+     * Copia le relazioni dalla versione precedente, con opzione di cascade.
+     * Se cascadeStatus != null, crea nuove versioni delle entità correlate con quello status.
+     */
+    private static <P, J, T> void copyComplexRelationsFromPreviousVersion(
+            String oldParentInstanceId, P newParentDbObject, String newParentId,
+            Class<J> joinClass, Class<T> targetClass, String parentFieldName, Function<J, T> targetGetter,
+            StatusType cascadeStatus
     ) {
         List<Object> oldRelations = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
         if (oldRelations == null || oldRelations.isEmpty()) {
@@ -488,9 +571,23 @@ public class RelationSyncUtil {
 
             if (targetId != null) {
                 try {
+                    T targetForJoin = target;
+                    String targetIdForJoin = targetId;
+
+                    // CASCADE: Se richiesto, crea una nuova versione dell'entità correlata
+                    if (cascadeStatus != null) {
+                        T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus);
+                        if (newVersionTarget != null) {
+                            targetForJoin = newVersionTarget;
+                            targetIdForJoin = getModelId(newVersionTarget);
+                            System.out.println("[RelationSyncUtil] CASCADE: Created new " + targetClass.getSimpleName() +
+                                    " version " + targetIdForJoin + " with status " + cascadeStatus);
+                        }
+                    }
+
                     J newJoin = joinClass.getDeclaredConstructor().newInstance();
-                    initializeEmbeddedId(newJoin, newParentDbObject, target);
-                    EposDataModelDAO.getInstance().createJoinEntity(newJoin, newParentId, newParentDbObject.getClass(), targetId, target.getClass());
+                    initializeEmbeddedId(newJoin, newParentDbObject, targetForJoin);
+                    EposDataModelDAO.getInstance().createJoinEntity(newJoin, newParentId, newParentDbObject.getClass(), targetIdForJoin, targetForJoin.getClass());
                 } catch (Exception e) {
                     System.err.println("[RelationSyncUtil] Error copying relation: " + e.getMessage());
                 }
@@ -498,16 +595,137 @@ public class RelationSyncUtil {
         }
     }
 
+    /**
+     * ThreadLocal per prevenire loop infiniti durante il cascade.
+     * Contiene i metaId delle entità già in fase di cascade (non instanceId,
+     * perché vogliamo evitare di creare multiple versioni della stessa entità logica).
+     */
+    private static final ThreadLocal<Set<String>> cascadeInProgress = ThreadLocal.withInitial(HashSet::new);
+
+    /**
+     * Cache delle versioni già create durante il cascade corrente.
+     * Key: metaId + "_" + status, Value: nuovo instanceId
+     */
+    private static final ThreadLocal<Map<String, String>> cascadeCreatedVersions = ThreadLocal.withInitial(HashMap::new);
+
+    /**
+     * Crea una nuova versione di un'entità correlata con il nuovo status (cascade).
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus) {
+        String originalInstanceId = getModelId(originalEntity);
+        if (originalInstanceId == null) return null;
+
+        // Recupera metaId per la protezione contro duplicati
+        String metaId = getMetaId(originalEntity);
+        if (metaId == null) metaId = originalInstanceId; // fallback
+
+        String cacheKey = metaId + "_" + newStatus.name();
+
+        // Controlla se abbiamo già creato una versione per questo metaId+status
+        Map<String, String> createdVersions = cascadeCreatedVersions.get();
+        if (createdVersions.containsKey(cacheKey)) {
+            String existingNewInstanceId = createdVersions.get(cacheKey);
+            System.out.println("[RelationSyncUtil] CASCADE: Reusing already created " + targetClass.getSimpleName() +
+                    " version " + existingNewInstanceId + " for metaId=" + metaId);
+            // Recupera l'entità dal DB
+            List<Object> existingList = EposDataModelDAO.getInstance()
+                    .getOneFromDBByInstanceIdNoCache(existingNewInstanceId, targetClass);
+            if (existingList != null && !existingList.isEmpty()) {
+                return targetClass.cast(existingList.get(0));
+            }
+        }
+
+        // Protezione contro cascade duplicati - usa metaId per identificare l'entità logica
+        Set<String> inProgress = cascadeInProgress.get();
+        if (inProgress.contains(metaId)) {
+            System.out.println("[RelationSyncUtil] CASCADE: Skipping " + targetClass.getSimpleName() +
+                    " metaId=" + metaId + " (already in progress)");
+            return null;
+        }
+
+        try {
+            inProgress.add(metaId);
+
+            // Determina il nome dell'API dalla classe target (es. "Distribution" -> "DISTRIBUTION")
+            String entityName = targetClass.getSimpleName().toUpperCase();
+
+            // Recupera l'entità completa tramite l'API
+            AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
+            if (api == null) {
+                System.err.println("[RelationSyncUtil] CASCADE: No API found for " + entityName);
+                return null;
+            }
+
+            // Recupera il DTO completo
+            org.epos.eposdatamodel.EPOSDataModelEntity dto =
+                    (org.epos.eposdatamodel.EPOSDataModelEntity) api.retrieve(originalInstanceId);
+            if (dto == null) {
+                System.err.println("[RelationSyncUtil] CASCADE: Could not retrieve entity " + originalInstanceId);
+                return null;
+            }
+
+            // Crea la nuova versione con il nuovo status
+            LinkedEntity newVersionLe = api.create(dto, newStatus, null, null);
+            if (newVersionLe == null || newVersionLe.getInstanceId() == null) {
+                System.err.println("[RelationSyncUtil] CASCADE: Failed to create new version");
+                return null;
+            }
+
+            // Salva nella cache
+            createdVersions.put(cacheKey, newVersionLe.getInstanceId());
+
+            // Recupera l'entità model dal DB con il nuovo instanceId
+            List<Object> newVersionList = EposDataModelDAO.getInstance()
+                    .getOneFromDBByInstanceIdNoCache(newVersionLe.getInstanceId(), targetClass);
+
+            if (newVersionList != null && !newVersionList.isEmpty()) {
+                return targetClass.cast(newVersionList.get(0));
+            }
+
+        } catch (Exception e) {
+            System.err.println("[RelationSyncUtil] CASCADE error: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            inProgress.remove(metaId);
+            if (inProgress.isEmpty()) {
+                cascadeInProgress.remove();
+                cascadeCreatedVersions.remove(); // Pulisci anche la cache
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Recupera il metaId di un'entità model.
+     */
+    private static String getMetaId(Object modelObj) {
+        if (modelObj == null) return null;
+        try {
+            Method m = modelObj.getClass().getMethod("getMetaId");
+            Object res = m.invoke(modelObj);
+            return res != null ? res.toString() : null;
+        } catch (Exception e) { return null; }
+    }
+
     private static <P, J, T> boolean createJoinEntity(
             Class<J> joinClass, P parentDbObject, T targetEntity,
             BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter
     ) {
-        try {J newJoin = joinClass.getDeclaredConstructor().newInstance();
+        try {
             String parentId = getModelId(parentDbObject);
             String targetId = getModelId(targetEntity);
 
             if (parentId != null && parentId.equals(targetId)) return true;
 
+            // Verifica se il join esiste già (evita duplicate key)
+            if (joinExists(joinClass, parentDbObject, targetEntity)) {
+                System.out.println("[RelationSyncUtil] Join " + joinClass.getSimpleName() +
+                        " already exists for parent=" + parentId + " target=" + targetId);
+                return true;
+            }
+
+            J newJoin = joinClass.getDeclaredConstructor().newInstance();
             initializeEmbeddedId(newJoin, parentDbObject, targetEntity);
 
             Boolean result = EposDataModelDAO.getInstance().createJoinEntity(
@@ -521,6 +739,54 @@ public class RelationSyncUtil {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * Verifica se un join esiste già nel database.
+     */
+    private static <J, P, T> boolean joinExists(Class<J> joinClass, P parent, T target) {
+        try {
+            String parentId = getModelId(parent);
+            String targetId = getModelId(target);
+            if (parentId == null || targetId == null) return false;
+
+            // Cerca il nome del campo parent nella join class
+            String parentClassName = parent.getClass().getSimpleName().toLowerCase();
+            String parentFieldName = parentClassName + "Instance";
+
+            List<Object> existing = EposDataModelDAO.getInstance()
+                    .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+
+            if (existing != null) {
+                for (Object obj : existing) {
+                    // Verifica se il target corrisponde
+                    String existingTargetId = getTargetIdFromJoin(obj, target.getClass().getSimpleName());
+                    if (targetId.equals(existingTargetId)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // In caso di errore, lascia procedere con la creazione
+        }
+        return false;
+    }
+
+    /**
+     * Estrae il targetId da un join entity.
+     */
+    private static String getTargetIdFromJoin(Object joinEntity, String targetClassName) {
+        try {
+            String getterName = "get" + targetClassName + "Instance";
+            Method getter = joinEntity.getClass().getMethod(getterName);
+            Object target = getter.invoke(joinEntity);
+            if (target != null) {
+                return getModelId(target);
+            }
+        } catch (Exception e) {
+            // Prova con getInstanceId diretto
+        }
+        return null;
     }
 
     private static <P, T> void initializeEmbeddedId(Object joinEntity, P parent, T target) {

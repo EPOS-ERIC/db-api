@@ -63,7 +63,8 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Softwareapplication edmobj = new Softwareapplication();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));

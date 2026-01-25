@@ -73,8 +73,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
+
         String newInstanceId = obj.getInstanceId();
 
         Distribution edmobj = new Distribution();
@@ -143,7 +144,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                         DistributionDataproduct::getDataproductInstance,
                         DistributionDataproduct::setDistributionInstance,
                         DistributionDataproduct::setDataproductInstance,
-                        obj, previousObj, overrideStatus, false
+                        obj, previousObj, overrideStatus, true
                 );
             }
         } else if (isNewVersion && oldInstanceId != null) {
@@ -154,7 +155,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     DistributionDataproduct::getDataproductInstance,
                     DistributionDataproduct::setDistributionInstance,
                     DistributionDataproduct::setDataproductInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 
@@ -162,6 +163,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         if (accessServiceExplicitlySet || !isNewVersion) {
             List<LinkedEntity> accessServices = obj.getAccessService();
             if (accessServices != null && !accessServices.isEmpty()) {
+                System.out.println("AccessService: " + accessServices);
+                System.out.println(overrideStatus);
                 RelationSyncUtil.syncComplexRelation(
                         edmobj, edmobj.getInstanceId(), accessServices, relationFromUpdate, relationToUpdate,
                         WebserviceDistribution.class, Webservice.class,
@@ -169,7 +172,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                         WebserviceDistribution::getWebserviceInstance,
                         WebserviceDistribution::setDistributionInstance,
                         WebserviceDistribution::setWebserviceInstance,
-                        obj, previousObj, overrideStatus, false
+                        obj, previousObj, overrideStatus, true
                 );
             }
         } else if (isNewVersion && oldInstanceId != null) {
@@ -180,7 +183,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     WebserviceDistribution::getWebserviceInstance,
                     WebserviceDistribution::setDistributionInstance,
                     WebserviceDistribution::setWebserviceInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 

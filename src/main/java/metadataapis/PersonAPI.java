@@ -64,8 +64,8 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        // Determine if this is a new version or updating same instance
-        boolean isNewVersion = oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId());
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Person edmobj = new Person();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
