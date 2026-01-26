@@ -203,6 +203,11 @@ public class RelationSyncUtil {
                             " status: " + currentStatus + " → " + newStatus.name() +
                             " (instanceId=" + vs.getInstanceId() + ")");
 
+                    // FIX: Se il nuovo status è PUBLISHED, archivia le vecchie versioni PUBLISHED
+                    if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
+                        archiveOldPublishedVersionsForChild(vs.getUid(), vs.getVersionId(), childClassName);
+                    }
+
                     vs.setStatus(newStatus.name());
                     vs.setChangeTimestamp(OffsetDateTime.now());
                     EposDataModelDAO.getInstance().updateObject(vs);
@@ -221,6 +226,41 @@ public class RelationSyncUtil {
         } catch (Exception e) {
             System.err.println("[RelationSyncUtil] Error updating " + childClassName + " status: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Archivia le vecchie versioni PUBLISHED di un'entità figlia.
+     * Chiamato quando un'entità figlia passa a PUBLISHED per mantenere coerenza.
+     */
+    private static void archiveOldPublishedVersionsForChild(String uid, String currentVersionId, String childClassName) {
+        if (uid == null) return;
+
+        try {
+            List<Versioningstatus> allVersionsRaw = EposDataModelDAO.getInstance()
+                    .getOneFromDBByUIDNoCache(uid, Versioningstatus.class);
+
+            for (Versioningstatus rawVs : allVersionsRaw) {
+                // Skip la versione corrente
+                if (rawVs.getVersionId() != null && rawVs.getVersionId().equals(currentVersionId)) continue;
+
+                // Skip i marker di relazioni pending (hanno metaId che contiene ".")
+                String metaId = rawVs.getMetaId();
+                if (metaId != null && metaId.contains(".")) continue;
+                if (StatusType.PENDING.name().equals(rawVs.getStatus())) continue;
+
+                // Archivia le vecchie PUBLISHED
+                if (StatusType.PUBLISHED.name().equals(rawVs.getStatus())) {
+                    System.out.println("[RelationSyncUtil] AUTO-ARCHIVE: Archiving old PUBLISHED " + childClassName +
+                            " version " + rawVs.getInstanceId() + " (uid=" + uid + ")");
+                    rawVs.setStatus(StatusType.ARCHIVED.name());
+                    rawVs.setChangeTimestamp(OffsetDateTime.now());
+                    rawVs.setChangeComment("Auto-archived on child status propagation");
+                    EposDataModelDAO.getInstance().updateObject(rawVs);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[RelationSyncUtil] Error archiving old versions for " + childClassName + ": " + e.getMessage());
         }
     }
 
@@ -246,6 +286,11 @@ public class RelationSyncUtil {
                         System.out.println("[RelationSyncUtil] Updating " + childClassName +
                                 " status via instanceId: " + currentStatus + " → " + newStatus.name() +
                                 " (instanceId=" + instanceId + ")");
+
+                        // FIX: Se il nuovo status è PUBLISHED, archivia le vecchie versioni PUBLISHED
+                        if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
+                            archiveOldPublishedVersionsForChild(vs.getUid(), vs.getVersionId(), childClassName);
+                        }
 
                         vs.setStatus(newStatus.name());
                         vs.setChangeTimestamp(OffsetDateTime.now());
@@ -409,10 +454,25 @@ public class RelationSyncUtil {
             model.StatusType overrideStatus, boolean enableStore
     ) {
         String previousInstanceId = mainEntity.getInstanceChangedId();
-        boolean isNewVersion = previousInstanceId != null && !previousInstanceId.equals(parentId);
+
+        // FIX: isNewVersion deve essere true SOLO quando creiamo effettivamente una nuova versione
+        // Questo accade SOLO nella transizione PUBLISHED → DRAFT (status target = DRAFT)
+        // NON durante DRAFT → SUBMITTED → PUBLISHED (dove l'instanceId rimane lo stesso)
+        //
+        // Il problema precedente: instanceChangedId rimane popolato anche dopo la creazione
+        // della nuova versione, quindi isNewVersion era true anche per i cambi di stato successivi.
+        //
+        // La soluzione: verificare che lo status corrente sia DRAFT, perché:
+        // - PUBLISHED → DRAFT: mainEntity.getStatus() = DRAFT, isNewVersion = true (cascade)
+        // - DRAFT → SUBMITTED: mainEntity.getStatus() = SUBMITTED, isNewVersion = false (propaga status)
+        // - SUBMITTED → PUBLISHED: mainEntity.getStatus() = PUBLISHED, isNewVersion = false (propaga status)
+        boolean hasInstanceChanged = previousInstanceId != null && !previousInstanceId.equals(parentId);
+        StatusType currentStatus = mainEntity.getStatus();
+        boolean isNewVersion = hasInstanceChanged && currentStatus == StatusType.DRAFT;
 
         System.out.println("[RelationSyncUtil] Syncing complex relation " + joinClass.getSimpleName() +
-                " for " + parentId + " (isNewVersion=" + isNewVersion + ", overrideStatus=" + overrideStatus + ")");
+                " for " + parentId + " (isNewVersion=" + isNewVersion + ", hasInstanceChanged=" + hasInstanceChanged +
+                ", currentStatus=" + currentStatus + ", overrideStatus=" + overrideStatus + ")");
 
         // Se è una nuova versione, aggiungi il parent ai set di protezione PRIMA del cascade
         // per evitare che relazioni bidirezionali creino duplicati
@@ -428,24 +488,31 @@ public class RelationSyncUtil {
         }
 
         try {
+            // FIX: Determina lo status da propagare usando mainEntity.getStatus() come fallback
+            // Questo è necessario perché il Manager imposta obj.setStatus(newStatus) ma passa overrideStatus=null
+            StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
+
             // Gestione lista null o vuota
             if (inputLinks == null || inputLinks.isEmpty()) {
                 if (isNewVersion) {
                     // Nuova versione: CASCADE - crea nuove versioni delle entità correlate
                     // Determina lo status per il cascade (usa quello del parent)
-                    StatusType cascadeStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
+                    StatusType cascadeStatus = effectiveStatus;
                     System.out.println("[RelationSyncUtil] CASCADE: Creating new versions with status " + cascadeStatus);
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
                             joinClass, targetClass, parentFieldName, targetGetter, cascadeStatus);
-                } else if (overrideStatus != null) {
-                    // Update senza lista: propaga status alle relazioni esistenti
+                } else if (effectiveStatus != null) {
+                    // FIX: Update senza lista: propaga status alle relazioni esistenti
+                    // Usa effectiveStatus invece di overrideStatus per supportare transizioni DRAFT->SUBMITTED->PUBLISHED
+                    System.out.println("[RelationSyncUtil] PROPAGATE STATUS: Propagating " + effectiveStatus +
+                            " to existing relations of " + joinClass.getSimpleName());
                     List<Object> existingRaw = EposDataModelDAO.getInstance()
                             .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
                     if (existingRaw != null) {
                         for (Object o : existingRaw) {
                             T target = targetGetter.apply(joinClass.cast(o));
                             if (target != null) {
-                                updateChildEntityStatus(target, overrideStatus);
+                                updateChildEntityStatus(target, effectiveStatus);
                             }
                         }
                     }
@@ -473,13 +540,38 @@ public class RelationSyncUtil {
             Set<String> processedIds = new HashSet<>();
             String sourceEntityType = parentDbObject.getClass().getSimpleName().toUpperCase();
 
-            // Determina se fare cascade (nuova versione del parent)
-            // Il controllo per evitare duplicati è fatto in createCascadeVersion via ThreadLocal
-            StatusType cascadeStatus = isNewVersion ?
-                    (overrideStatus != null ? overrideStatus : mainEntity.getStatus()) : null;
+            // FIX: Determina se fare cascade (nuova versione del parent)
+            // Usa effectiveStatus (già calcolato sopra) per coerenza
+            StatusType cascadeStatus = isNewVersion ? effectiveStatus : null;
 
             for (LinkedEntity link : inputLinks) {
-                Object rawTarget = relationsapi.RelationChecker.checkRelation(mainEntity, previousEntity, null, link, overrideStatus, targetClass, enableStore);
+                Object rawTarget = null;
+
+                // FIX: Quando NON è cascade (solo propagazione status), recupera l'entità
+                // direttamente dall'instanceId del LinkedEntity invece di usare RelationChecker.
+                // RelationChecker cerca versioni con lo status TARGET, ma questo causa problemi:
+                // - V2 DataProduct passa a PUBLISHED
+                // - RelationChecker cerca Distribution con status PUBLISHED
+                // - Trova V1 Distribution (già PUBLISHED) invece di V2 Distribution (SUBMITTED)
+                // - Propaga erroneamente lo status a V1!
+                //
+                // Soluzione: quando propaghiamo status, usiamo l'instanceId diretto del LinkedEntity
+                // che punta alla versione corretta (V2).
+                if (!isNewVersion && link.getInstanceId() != null) {
+                    // Propagazione status: recupera direttamente l'entità corrente
+                    List<Object> directResults = EposDataModelDAO.getInstance()
+                            .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
+                    if (directResults != null && !directResults.isEmpty()) {
+                        rawTarget = directResults.get(0);
+                        System.out.println("[RelationSyncUtil] DIRECT LOOKUP: Retrieved " + targetClass.getSimpleName() +
+                                " " + link.getInstanceId() + " for status propagation");
+                    }
+                }
+
+                // Fallback a RelationChecker per cascade o se lookup diretto fallisce
+                if (rawTarget == null) {
+                    rawTarget = relationsapi.RelationChecker.checkRelation(mainEntity, previousEntity, null, link, effectiveStatus, targetClass, enableStore);
+                }
 
                 if (rawTarget != null) {
                     T targetEntity = targetClass.cast(rawTarget);
@@ -500,6 +592,12 @@ public class RelationSyncUtil {
                                 System.out.println("[RelationSyncUtil] CASCADE: Created new " + targetClass.getSimpleName() +
                                         " version " + targetIdForJoin + " with status " + cascadeStatus);
                             }
+                        } else if (effectiveStatus != null) {
+                            // FIX: Se NON è cascade ma abbiamo uno status da propagare (DRAFT->SUBMITTED, SUBMITTED->PUBLISHED)
+                            // propaga lo status all'entità correlata esistente senza creare nuova versione
+                            updateChildEntityStatus(targetEntity, effectiveStatus);
+                            System.out.println("[RelationSyncUtil] PROPAGATE: Updated " + targetClass.getSimpleName() +
+                                    " " + targetId + " to status " + effectiveStatus);
                         }
 
                         processedIds.add(targetIdForJoin);
