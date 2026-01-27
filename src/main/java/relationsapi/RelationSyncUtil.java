@@ -15,7 +15,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class RelationSyncUtil {
-
     private static final Set<String> REFERENCE_ENTITIES = Set.of(
             "CATEGORY",
             "ORGANIZATION",
@@ -27,93 +26,26 @@ public class RelationSyncUtil {
             "person",
             "contactpoint"
     );
-
-
     private static boolean isReferenceEntity(Class<?> targetClass) {
         if (targetClass == null) return false;
         String className = targetClass.getSimpleName().toUpperCase();
         return REFERENCE_ENTITIES.contains(className);
     }
 
-    public static <P, C> void propagateStatusToChildren(
-            P parentEntity, String parentInstanceId, Class<C> childClass, String foreignKeyFieldName
-    ) {
-        StatusType parentStatus = getStatusFromEntity(parentEntity);
-        if (parentStatus == null) {
-            return;
+    private static boolean shouldApplyReferenceEntityLogic(Class<?> targetClass,
+                                                           org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
+        if (!isReferenceEntity(targetClass)) {
+            return false;
         }
 
-        List<Object> rawObjects = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
-
-        if (rawObjects == null || rawObjects.isEmpty()) {
-            return;
-        }
-
-        for (Object obj : rawObjects) {
-            if (childClass.isInstance(obj)) {
-                updateChildEntityStatus(obj, parentStatus);
+        if (mainEntity != null) {
+            String editorId = mainEntity.getEditorId();
+            if (editorId != null && "ingestor".equalsIgnoreCase(editorId.trim())) {
+                return false;
             }
         }
-    }
 
-    public static <C> void debugChildStatuses(String parentInstanceId, Class<C> childClass, String foreignKeyFieldName) {
-
-        List<Object> rawObjects = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
-
-        if (rawObjects == null || rawObjects.isEmpty()) {
-            return;
-        }
-
-        for (Object obj : rawObjects) {
-            try {
-                String instanceId = "?";
-                String status = "?";
-                String value = "?";
-
-                try {
-                    Method getInstanceId = obj.getClass().getMethod("getInstanceId");
-                    instanceId = String.valueOf(getInstanceId.invoke(obj));
-                } catch (Exception ignored) {}
-
-                try {
-                    Method getVersion = obj.getClass().getMethod("getVersion");
-                    Object vs = getVersion.invoke(obj);
-                    if (vs instanceof Versioningstatus) {
-                        status = ((Versioningstatus) vs).getStatus();
-                    }
-                } catch (Exception ignored) {
-                    // Try to get from DB
-                    try {
-                        List<Versioningstatus> vsList = EposDataModelDAO.getInstance()
-                                .getOneFromDBByInstanceId(instanceId, Versioningstatus.class);
-                        if (vsList != null && !vsList.isEmpty()) {
-                            status = vsList.get(0).getStatus();
-                        }
-                    } catch (Exception e2) {}
-                }
-
-                // Try to get a value field (title, description, etc.)
-                for (Method m : obj.getClass().getMethods()) {
-                    if (m.getName().startsWith("get") && m.getParameterCount() == 0
-                            && m.getReturnType() == String.class
-                            && !m.getName().equals("getInstanceId")
-                            && !m.getName().equals("getClass")) {
-                        try {
-                            Object v = m.invoke(obj);
-                            if (v != null && !v.toString().isEmpty()) {
-                                value = v.toString();
-                                if (value.length() > 50) value = value.substring(0, 50) + "...";
-                                break;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("    - Error reading entity: " + e.getMessage());
-            }
-        }
+        return true;
     }
 
     public static <P, C> void syncSimpleOneToMany(
@@ -159,6 +91,7 @@ public class RelationSyncUtil {
                     throw new RuntimeException("Error syncing relation for " + childClass.getSimpleName(), e);
                 }
             } else {
+                // FIX: Aggiorna lo status dell'entità esistente se diverso dal parent
                 C existingEntity = existingMap.get(newValue);
                 updateChildEntityStatus(existingEntity, parentStatus);
             }
@@ -241,7 +174,6 @@ public class RelationSyncUtil {
                     String currentStatus = vs.getStatus();
 
                     if (!newStatus.name().equals(currentStatus)) {
-
                         if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
                             archiveOldPublishedVersionsForChild(vs.getUid(), vs.getVersionId(), childClassName);
                         }
@@ -285,10 +217,6 @@ public class RelationSyncUtil {
                 System.err.println("[RelationSyncUtil] Error copying simple relation: " + e.getMessage());
             }
         }
-    }
-
-    private static void setStandardFields(Object entity, String uidPrefix) {
-        setStandardFields(entity, uidPrefix, null);
     }
 
     private static void setStandardFields(Object entity, String uidPrefix, StatusType parentStatus) {
@@ -336,6 +264,7 @@ public class RelationSyncUtil {
 
     private static StatusType getStatusFromEntity(Object entity) {
         if (entity == null) return null;
+
         try {
             Method getStatus = entity.getClass().getMethod("getStatus");
             Object statusObj = getStatus.invoke(entity);
@@ -414,15 +343,19 @@ public class RelationSyncUtil {
                 if (isNewVersion) {
                     StatusType cascadeStatus = effectiveStatus;
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
-                            joinClass, targetClass, parentFieldName, targetGetter, cascadeStatus);
+                            joinClass, targetClass, parentFieldName, targetGetter, cascadeStatus, mainEntity);
                 } else if (effectiveStatus != null) {
-                    List<Object> existingRaw = EposDataModelDAO.getInstance()
-                            .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+                    String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+                    List<?> existingRaw = EposDataModelDAO.getInstance()
+                            .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
                     if (existingRaw != null) {
                         for (Object o : existingRaw) {
                             T target = targetGetter.apply(joinClass.cast(o));
                             if (target != null) {
-                                updateChildEntityStatus(target, effectiveStatus);
+                                if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
+                                } else {
+                                    updateChildEntityStatus(target, effectiveStatus);
+                                }
                             }
                         }
                     }
@@ -435,7 +368,9 @@ public class RelationSyncUtil {
                 inputLinks.add(relationToUpdate);
             }
 
-            List<Object> existingRaw = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+            String embeddedIdFieldForExisting = parentFieldName.replace("Instance", "InstanceId");
+            List<?> existingRawList = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(embeddedIdFieldForExisting, parentId, joinClass);
+            List<Object> existingRaw = existingRawList != null ? new ArrayList<>(existingRawList) : null;
 
             Map<String, J> existingMap = new HashMap<>();
             if (existingRaw != null) {
@@ -478,7 +413,7 @@ public class RelationSyncUtil {
                         String targetIdForJoin = targetId;
 
                         if (cascadeStatus != null) {
-                            if (isReferenceEntity(targetClass)) {
+                            if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                                 T publishedVersion = findPublishedVersion(targetEntity, targetClass);
                                 if (publishedVersion != null) {
                                     targetForJoin = publishedVersion;
@@ -493,7 +428,7 @@ public class RelationSyncUtil {
                                 }
                             }
                         } else if (effectiveStatus != null) {
-                            if (isReferenceEntity(targetClass)) {
+                            if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                             } else {
                                 updateChildEntityStatus(targetEntity, effectiveStatus);
                             }
@@ -532,29 +467,14 @@ public class RelationSyncUtil {
 
     private static <P, J, T> void copyComplexRelationsFromPreviousVersion(
             String oldParentInstanceId, P newParentDbObject, String newParentId,
-            Class<J> joinClass, Class<T> targetClass, String parentFieldName, Function<J, T> targetGetter
-    ) {
-        copyComplexRelationsFromPreviousVersion(
-                oldParentInstanceId, newParentDbObject, newParentId,
-                joinClass, targetClass, parentFieldName, targetGetter,
-                null  // No status override = just copy references
-        );
-    }
-
-    private static <P, J, T> void copyComplexRelationsFromPreviousVersion(
-            String oldParentInstanceId, P newParentDbObject, String newParentId,
             Class<J> joinClass, Class<T> targetClass, String parentFieldName, Function<J, T> targetGetter,
-            StatusType cascadeStatus
+            StatusType cascadeStatus, org.epos.eposdatamodel.EPOSDataModelEntity mainEntity
     ) {
-        List<Object> oldRelations = EposDataModelDAO.getInstance().getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
-        if (oldRelations == null || oldRelations.isEmpty()) {
-            try {
-                String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
-                List<?> embeddedResults = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(embeddedIdField, oldParentInstanceId, joinClass);
-                if (embeddedResults != null) oldRelations = new ArrayList<>(embeddedResults);
-            } catch (Exception e) {}
-        }
-        if (oldRelations == null || oldRelations.isEmpty()) return;
+        String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+        List<?> oldRelationsRaw = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(embeddedIdField, oldParentInstanceId, joinClass);
+        List<Object> oldRelations = oldRelationsRaw != null ? new ArrayList<>(oldRelationsRaw) : new ArrayList<>();
+
+        if (oldRelations.isEmpty()) return;
 
         for (Object obj : oldRelations) {
             J oldJoin = joinClass.cast(obj);
@@ -567,7 +487,7 @@ public class RelationSyncUtil {
                     String targetIdForJoin = targetId;
 
                     if (cascadeStatus != null) {
-                        if (isReferenceEntity(targetClass)) {
+                        if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                             T publishedVersion = findPublishedVersion(target, targetClass);
                             if (publishedVersion != null) {
                                 targetForJoin = publishedVersion;
@@ -603,8 +523,7 @@ public class RelationSyncUtil {
         if (originalInstanceId == null) return null;
 
         String metaId = getMetaId(originalEntity);
-
-        if (metaId == null) metaId = originalInstanceId; // fallback
+        if (metaId == null) metaId = originalInstanceId;
 
         String cacheKey = metaId + "_" + newStatus.name();
 
@@ -689,7 +608,6 @@ public class RelationSyncUtil {
             }
         }
 
-        // Fallback: prova con metaId (usa versione con cache)
         String metaId = getMetaId(originalEntity);
         if (metaId != null) {
             try {
@@ -795,10 +713,10 @@ public class RelationSyncUtil {
             if (parentId == null || targetId == null) return false;
 
             String parentClassName = parent.getClass().getSimpleName().toLowerCase();
-            String parentFieldName = parentClassName + "Instance";
+            String embeddedIdField = parentClassName + "InstanceId";
 
-            List<Object> existing = EposDataModelDAO.getInstance()
-                    .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
+            List<?> existing = EposDataModelDAO.getInstance()
+                    .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
 
             if (existing != null) {
                 for (Object obj : existing) {
@@ -862,7 +780,6 @@ public class RelationSyncUtil {
             Method setIdMethod = joinEntity.getClass().getMethod("setId", idClass);
             setIdMethod.invoke(joinEntity, idInstance);
         } catch (Exception e) {
-            System.err.println("[RelationSyncUtil] Error initializing EmbeddedId: " + e.getMessage());
         }
     }
 
@@ -946,7 +863,6 @@ public class RelationSyncUtil {
 
         List<Object> sourceList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(sourceInstanceId, sourceClass);
         if (sourceList == null || sourceList.isEmpty()) {
-            System.err.println("[RelationSyncUtil] Source entity not found: " + sourceInstanceId);
             return;
         }
         Object sourceEntity = sourceList.get(0);
@@ -989,16 +905,16 @@ public class RelationSyncUtil {
             String sourceClassName = sourceEntity.getClass().getSimpleName().toLowerCase();
             String targetClassName = targetEntity.getClass().getSimpleName().toLowerCase();
 
-            String sourceFieldName = sourceClassName + "Instance";
-            List<Object> existing = null;
+            String sourceFieldName = sourceClassName + "InstanceId";
+            List<?> existing = null;
 
             try {
                 existing = EposDataModelDAO.getInstance()
-                        .getOneFromDBBySpecificKeyNoCache(sourceFieldName, sourceId, joinClass);
+                        .getJoinEntitiesByParentId(sourceFieldName, sourceId, joinClass);
             } catch (Exception e) {
                 try {
                     existing = EposDataModelDAO.getInstance()
-                            .getOneFromDBBySpecificKeyNoCache(sourceClassName + "1Instance", sourceId, joinClass);
+                            .getJoinEntitiesByParentId(sourceClassName + "1InstanceId", sourceId, joinClass);
                 } catch (Exception e2) {
                 }
             }
@@ -1019,10 +935,9 @@ public class RelationSyncUtil {
     }
 
     private static String extractRelatedEntityId(Object joinEntity, String targetClassName) {
-        // Prova vari pattern di nomi getter
         String[] patterns = {
                 "get" + capitalize(targetClassName) + "Instance",
-                "get" + capitalize(targetClassName) + "2Instance",  // Per relazioni ricorsive
+                "get" + capitalize(targetClassName) + "2Instance",
         };
 
         for (String getterName : patterns) {
@@ -1033,7 +948,6 @@ public class RelationSyncUtil {
                     return getModelId(related);
                 }
             } catch (Exception e) {
-                // Prova il prossimo pattern
             }
         }
         return null;

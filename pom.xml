@@ -1,10 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>4.2.10</version>
+	<version>4.2.12</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
@@ -237,23 +237,23 @@
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.testcontainers/junit-jupiter -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-junit-jupiter</artifactId>
-            <version>2.0.2</version>
-            <scope>test</scope>
-        </dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<version>2.0.2</version>
+			<scope>test</scope>
+		</dependency>
 
 
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-postgresql</artifactId>
-            <version>2.0.2</version>
-            <scope>test</scope>
-        </dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<version>2.0.2</version>
+			<scope>test</scope>
+		</dependency>
 
 
-        <dependency>
+		<dependency>
 			<groupId>jakarta.validation</groupId>
 			<artifactId>jakarta.validation-api</artifactId>
 			<version>3.1.1</version>
@@ -289,5 +289,5 @@
 			<optional>true</optional>
 		</dependency>
 
-    </dependencies>
+	</dependencies>
 </project>

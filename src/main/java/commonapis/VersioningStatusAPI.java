@@ -4,6 +4,7 @@ import dao.EposDataModelDAO;
 import model.StatusType;
 import model.Versioningstatus;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -22,8 +23,6 @@ public class VersioningStatusAPI {
 
         Versioningstatus edmobj = null;
 
-        // 1. Recupero stato attuale (Cache -> Fallback NoCache)
-        // Qui usiamo la cache per performance in lettura, ma con fallback se non troviamo nulla
         if (obj.getInstanceId() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
             if (!list.isEmpty()) {
@@ -34,18 +33,10 @@ public class VersioningStatusAPI {
             }
         }
 
-        // 2. Fallback UID (Solo NoCache per sicurezza)
-        // === FIX: Esclude i record che sono marker di relazioni pending ===
-        // I marker di relazione pending usano la stessa tabella Versioningstatus
-        // ma hanno metaId = nome classe (es. "model.DistributionDataproduct")
-        // invece di un UUID. Questi devono essere saltati.
         if (edmobj == null && obj.getUid() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
             for (Versioningstatus vs : list) {
-                // Salta i record che sono marker di relazioni pending
                 if (isPendingRelationMarker(vs)) {
-                    LOG.fine("Skipping pending relation marker for UID: " + obj.getUid() +
-                            " (metaId=" + vs.getMetaId() + ")");
                     continue;
                 }
                 edmobj = vs;
@@ -57,9 +48,6 @@ public class VersioningStatusAPI {
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
-
-            System.out.println("DEBUG checkVersion: Found ID=" + edmobj.getInstanceId() +
-                    " Status=" + currentDbStatus + " -> Target=" + targetStatus);
 
             if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
                 createNewVersion(obj, edmobj, targetStatus);
@@ -76,7 +64,6 @@ public class VersioningStatusAPI {
             return obj;
 
         } else {
-            // Default a DRAFT per il normale flow di versioning
             StatusType initialStatus = overrideStatus != null ? overrideStatus :
                     (obj.getStatus() != null ? obj.getStatus() : DRAFT);
 
@@ -85,44 +72,21 @@ public class VersioningStatusAPI {
         }
     }
 
-    /**
-     * Verifica se un record Versioningstatus è un marker di relazione pending
-     * piuttosto che un vero record di versioning di un'entità.
-     *
-     * I marker di relazione pending vengono creati da RelationSyncUtil.createPendingRelation()
-     * e hanno le seguenti caratteristiche:
-     * - status = PENDING
-     * - metaId = nome classe Java completo (es. "model.DistributionDataproduct")
-     *
-     * I record di versioning normali invece hanno:
-     * - metaId = UUID (es. "a1b2c3d4-e5f6-...")
-     *
-     * @param vs il record Versioningstatus da verificare
-     * @return true se è un marker di relazione pending, false se è un record di versioning normale
-     */
     private static boolean isPendingRelationMarker(Versioningstatus vs) {
         if (vs == null) return false;
 
-        // Se non è PENDING, è sicuramente un record di versioning normale
         if (!StatusType.PENDING.name().equals(vs.getStatus())) {
             return false;
         }
 
-        // Se il metaId contiene ".", è probabilmente un nome classe Java
-        // (es. "model.DistributionDataproduct")
-        // I metaId normali sono UUID che non contengono "."
         String metaId = vs.getMetaId();
         if (metaId != null && metaId.contains(".")) {
             return true;
         }
 
-        // Ulteriore controllo: i marker hanno anche provenance e changeComment popolati
-        // con tipi di entità (es. "DATAPRODUCT", "DISTRIBUTION")
-        // mentre i record normali non li usano per questo scopo
         String provenance = vs.getProvenance();
         String changeComment = vs.getChangeComment();
         if (provenance != null && changeComment != null) {
-            // Se sembrano tipi di entità (tutto maiuscolo), probabilmente è un marker
             if (provenance.equals(provenance.toUpperCase()) &&
                     changeComment.equals(changeComment.toUpperCase()) &&
                     provenance.length() > 3 && changeComment.length() > 3) {
@@ -130,16 +94,6 @@ public class VersioningStatusAPI {
             }
         }
 
-        return false;
-    }
-
-    private static boolean isValidTransition(StatusType oldStatus, StatusType newStatus) {
-        if (oldStatus == newStatus) return true;
-        if (oldStatus == DRAFT && newStatus == SUBMITTED) return true;
-        if (oldStatus == SUBMITTED && newStatus == PUBLISHED) return true;
-        if (oldStatus == DRAFT && newStatus == PUBLISHED) return true;
-        if (oldStatus == PUBLISHED && newStatus == ARCHIVED) return true;
-        if (oldStatus == PUBLISHED && newStatus == DRAFT) return true;
         return false;
     }
 
@@ -151,7 +105,6 @@ public class VersioningStatusAPI {
         for (Versioningstatus rawVs : allVersionsRaw) {
             if (rawVs.getVersionId().equals(currentVersionId)) continue;
 
-            // === FIX: Non archiviare i marker di relazioni pending ===
             if (isPendingRelationMarker(rawVs)) continue;
 
             if (PUBLISHED.toString().equals(rawVs.getStatus())) {
@@ -231,16 +184,15 @@ public class VersioningStatusAPI {
     }
 
     public static EPOSDataModelEntity retrieveVersion(EPOSDataModelEntity obj) {
+
         Versioningstatus vs = null;
 
-        // 1. Prima prova per instanceId
         if (obj.getInstanceId() != null) {
             List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
             if (returnList.isEmpty()) {
                 returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
             }
 
-            // Cerca un Versioningstatus valido (non PENDING marker)
             for (Versioningstatus candidate : returnList) {
                 if (!isPendingRelationMarker(candidate)) {
                     vs = candidate;
@@ -249,7 +201,6 @@ public class VersioningStatusAPI {
             }
         }
 
-        // 2. Se non trovato per instanceId, prova per UID
         if (vs == null && obj.getUid() != null) {
             List<Versioningstatus> uidList = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
             for (Versioningstatus candidate : uidList) {
@@ -260,7 +211,6 @@ public class VersioningStatusAPI {
             }
         }
 
-        // 3. Se non trovato, prova con metodo generico
         if (vs == null) {
             List<Versioningstatus> returnList = getDbaccess().getOneFromDB(
                     obj.getInstanceId(),
@@ -277,8 +227,6 @@ public class VersioningStatusAPI {
             }
         }
 
-        // 4. FIX CRITICO: Se non trova Versioningstatus, restituisci l'oggetto con status default
-        //    invece di null, per evitare NullPointerException nei chiamanti
         if (vs == null) {
             LOG.warning("[VersioningStatusAPI] No Versioningstatus found for entity - " +
                     "instanceId=" + obj.getInstanceId() + ", uid=" + obj.getUid() +
@@ -289,6 +237,7 @@ public class VersioningStatusAPI {
             return obj;
         }
 
+        obj.setVersionId(vs.getVersionId());
         obj.setChangeComment(vs.getChangeComment());
         if (vs.getChangeTimestamp() != null) {
             obj.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
@@ -298,6 +247,10 @@ public class VersioningStatusAPI {
         obj.setVersion(vs.getVersion());
         obj.setInstanceChangedId(vs.getInstanceChangeId());
 
+        obj.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(obj.getMetaId()));
+
+        //TODO: reviewerid and reviewercomment
+
         try {
             obj.setStatus(StatusType.valueOf(vs.getStatus()));
         } catch (IllegalArgumentException e) {
@@ -306,7 +259,6 @@ public class VersioningStatusAPI {
         return obj;
     }
 
-    // *** FIX FINALE: Usa SEMPRE NoCache se abbiamo l'ID ***
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
         List<Versioningstatus> returnList = null;
 
@@ -315,9 +267,6 @@ public class VersioningStatusAPI {
                     obj.getInstanceId(), obj.getMetaId(), obj.getUid(), obj.getVersionId(), Versioningstatus.class
             );
         } else {
-            // BYPASS CACHE OBBLIGATORIO:
-            // Assicura che DataProductAPI riceva l'oggetto appena aggiornato a PUBLISHED
-            // e non una copia vecchia (DRAFT) dalla cache.
             returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
         }
 

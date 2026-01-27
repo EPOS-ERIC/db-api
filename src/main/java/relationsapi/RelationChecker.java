@@ -25,7 +25,7 @@ public class RelationChecker {
             ThreadLocal.withInitial(HashSet::new);
 
     private static final Set<String> REFERENCE_ENTITIES = Set.of(
-            EntityNames.ATTRIBUTION.name(),
+        EntityNames.ATTRIBUTION.name(),
         EntityNames.PERSON.name(),
         EntityNames.MAPPING.name(),
         EntityNames.CATEGORY.name(),
