@@ -226,7 +226,6 @@ public class RelationChecker {
                     if (obj == null) {
                         if (Boolean.TRUE.equals(enableStore) && linkedEntity.getEntityType() != null) {
                             try {
-                                LOG.info("Implicitly creating stub entity for UID: " + linkedEntity.getUid());
 
                                 String apiName = EntityNames.valueOf(linkedEntity.getEntityType().toUpperCase(Locale.ROOT)).name();
                                 AbstractAPI api = AbstractAPI.retrieveAPI(apiName);
