@@ -11,9 +11,17 @@ import relationsapi.RelationSyncUtil;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * OrganizationAPI - Manages Organization entities with proper support for:
+ * - Organization-Organization relations (memberOf)
+ * - Organization-ContactPoint relations
+ * - REFERENCE_ENTITY logic: Organizations are shared entities, always use PUBLISHED versions
+ *   for relations unless editorId is "ingestor"
+ */
 public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organization> {
 
     private static final Logger LOG = Logger.getLogger(OrganizationAPI.class.getName());
@@ -71,6 +79,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
+        // FIX: Determine if REFERENCE_ENTITY logic should be applied
+        boolean useReferenceEntityLogic = shouldApplyReferenceEntityLogic(obj);
+
         Organization edmobj = new Organization();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
@@ -101,7 +112,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             copyAddressFromPreviousVersion(oldInstanceId, edmobj);
         }
 
-        // CONTACTPOINT
+        // CONTACTPOINT - Uses RelationSyncUtil which already has REFERENCE_ENTITY logic
         if (contactPointExplicitlySet || !isNewVersion) {
             if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
                 RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
@@ -131,18 +142,43 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                     OrganizationIdentifier::setIdentifierInstance, obj, previousObj, overrideStatus, false);
         }
 
-        // MEMBER OF
+        // FIX: MEMBER OF - Now uses REFERENCE_ENTITY logic for Organization-to-Organization relations
         if (memberOfExplicitlySet || !isNewVersion) {
             if (obj.getMemberOf() != null && !obj.getMemberOf().isEmpty()) {
+                // Clear existing memberOf relations for this entity
+                List<Object> existingMemberOf = getDbaccess().getOneFromDBBySpecificKey("organization2Instance", edmobj.getInstanceId(), OrganizationMemberof.class);
+                if (existingMemberOf != null) {
+                    for (Object o : existingMemberOf) {
+                        getDbaccess().deleteObject(o);
+                    }
+                }
+
                 for (LinkedEntity rel : obj.getMemberOf()) {
-                    LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(rel, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
-                    if (le != null && le.getInstanceId() != null) {
-                        List<Organization> orgList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Organization.class);
-                        if (!orgList.isEmpty()) {
-                            OrganizationMemberof om = new OrganizationMemberof();
-                            om.setOrganization1Instance(orgList.get(0));
-                            om.setOrganization2Instance(edmobj);
+                    // FIX: Use findOrCreateOrganizationForRelation instead of LinkedEntityAPI.createFromLinkedEntity
+                    Organization parentOrg = findOrCreateOrganizationForRelation(rel, overrideStatus, useReferenceEntityLogic);
+                    if (parentOrg != null) {
+                        // Prevent self-reference
+                        if (parentOrg.getInstanceId().equals(edmobj.getInstanceId())) {
+                            LOG.log(Level.WARNING, "[OrganizationAPI] Skipping self-reference in memberOf for organization: " + edmobj.getUid());
+                            continue;
+                        }
+
+                        OrganizationMemberof om = new OrganizationMemberof();
+                        om.setOrganization1Instance(parentOrg);
+                        om.setOrganization2Instance(edmobj);
+
+                        LOG.log(Level.FINE, "[OrganizationAPI] Creating memberOf relation: {0} memberOf {1}",
+                                new Object[]{edmobj.getUid(), parentOrg.getUid()});
+
+                        try {
                             EposDataModelDAO.getInstance().updateObject(om);
+                        } catch (Exception e) {
+                            if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
+                                    e.getMessage().contains("already exists"))) {
+                                LOG.log(Level.FINE, "[OrganizationAPI] MemberOf relation already exists, skipping");
+                            } else {
+                                LOG.log(Level.WARNING, "[OrganizationAPI] Error creating memberOf relation: " + e.getMessage());
+                            }
                         }
                     }
                 }
@@ -151,7 +187,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             copyMemberOfFromPreviousVersion(oldInstanceId, edmobj);
         }
 
-        // OWNS (polymorphic - can be Facility or Equipment)
+        // OWNS (polymorphic - can be Facility or Equipment) - Not reference entities, no changes needed
         if (ownsExplicitlySet || !isNewVersion) {
             if (obj.getOwns() != null && !obj.getOwns().isEmpty()) {
                 for (LinkedEntity rel : obj.getOwns()) {
@@ -202,6 +238,154 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.ORGANIZATION.name());
     }
+
+    // =========================================================================
+    // FIX: REFERENCE_ENTITY LOGIC FOR ORGANIZATION
+    // =========================================================================
+
+    /**
+     * Determines if REFERENCE_ENTITY logic should be applied.
+     * Returns false if editorId is "ingestor" (ingestor mode bypasses reference entity logic).
+     */
+    private boolean shouldApplyReferenceEntityLogic(EPOSDataModelEntity entity) {
+        if (entity == null) return true;
+        String editorId = entity.getEditorId();
+        if (editorId != null && "ingestor".equalsIgnoreCase(editorId.trim())) {
+            LOG.log(Level.FINE, "[OrganizationAPI] INGESTOR MODE: Bypassing REFERENCE_ENTITY logic");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * FIX: Finds or creates an Organization for relation purposes.
+     * For REFERENCE_ENTITY mode: always returns the PUBLISHED version.
+     */
+    private Organization findOrCreateOrganizationForRelation(LinkedEntity link, StatusType status, boolean useReferenceEntityLogic) {
+
+        // First, try to find by UID
+        if (link.getUid() != null) {
+            List<Organization> byUid = getDbaccess().getOneFromDBByUID(link.getUid(), Organization.class);
+            if (!byUid.isEmpty()) {
+                if (useReferenceEntityLogic) {
+                    // FIX: Find PUBLISHED version
+                    Organization published = findPublishedOrganization(link.getUid());
+                    if (published != null) {
+                        LOG.log(Level.FINE, "[OrganizationAPI] REFERENCE_ENTITY: Using PUBLISHED Organization for uid=" + link.getUid());
+                        return published;
+                    }
+                    // No PUBLISHED - return first found but log warning
+                    LOG.log(Level.WARNING, "[OrganizationAPI] No PUBLISHED Organization found for uid=" + link.getUid() +
+                            ", using existing version");
+                    return byUid.get(0);
+                } else {
+                    // Ingestor mode: find matching status or first
+                    for (Organization org : byUid) {
+                        if (org.getVersion() != null && status != null &&
+                                status.name().equals(org.getVersion().getStatus())) {
+                            return org;
+                        }
+                    }
+                    return byUid.get(0);
+                }
+            }
+        }
+
+        // Try by instanceId
+        if (link.getInstanceId() != null) {
+            List<Organization> byInstanceId = getDbaccess().getOneFromDBByInstanceId(link.getInstanceId(), Organization.class);
+            if (!byInstanceId.isEmpty()) {
+                Organization found = byInstanceId.get(0);
+                if (useReferenceEntityLogic && found.getUid() != null) {
+                    // Still need to check if there's a PUBLISHED version
+                    Organization published = findPublishedOrganization(found.getUid());
+                    if (published != null) {
+                        return published;
+                    }
+                }
+                return found;
+            }
+        }
+
+        // Try by LinkedEntity lookup
+        List<Organization> found = getDbaccess().getOneFromDBByLinkedEntity(link, Organization.class);
+        if (!found.isEmpty()) {
+            if (useReferenceEntityLogic && found.get(0).getUid() != null) {
+                Organization published = findPublishedOrganization(found.get(0).getUid());
+                if (published != null) {
+                    return published;
+                }
+            }
+            return found.get(0);
+        }
+
+        // Organization doesn't exist - create a stub
+        LOG.log(Level.FINE, "[OrganizationAPI] Creating stub Organization for uid=" + link.getUid());
+        return createOrganizationStub(link, status, useReferenceEntityLogic);
+    }
+
+    /**
+     * FIX: Finds the PUBLISHED version of an Organization by UID.
+     */
+    private Organization findPublishedOrganization(String uid) {
+        if (uid == null) return null;
+
+        List<Organization> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, Organization.class);
+
+        for (Organization org : allVersions) {
+            if (org.getVersion() != null && StatusType.PUBLISHED.name().equals(org.getVersion().getStatus())) {
+                return org;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * FIX: Creates a stub Organization entity.
+     * For REFERENCE_ENTITY mode: always creates with PUBLISHED status.
+     */
+    private Organization createOrganizationStub(LinkedEntity link, StatusType status, boolean useReferenceEntityLogic) {
+        String instanceId = UUID.randomUUID().toString();
+        String metaId = UUID.randomUUID().toString();
+        String versionId = UUID.randomUUID().toString();
+
+        // FIX: REFERENCE_ENTITY: Always create as PUBLISHED
+        StatusType finalStatus;
+        if (useReferenceEntityLogic) {
+            finalStatus = StatusType.PUBLISHED;
+            LOG.log(Level.FINE, "[OrganizationAPI] REFERENCE_ENTITY: Creating stub Organization as PUBLISHED");
+        } else {
+            finalStatus = status != null ? status : StatusType.DRAFT;
+        }
+
+        model.Versioningstatus vs = new model.Versioningstatus();
+        vs.setInstanceId(instanceId);
+        vs.setMetaId(metaId);
+        vs.setVersionId(versionId);
+        vs.setUid(link.getUid());
+        vs.setStatus(finalStatus.toString());
+        vs.setChangeTimestamp(java.time.OffsetDateTime.now());
+        vs.setChangeComment("Auto-created stub for pending relation");
+
+        getDbaccess().createObject(vs);
+
+        Organization stub = new Organization();
+        stub.setUid(link.getUid());
+        stub.setInstanceId(instanceId);
+        stub.setMetaId(metaId);
+        stub.setVersion(vs);
+
+        getDbaccess().createObject(stub);
+
+        // Register in entity ID table
+        EposDataModelEntityIDAPI.addEntityToEDMEntityID(metaId, EntityNames.ORGANIZATION.name());
+
+        return stub;
+    }
+
+    // =========================================================================
+    // Remaining methods unchanged
+    // =========================================================================
 
     private void deleteExistingElements(String instanceId) {
         List<Object> elements = getDbaccess().getOneFromDBBySpecificKey("organizationInstance", instanceId, OrganizationElement.class);
@@ -305,7 +489,8 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         return null;
     }
 
-    @Override public Boolean delete(String instanceId) {
+    @Override
+    public Boolean delete(String instanceId) {
         deleteRelations("organizationInstance", instanceId, OrganizationContactpoint.class);
         deleteRelations("organization", instanceId, OrganizationOwn.class);
         deleteRelations("organizationInstance", instanceId, DataproductPublisher.class);
@@ -323,14 +508,21 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
     }
 
-    @Override public org.epos.eposdatamodel.Organization retrieve(String instanceId) {
+    @Override
+    public org.epos.eposdatamodel.Organization retrieve(String instanceId) {
         List<Organization> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Organization.class);
         if (elementList == null || elementList.isEmpty()) return null;
         Organization edmobj = elementList.get(0);
         org.epos.eposdatamodel.Organization o = new org.epos.eposdatamodel.Organization();
-        o.setInstanceId(edmobj.getInstanceId()); o.setMetaId(edmobj.getMetaId()); o.setUid(edmobj.getUid());
-        o.setAcronym(edmobj.getAcronym()); o.setLeiCode(edmobj.getLeicode()); o.setLogo(edmobj.getLogo());
-        o.setURL(edmobj.getUrl()); o.setType(edmobj.getType()); o.setMaturity(edmobj.getMaturity());
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setAcronym(edmobj.getAcronym());
+        o.setLeiCode(edmobj.getLeicode());
+        o.setLogo(edmobj.getLogo());
+        o.setURL(edmobj.getUrl());
+        o.setType(edmobj.getType());
+        o.setMaturity(edmobj.getMaturity());
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(), OrganizationIdentifier.class))
             o.addIdentifier(retrieveAPI(EntityNames.IDENTIFIER.name()).retrieveLinkedEntity(((OrganizationIdentifier)object).getIdentifierInstance().getInstanceId()));
         if (edmobj.getAddress() != null) o.setAddress(retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(edmobj.getAddress().getInstanceId()));
@@ -354,19 +546,33 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         return (org.epos.eposdatamodel.Organization) VersioningStatusAPI.retrieveVersion(o);
     }
 
-    @Override public org.epos.eposdatamodel.Organization retrieveByUID(String uid) {
+    @Override
+    public org.epos.eposdatamodel.Organization retrieveByUID(String uid) {
         List<Organization> returnList = getDbaccess().getOneFromDBByUID(uid, Organization.class);
         return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
-    @Override public List<org.epos.eposdatamodel.Organization> retrieveBunch(List<String> entities) { return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Organization.class)); }
 
-    @Override public List<org.epos.eposdatamodel.Organization> retrieveAll() { return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Organization.class)); }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveBunch(List<String> entities) {
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Organization.class));
+    }
 
-    @Override public List<org.epos.eposdatamodel.Organization> retrieveAllWithStatus(StatusType status) { return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status)); }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAll() {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Organization.class));
+    }
 
-    private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<String>> dbFetcher) { return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList()); }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllWithStatus(StatusType status) {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status));
+    }
 
-    @Override public LinkedEntity retrieveLinkedEntity(String instanceId) {
+    private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+    }
+
+    @Override
+    public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Organization> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Organization.class);
         if (elementList != null && !elementList.isEmpty()) {
             Organization edmobj = elementList.get(0);

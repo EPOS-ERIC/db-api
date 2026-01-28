@@ -18,6 +18,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * CategoryAPI - Manages Category entities with proper support for:
+ * - Category-Category relations (broader/narrower) via CategoryIspartof
+ * - Category-CategoryScheme relations (inScheme)
+ * - REFERENCE_ENTITY logic: Categories are shared entities, always use PUBLISHED versions
+ *   for relations unless editorId is "ingestor"
+ */
 public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     private static final Logger LOG = Logger.getLogger(CategoryAPI.class.getName());
@@ -90,30 +97,34 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         edmobj.setName(obj.getName());
         edmobj.setDescription(obj.getDescription());
 
-        // IN SCHEME
+        // Determine if we should use REFERENCE_ENTITY logic
+        // (always use PUBLISHED for Category relations unless ingestor)
+        boolean useReferenceEntityLogic = shouldApplyReferenceEntityLogic(obj);
+
+        // IN SCHEME (CategoryScheme is also a REFERENCE_ENTITY)
         if (inSchemeExplicitlySet || !isNewVersion) {
             if (obj.getInScheme() != null) {
-                createInscheme(obj.getInScheme(), edmobj, overrideStatus);
+                createInscheme(obj.getInScheme(), edmobj, overrideStatus, useReferenceEntityLogic);
             }
         } else if (isNewVersion && oldInstanceId != null && previousObj instanceof org.epos.eposdatamodel.Category) {
             org.epos.eposdatamodel.Category oldPojo = (org.epos.eposdatamodel.Category) previousObj;
             if (oldPojo.getInScheme() != null) {
-                createInscheme(oldPojo.getInScheme(), edmobj, overrideStatus);
+                createInscheme(oldPojo.getInScheme(), edmobj, overrideStatus, useReferenceEntityLogic);
             }
         }
 
-        // BROADER
+        // BROADER (Category-to-Category relation)
         if (broaderExplicitlySet || !isNewVersion) {
-            syncBroaderRelations(edmobj, obj.getBroader(), overrideStatus);
+            syncBroaderRelations(edmobj, obj.getBroader(), overrideStatus, useReferenceEntityLogic);
         } else if (isNewVersion && oldInstanceId != null) {
-            copyBroaderFromPrevious(oldInstanceId, edmobj);
+            copyBroaderFromPrevious(oldInstanceId, edmobj, useReferenceEntityLogic);
         }
 
-        // NARROWER
+        // NARROWER (Category-to-Category relation - inverse of broader)
         if (narrowerExplicitlySet || !isNewVersion) {
-            syncNarrowerRelations(edmobj, obj.getNarrower(), overrideStatus);
+            syncNarrowerRelations(edmobj, obj.getNarrower(), overrideStatus, useReferenceEntityLogic);
         } else if (isNewVersion && oldInstanceId != null) {
-            copyNarrowerFromPrevious(oldInstanceId, edmobj);
+            copyNarrowerFromPrevious(oldInstanceId, edmobj, useReferenceEntityLogic);
         }
 
         getDbaccess().updateObject(edmobj);
@@ -122,12 +133,49 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         return new LinkedEntity().instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid()).entityType(EntityNames.CATEGORY.name());
     }
 
-    private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus) {
+    /**
+     * Determines if REFERENCE_ENTITY logic should be applied.
+     * When true: use existing PUBLISHED versions for relations (shared entities)
+     * When false: cascade/create new versions normally (ingestor mode)
+     */
+    private boolean shouldApplyReferenceEntityLogic(org.epos.eposdatamodel.Category obj) {
+        if (obj == null) return true;
+        String editorId = obj.getEditorId();
+        if (editorId != null && "ingestor".equalsIgnoreCase(editorId.trim())) {
+            LOG.log(Level.FINE, "[CategoryAPI] INGESTOR MODE: Treating Categories as normal entities (cascade enabled)");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Creates/updates the inScheme relationship.
+     * For REFERENCE_ENTITY mode: always uses the PUBLISHED version of CategoryScheme.
+     */
+    private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus, boolean useReferenceEntityLogic) {
+
+        // First, try to find existing CategoryScheme
         List<CategoryScheme> categorySchemeList = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(inscheme, CategoryScheme.class);
 
+        CategoryScheme targetScheme = null;
+
         if (!categorySchemeList.isEmpty()) {
-            edmobj.setInScheme(categorySchemeList.get(0));
+            if (useReferenceEntityLogic) {
+                // REFERENCE_ENTITY: Find the PUBLISHED version
+                targetScheme = findPublishedCategoryScheme(inscheme.getUid());
+                if (targetScheme == null) {
+                    // No PUBLISHED exists, use what we have but log warning
+                    targetScheme = categorySchemeList.get(0);
+                    LOG.log(Level.WARNING, "[CategoryAPI] No PUBLISHED CategoryScheme found for uid=" + inscheme.getUid() +
+                            ", using existing version with status=" +
+                            (targetScheme.getVersion() != null ? targetScheme.getVersion().getStatus() : "unknown"));
+                }
+            } else {
+                // Ingestor mode: use matching version
+                targetScheme = categorySchemeList.get(0);
+            }
         } else {
+            // CategoryScheme doesn't exist - create it
             org.epos.eposdatamodel.CategoryScheme childObj = new org.epos.eposdatamodel.CategoryScheme();
 
             String instanceId = inscheme.getInstanceId() != null ? inscheme.getInstanceId() : UUID.randomUUID().toString();
@@ -137,37 +185,76 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
             childObj.setMetaId(metaId);
             childObj.setUid(inscheme.getUid());
 
-            StatusType status = overrideStatus;
-            if (status == null && edmobj.getVersion() != null && edmobj.getVersion().getStatus() != null) {
-                try {
-                    status = StatusType.valueOf(edmobj.getVersion().getStatus());
-                } catch (Exception e) {
-                    status = StatusType.DRAFT;
+            // REFERENCE_ENTITY: Always create as PUBLISHED
+            StatusType status;
+            if (useReferenceEntityLogic) {
+                status = StatusType.PUBLISHED;
+                LOG.log(Level.FINE, "[CategoryAPI] REFERENCE_ENTITY: Creating CategoryScheme as PUBLISHED");
+            } else {
+                status = overrideStatus;
+                if (status == null && edmobj.getVersion() != null && edmobj.getVersion().getStatus() != null) {
+                    try {
+                        status = StatusType.valueOf(edmobj.getVersion().getStatus());
+                    } catch (Exception e) {
+                        status = StatusType.DRAFT;
+                    }
                 }
+                if (status == null) status = StatusType.DRAFT;
             }
-            if (status == null) status = StatusType.DRAFT;
             childObj.setStatus(status);
 
-            LinkedEntity le = retrieveAPI(EntityNames.CATEGORYSCHEME.name()).create(childObj, overrideStatus, null, null);
+            LinkedEntity le = retrieveAPI(EntityNames.CATEGORYSCHEME.name()).create(childObj, status, null, null);
 
             List<CategoryScheme> created = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(le, CategoryScheme.class);
             if (!created.isEmpty()) {
-                edmobj.setInScheme(created.get(0));
+                targetScheme = created.get(0);
             }
+        }
+
+        if (targetScheme != null) {
+            edmobj.setInScheme(targetScheme);
         }
     }
 
-    private void syncBroaderRelations(Category childEntity, List<LinkedEntity> broaderLinks, StatusType overrideStatus) {
+    /**
+     * Finds the PUBLISHED version of a CategoryScheme by UID.
+     */
+    private CategoryScheme findPublishedCategoryScheme(String uid) {
+        if (uid == null) return null;
+
+        List<CategoryScheme> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, CategoryScheme.class);
+
+        for (CategoryScheme cs : allVersions) {
+            if (cs.getVersion() != null && StatusType.PUBLISHED.name().equals(cs.getVersion().getStatus())) {
+                return cs;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Syncs broader relations (Category -> parent Category).
+     * CategoryIspartof: category1 = child (this), category2 = parent (broader)
+     */
+    private void syncBroaderRelations(Category childEntity, List<LinkedEntity> broaderLinks, StatusType overrideStatus, boolean useReferenceEntityLogic) {
+        // Delete existing broader relations for this category
         List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category1Instance", childEntity.getInstanceId(), CategoryIspartof.class);
         if (existing != null) {
             for (Object o : existing) getDbaccess().deleteObject(o);
         }
 
-        if (broaderLinks == null) return;
+        if (broaderLinks == null || broaderLinks.isEmpty()) return;
 
         for (LinkedEntity link : broaderLinks) {
-            Category parentEntity = findOrCreateStub(link, overrideStatus);
+            Category parentEntity = findOrCreateCategoryForRelation(link, overrideStatus, useReferenceEntityLogic);
+
             if (parentEntity != null) {
+                // Prevent self-reference
+                if (parentEntity.getInstanceId().equals(childEntity.getInstanceId())) {
+                    LOG.log(Level.WARNING, "[CategoryAPI] Skipping self-reference in broader for category: " + childEntity.getUid());
+                    continue;
+                }
+
                 CategoryIspartof relation = new CategoryIspartof();
 
                 CategoryIspartofId id = new CategoryIspartofId();
@@ -178,24 +265,47 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 relation.setCategory1Instance(childEntity);
                 relation.setCategory2Instance(parentEntity);
 
-                LOG.log(Level.FINE, "Creating broader relation: {0} -> {1}",
+                LOG.log(Level.FINE, "[CategoryAPI] Creating broader relation: {0} -> {1}",
                         new Object[]{childEntity.getUid(), parentEntity.getUid()});
-                getDbaccess().createObject(relation);
+
+                try {
+                    getDbaccess().createObject(relation);
+                } catch (Exception e) {
+                    // Handle duplicate key gracefully
+                    if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
+                            e.getMessage().contains("already exists"))) {
+                        LOG.log(Level.FINE, "[CategoryAPI] Broader relation already exists, skipping");
+                    } else {
+                        LOG.log(Level.WARNING, "[CategoryAPI] Error creating broader relation: " + e.getMessage());
+                    }
+                }
             }
         }
     }
 
-    private void syncNarrowerRelations(Category parentEntity, List<LinkedEntity> narrowerLinks, StatusType overrideStatus) {
+    /**
+     * Syncs narrower relations (parent Category -> this Category as child).
+     * CategoryIspartof: category1 = narrower (child), category2 = this (parent)
+     */
+    private void syncNarrowerRelations(Category parentEntity, List<LinkedEntity> narrowerLinks, StatusType overrideStatus, boolean useReferenceEntityLogic) {
+        // Delete existing narrower relations where this entity is the parent (category2)
         List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category2Instance", parentEntity.getInstanceId(), CategoryIspartof.class);
         if (existing != null) {
             for (Object o : existing) getDbaccess().deleteObject(o);
         }
 
-        if (narrowerLinks == null) return;
+        if (narrowerLinks == null || narrowerLinks.isEmpty()) return;
 
         for (LinkedEntity link : narrowerLinks) {
-            Category childEntity = findOrCreateStub(link, overrideStatus);
+            Category childEntity = findOrCreateCategoryForRelation(link, overrideStatus, useReferenceEntityLogic);
+
             if (childEntity != null) {
+                // Prevent self-reference
+                if (childEntity.getInstanceId().equals(parentEntity.getInstanceId())) {
+                    LOG.log(Level.WARNING, "[CategoryAPI] Skipping self-reference in narrower for category: " + parentEntity.getUid());
+                    continue;
+                }
+
                 CategoryIspartof relation = new CategoryIspartof();
 
                 CategoryIspartofId id = new CategoryIspartofId();
@@ -206,21 +316,123 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 relation.setCategory1Instance(childEntity);
                 relation.setCategory2Instance(parentEntity);
 
-                LOG.log(Level.FINE, "Creating narrower relation: {0} -> {1}",
+                LOG.log(Level.FINE, "[CategoryAPI] Creating narrower relation: {0} <- {1}",
                         new Object[]{parentEntity.getUid(), childEntity.getUid()});
-                getDbaccess().createObject(relation);
+
+                try {
+                    getDbaccess().createObject(relation);
+                } catch (Exception e) {
+                    if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
+                            e.getMessage().contains("already exists"))) {
+                        LOG.log(Level.FINE, "[CategoryAPI] Narrower relation already exists, skipping");
+                    } else {
+                        LOG.log(Level.WARNING, "[CategoryAPI] Error creating narrower relation: " + e.getMessage());
+                    }
+                }
             }
         }
     }
 
-    private Category findOrCreateStub(LinkedEntity link, StatusType status) {
-        List<Category> found = getDbaccess().getOneFromDBByUID(link.getUid(), Category.class);
-        if (!found.isEmpty()) return found.get(0);
+    /**
+     * Finds or creates a Category for relation purposes.
+     * For REFERENCE_ENTITY mode: always returns the PUBLISHED version.
+     */
+    private Category findOrCreateCategoryForRelation(LinkedEntity link, StatusType status, boolean useReferenceEntityLogic) {
 
+        // First, try to find by UID (most reliable for finding all versions)
+        if (link.getUid() != null) {
+            List<Category> byUid = getDbaccess().getOneFromDBByUID(link.getUid(), Category.class);
+            if (!byUid.isEmpty()) {
+                if (useReferenceEntityLogic) {
+                    // Find PUBLISHED version
+                    Category published = findPublishedCategory(link.getUid());
+                    if (published != null) {
+                        LOG.log(Level.FINE, "[CategoryAPI] REFERENCE_ENTITY: Using PUBLISHED Category for uid=" + link.getUid());
+                        return published;
+                    }
+                    // No PUBLISHED - return first found but log warning
+                    LOG.log(Level.WARNING, "[CategoryAPI] No PUBLISHED Category found for uid=" + link.getUid() +
+                            ", using existing version");
+                    return byUid.get(0);
+                } else {
+                    // Ingestor mode: find matching status or first
+                    for (Category c : byUid) {
+                        if (c.getVersion() != null && status != null &&
+                                status.name().equals(c.getVersion().getStatus())) {
+                            return c;
+                        }
+                    }
+                    return byUid.get(0);
+                }
+            }
+        }
+
+        // Try by instanceId
+        if (link.getInstanceId() != null) {
+            List<Category> byInstanceId = getDbaccess().getOneFromDBByInstanceId(link.getInstanceId(), Category.class);
+            if (!byInstanceId.isEmpty()) {
+                Category found = byInstanceId.get(0);
+                if (useReferenceEntityLogic && found.getUid() != null) {
+                    // Still need to check if there's a PUBLISHED version
+                    Category published = findPublishedCategory(found.getUid());
+                    if (published != null) {
+                        return published;
+                    }
+                }
+                return found;
+            }
+        }
+
+        // Try by LinkedEntity lookup
+        List<Category> found = getDbaccess().getOneFromDBByLinkedEntity(link, Category.class);
+        if (!found.isEmpty()) {
+            if (useReferenceEntityLogic && found.get(0).getUid() != null) {
+                Category published = findPublishedCategory(found.get(0).getUid());
+                if (published != null) {
+                    return published;
+                }
+            }
+            return found.get(0);
+        }
+
+        // Category doesn't exist - create a stub
+        LOG.log(Level.FINE, "[CategoryAPI] Creating stub Category for uid=" + link.getUid());
+        return createCategoryStub(link, status, useReferenceEntityLogic);
+    }
+
+    /**
+     * Finds the PUBLISHED version of a Category by UID.
+     */
+    private Category findPublishedCategory(String uid) {
+        if (uid == null) return null;
+
+        List<Category> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, Category.class);
+
+        for (Category cat : allVersions) {
+            if (cat.getVersion() != null && StatusType.PUBLISHED.name().equals(cat.getVersion().getStatus())) {
+                return cat;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Creates a stub Category entity.
+     * For REFERENCE_ENTITY mode: always creates with PUBLISHED status.
+     */
+    private Category createCategoryStub(LinkedEntity link, StatusType status, boolean useReferenceEntityLogic) {
         String instanceId = UUID.randomUUID().toString();
         String metaId = UUID.randomUUID().toString();
         String versionId = UUID.randomUUID().toString();
-        StatusType finalStatus = status != null ? status : StatusType.DRAFT;
+
+        // REFERENCE_ENTITY: Always create as PUBLISHED
+        StatusType finalStatus;
+        if (useReferenceEntityLogic) {
+            finalStatus = StatusType.PUBLISHED;
+            LOG.log(Level.FINE, "[CategoryAPI] REFERENCE_ENTITY: Creating stub Category as PUBLISHED");
+        } else {
+            finalStatus = status != null ? status : StatusType.DRAFT;
+        }
 
         model.Versioningstatus vs = new model.Versioningstatus();
         vs.setInstanceId(instanceId);
@@ -243,44 +455,91 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
         commonapis.EposDataModelEntityIDAPI.addEntityToEDMEntityID(metaId, EntityNames.CATEGORY.name());
 
-        LOG.log(Level.FINE, "Created stub Category: {0}", link.getUid());
+        LOG.log(Level.FINE, "[CategoryAPI] Created stub Category: {0} with status {1}",
+                new Object[]{link.getUid(), finalStatus});
         return stub;
     }
 
-    private void copyBroaderFromPrevious(String oldId, Category newEntity) {
+    /**
+     * Copies broader relations from a previous version.
+     */
+    private void copyBroaderFromPrevious(String oldId, Category newEntity, boolean useReferenceEntityLogic) {
         List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category1Instance", oldId, CategoryIspartof.class);
-        if (existing != null) {
-            for (Object o : existing) {
-                CategoryIspartof oldRel = (CategoryIspartof) o;
-                CategoryIspartof newRel = new CategoryIspartof();
+        if (existing == null || existing.isEmpty()) return;
 
-                CategoryIspartofId id = new CategoryIspartofId();
-                id.setCategory1InstanceId(newEntity.getInstanceId());
-                id.setCategory2InstanceId(oldRel.getCategory2Instance().getInstanceId());
-                newRel.setId(id);
+        for (Object o : existing) {
+            CategoryIspartof oldRel = (CategoryIspartof) o;
+            Category parentCategory = oldRel.getCategory2Instance();
 
-                newRel.setCategory1Instance(newEntity);
-                newRel.setCategory2Instance(oldRel.getCategory2Instance());
+            // For REFERENCE_ENTITY: ensure we're using the PUBLISHED version
+            if (useReferenceEntityLogic && parentCategory.getUid() != null) {
+                Category published = findPublishedCategory(parentCategory.getUid());
+                if (published != null) {
+                    parentCategory = published;
+                }
+            }
+
+            CategoryIspartof newRel = new CategoryIspartof();
+
+            CategoryIspartofId id = new CategoryIspartofId();
+            id.setCategory1InstanceId(newEntity.getInstanceId());
+            id.setCategory2InstanceId(parentCategory.getInstanceId());
+            newRel.setId(id);
+
+            newRel.setCategory1Instance(newEntity);
+            newRel.setCategory2Instance(parentCategory);
+
+            try {
                 getDbaccess().createObject(newRel);
+            } catch (Exception e) {
+                if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
+                        e.getMessage().contains("already exists"))) {
+                    LOG.log(Level.FINE, "[CategoryAPI] Broader relation already exists during copy, skipping");
+                } else {
+                    LOG.log(Level.WARNING, "[CategoryAPI] Error copying broader relation: " + e.getMessage());
+                }
             }
         }
     }
 
-    private void copyNarrowerFromPrevious(String oldId, Category newEntity) {
+    /**
+     * Copies narrower relations from a previous version.
+     */
+    private void copyNarrowerFromPrevious(String oldId, Category newEntity, boolean useReferenceEntityLogic) {
         List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category2Instance", oldId, CategoryIspartof.class);
-        if (existing != null) {
-            for (Object o : existing) {
-                CategoryIspartof oldRel = (CategoryIspartof) o;
-                CategoryIspartof newRel = new CategoryIspartof();
+        if (existing == null || existing.isEmpty()) return;
 
-                CategoryIspartofId id = new CategoryIspartofId();
-                id.setCategory1InstanceId(oldRel.getCategory1Instance().getInstanceId());
-                id.setCategory2InstanceId(newEntity.getInstanceId());
-                newRel.setId(id);
+        for (Object o : existing) {
+            CategoryIspartof oldRel = (CategoryIspartof) o;
+            Category childCategory = oldRel.getCategory1Instance();
 
-                newRel.setCategory1Instance(oldRel.getCategory1Instance());
-                newRel.setCategory2Instance(newEntity);
+            // For REFERENCE_ENTITY: ensure we're using the PUBLISHED version
+            if (useReferenceEntityLogic && childCategory.getUid() != null) {
+                Category published = findPublishedCategory(childCategory.getUid());
+                if (published != null) {
+                    childCategory = published;
+                }
+            }
+
+            CategoryIspartof newRel = new CategoryIspartof();
+
+            CategoryIspartofId id = new CategoryIspartofId();
+            id.setCategory1InstanceId(childCategory.getInstanceId());
+            id.setCategory2InstanceId(newEntity.getInstanceId());
+            newRel.setId(id);
+
+            newRel.setCategory1Instance(childCategory);
+            newRel.setCategory2Instance(newEntity);
+
+            try {
                 getDbaccess().createObject(newRel);
+            } catch (Exception e) {
+                if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
+                        e.getMessage().contains("already exists"))) {
+                    LOG.log(Level.FINE, "[CategoryAPI] Narrower relation already exists during copy, skipping");
+                } else {
+                    LOG.log(Level.WARNING, "[CategoryAPI] Error copying narrower relation: " + e.getMessage());
+                }
             }
         }
     }
@@ -334,12 +593,14 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         o.setName(edmobj.getName());
         o.setDescription(edmobj.getDescription());
 
+        // Retrieve broader relations (this category as child - category1)
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("category1Instance", edmobj.getInstanceId(), CategoryIspartof.class)) {
             CategoryIspartof item = (CategoryIspartof) object;
             if (item.getCategory2Instance() != null)
                 o.addBroader(retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategory2Instance().getInstanceId()));
         }
 
+        // Retrieve narrower relations (this category as parent - category2)
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("category2Instance", edmobj.getInstanceId(), CategoryIspartof.class)) {
             CategoryIspartof item = (CategoryIspartof) object;
             if (item.getCategory1Instance() != null)

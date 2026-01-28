@@ -17,6 +17,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+/**
+ * RelationChecker - Validates and creates entity relations.
+ *
+ * Handles cycle detection and ensures proper relation creation between entities.
+ *
+ * REFERENCE_ENTITIES are shared entities that should use PUBLISHED versions
+ * when creating relations, unless the editor is "ingestor".
+ */
 public class RelationChecker {
 
     private static final Logger LOG = Logger.getLogger(RelationChecker.class.getName());
@@ -24,34 +32,81 @@ public class RelationChecker {
     private static final ThreadLocal<Set<String>> processingEntities =
             ThreadLocal.withInitial(HashSet::new);
 
+    /**
+     * REFERENCE_ENTITIES: Shared entities that should use existing PUBLISHED versions
+     * instead of creating new versions during cascade.
+     *
+     * FIX: Added CATEGORYSCHEME to the list of reference entities.
+     */
     private static final Set<String> REFERENCE_ENTITIES = Set.of(
-        EntityNames.ATTRIBUTION.name(),
-        EntityNames.PERSON.name(),
-        EntityNames.MAPPING.name(),
-        EntityNames.CATEGORY.name(),
-        EntityNames.FACILITY.name(),
-        EntityNames.EQUIPMENT.name(),
-        EntityNames.OPERATION.name(),
-        EntityNames.WEBSERVICE.name(),
-        EntityNames.DATAPRODUCT.name(),
-        EntityNames.CONTACTPOINT.name(),
-        EntityNames.DISTRIBUTION.name(),
-        EntityNames.ORGANIZATION.name(),
-        EntityNames.CATEGORYSCHEME.name(),
-        EntityNames.SOFTWARESOURCECODE.name(),
-        EntityNames.SOFTWAREAPPLICATION.name(),
-        EntityNames.ADDRESS.name(),
-        EntityNames.ELEMENT.name(),
-        EntityNames.LOCATION.name(),
-        EntityNames.PERIODOFTIME.name(),
-        EntityNames.IDENTIFIER.name(),
-        EntityNames.QUANTITATIVEVALUE.name(),
-        EntityNames.DOCUMENTATION.name(),
-        EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(),
-        EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(),
-        EntityNames.OUTPUTMAPPING.name(),
-        EntityNames.PAYLOAD.name()
+            EntityNames.ATTRIBUTION.name(),
+            EntityNames.PERSON.name(),
+            EntityNames.MAPPING.name(),
+            EntityNames.CATEGORY.name(),
+            EntityNames.CATEGORYSCHEME.name(),  // FIX: Added CATEGORYSCHEME
+            EntityNames.FACILITY.name(),
+            EntityNames.EQUIPMENT.name(),
+            EntityNames.OPERATION.name(),
+            EntityNames.WEBSERVICE.name(),
+            EntityNames.DATAPRODUCT.name(),
+            EntityNames.CONTACTPOINT.name(),
+            EntityNames.DISTRIBUTION.name(),
+            EntityNames.ORGANIZATION.name(),
+            EntityNames.SOFTWARESOURCECODE.name(),
+            EntityNames.SOFTWAREAPPLICATION.name(),
+            EntityNames.ADDRESS.name(),
+            EntityNames.ELEMENT.name(),
+            EntityNames.LOCATION.name(),
+            EntityNames.PERIODOFTIME.name(),
+            EntityNames.IDENTIFIER.name(),
+            EntityNames.QUANTITATIVEVALUE.name(),
+            EntityNames.DOCUMENTATION.name(),
+            EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name(),
+            EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(),
+            EntityNames.OUTPUTMAPPING.name(),
+            EntityNames.PAYLOAD.name()
     );
+
+    /**
+     * Special reference entities that are SHARED and should always use
+     * the PUBLISHED version (unless ingestor mode).
+     */
+    private static final Set<String> SHARED_REFERENCE_ENTITIES = Set.of(
+            EntityNames.CATEGORY.name(),
+            EntityNames.CATEGORYSCHEME.name(),
+            EntityNames.ORGANIZATION.name(),
+            EntityNames.PERSON.name(),
+            EntityNames.CONTACTPOINT.name()
+    );
+
+    /**
+     * Checks if an entity type is a shared reference entity.
+     */
+    private static boolean isSharedReferenceEntity(String entityType) {
+        if (entityType == null) return false;
+        return SHARED_REFERENCE_ENTITIES.contains(entityType.toUpperCase());
+    }
+
+    /**
+     * Determines if REFERENCE_ENTITY logic should be applied.
+     * Returns true if the entity is a shared reference entity AND
+     * the editor is not "ingestor".
+     */
+    private static boolean shouldUsePublishedVersion(String entityType, EPOSDataModelEntity mainEntity) {
+        if (!isSharedReferenceEntity(entityType)) {
+            return false;
+        }
+
+        // Ingestor mode: don't use special logic, cascade normally
+        if (mainEntity != null) {
+            String editorId = mainEntity.getEditorId();
+            if (editorId != null && "ingestor".equalsIgnoreCase(editorId.trim())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private static String getEntityKey(LinkedEntity linkedEntity) {
         String base = linkedEntity.getEntityType() + ":";
@@ -129,6 +184,19 @@ public class RelationChecker {
 
         LinkedEntity obj = null;
 
+        // FIX: For shared reference entities, try to find PUBLISHED version first
+        if (shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)) {
+            Object publishedVersion = findPublishedVersionOfEntity(linkedEntity, clazz);
+            if (publishedVersion != null) {
+                obj = createLinkedEntityFromModel(publishedVersion, linkedEntity.getEntityType());
+                LOG.fine("[RelationChecker] REFERENCE_ENTITY: Found PUBLISHED version for " +
+                        linkedEntity.getEntityType() + " uid=" + linkedEntity.getUid());
+
+                // Return the published version directly
+                return publishedVersion;
+            }
+        }
+
         if (relationEntity != null) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus :
                     (mainEntity != null ? mainEntity.getStatus() : null);
@@ -140,6 +208,28 @@ public class RelationChecker {
                     allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(relationEntity.getUid(), clazz);
                 }
 
+                // For shared reference entities, prefer PUBLISHED version
+                if (shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)) {
+                    for (Object v : allVersions) {
+                        String statusStr = getModelVersionStatus(v);
+                        if (statusStr != null && statusStr.equals(StatusType.PUBLISHED.toString())) {
+                            try {
+                                obj = new LinkedEntity();
+                                obj.setInstanceId(getModelStrProperty(v, "getInstanceId"));
+                                obj.setMetaId(getModelStrProperty(v, "getMetaId"));
+                                obj.setUid(getModelStrProperty(v, "getUid"));
+                                obj.setEntityType(linkedEntity.getEntityType());
+
+                                // Return the published version
+                                return v;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+
+                // Normal behavior: find matching status
                 for (Object v : allVersions) {
                     String statusStr = getModelVersionStatus(v);
                     if (statusStr != null && statusStr.equals(targetStatus.toString())) {
@@ -167,7 +257,10 @@ public class RelationChecker {
                 boolean isReference = linkedEntity.getEntityType() != null &&
                         REFERENCE_ENTITIES.contains(linkedEntity.getEntityType().toUpperCase());
 
-                if (statusMismatch && !isReference) {
+                // FIX: For shared reference entities, don't propagate status
+                boolean isSharedReference = isSharedReferenceEntity(linkedEntity.getEntityType());
+
+                if (statusMismatch && !isReference && !isSharedReference) {
                     relationEntity.setStatus(mainEntity.getStatus());
 
                     if (Boolean.TRUE.equals(enableStore)) {
@@ -198,6 +291,16 @@ public class RelationChecker {
                 }
 
                 if (!results.isEmpty()) {
+                    // FIX: For shared reference entities, prefer PUBLISHED version from results
+                    if (shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)) {
+                        for (Object result : results) {
+                            String status = getModelVersionStatus(result);
+                            if (StatusType.PUBLISHED.toString().equals(status)) {
+                                obj = createLinkedEntityFromModel(result, linkedEntity.getEntityType());
+                                return result;
+                            }
+                        }
+                    }
                     obj = linkedEntity;
                 } else {
                     if (linkedEntity.getUid() != null) {
@@ -209,9 +312,12 @@ public class RelationChecker {
                         }
 
                         if (!byUid.isEmpty()) {
-                            Object existing = findBestMatchingVersion(byUid,
-                                    overrideStatus != null ? overrideStatus :
-                                            (mainEntity != null ? mainEntity.getStatus() : null));
+                            // FIX: For shared reference entities, prefer PUBLISHED
+                            StatusType preferredStatus = shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)
+                                    ? StatusType.PUBLISHED
+                                    : (overrideStatus != null ? overrideStatus : (mainEntity != null ? mainEntity.getStatus() : null));
+
+                            Object existing = findBestMatchingVersion(byUid, preferredStatus);
 
                             if (existing != null) {
                                 obj = new LinkedEntity();
@@ -226,7 +332,6 @@ public class RelationChecker {
                     if (obj == null) {
                         if (Boolean.TRUE.equals(enableStore) && linkedEntity.getEntityType() != null) {
                             try {
-
                                 String apiName = EntityNames.valueOf(linkedEntity.getEntityType().toUpperCase(Locale.ROOT)).name();
                                 AbstractAPI api = AbstractAPI.retrieveAPI(apiName);
 
@@ -248,10 +353,20 @@ public class RelationChecker {
                                         newDto.setUid(linkedEntity.getUid());
                                         newDto.setInstanceId(UUID.randomUUID().toString());
                                         newDto.setMetaId(UUID.randomUUID().toString());
-                                        newDto.setStatus(overrideStatus != null ? overrideStatus :
-                                                (mainEntity != null ? mainEntity.getStatus() : StatusType.DRAFT));
 
-                                        LinkedEntity createdLe = api.create(newDto, overrideStatus, null, null);
+                                        // FIX: For shared reference entities, always create as PUBLISHED
+                                        StatusType createStatus;
+                                        if (shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)) {
+                                            createStatus = StatusType.PUBLISHED;
+                                            LOG.fine("[RelationChecker] REFERENCE_ENTITY: Creating " +
+                                                    linkedEntity.getEntityType() + " as PUBLISHED");
+                                        } else {
+                                            createStatus = overrideStatus != null ? overrideStatus :
+                                                    (mainEntity != null ? mainEntity.getStatus() : StatusType.DRAFT);
+                                        }
+                                        newDto.setStatus(createStatus);
+
+                                        LinkedEntity createdLe = api.create(newDto, createStatus, null, null);
                                         if (createdLe != null) {
                                             obj = createdLe;
                                         }
@@ -270,6 +385,55 @@ public class RelationChecker {
 
         List<Object> results = EposDataModelDAO.getInstance().getOneFromDBByLinkedEntity(obj, clazz);
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    /**
+     * Finds the PUBLISHED version of an entity by LinkedEntity.
+     */
+    private static Object findPublishedVersionOfEntity(LinkedEntity linkedEntity, Class clazz) {
+        String uid = linkedEntity.getUid();
+        if (uid != null) {
+            List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, clazz);
+            for (Object v : allVersions) {
+                String status = getModelVersionStatus(v);
+                if (StatusType.PUBLISHED.toString().equals(status)) {
+                    return v;
+                }
+            }
+        }
+
+        // Try by instanceId
+        if (linkedEntity.getInstanceId() != null) {
+            List<Object> byInstanceId = EposDataModelDAO.getInstance().getOneFromDBByInstanceIdNoCache(linkedEntity.getInstanceId(), clazz);
+            if (!byInstanceId.isEmpty()) {
+                Object found = byInstanceId.get(0);
+                // Get the UID and search for PUBLISHED
+                String foundUid = getModelStrProperty(found, "getUid");
+                if (foundUid != null) {
+                    List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(foundUid, clazz);
+                    for (Object v : allVersions) {
+                        String status = getModelVersionStatus(v);
+                        if (StatusType.PUBLISHED.toString().equals(status)) {
+                            return v;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Creates a LinkedEntity from a model object.
+     */
+    private static LinkedEntity createLinkedEntityFromModel(Object model, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(getModelStrProperty(model, "getInstanceId"));
+        le.setMetaId(getModelStrProperty(model, "getMetaId"));
+        le.setUid(getModelStrProperty(model, "getUid"));
+        le.setEntityType(entityType);
+        return le;
     }
 
     private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus) {
