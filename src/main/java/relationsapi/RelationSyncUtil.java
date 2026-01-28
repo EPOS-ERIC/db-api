@@ -709,7 +709,20 @@ public class RelationSyncUtil {
 
             StatusType cascadeStatus = isNewVersion ? effectiveStatus : null;
 
+            // Get parent UID for self-reference check
+            String parentUid = getUid(parentDbObject);
+
             for (LinkedEntity link : inputLinks) {
+                // =======================================================================
+                // FIX: Self-reference check BEFORE any processing
+                // A category cannot be its own broader or narrower
+                // =======================================================================
+                if (isSelfReference(link, parentId, parentUid)) {
+                    LOG.log(Level.WARNING, "[RelationSyncUtil] SELF-REFERENCE BLOCKED: " + parentId +
+                            " -> " + (link.getUid() != null ? link.getUid() : link.getInstanceId()));
+                    continue;
+                }
+
                 Object rawTarget = null;
 
                 // When NOT cascade (only status propagation), retrieve entity directly
@@ -730,9 +743,30 @@ public class RelationSyncUtil {
                 if (rawTarget != null) {
                     T targetEntity = targetClass.cast(rawTarget);
                     String targetId = getModelId(targetEntity);
+                    String targetUid = getUid(targetEntity);
+
+                    // =======================================================================
+                    // DEBUG: Log what we resolved
+                    // =======================================================================
+                    LOG.log(Level.INFO, "[RelationSyncUtil] Target resolution: " +
+                            "link.uid=" + link.getUid() + ", link.instanceId=" + link.getInstanceId() +
+                            " -> resolved targetId=" + targetId + ", targetUid=" + targetUid +
+                            ", parentId=" + parentId + ", parentUid=" + parentUid);
 
                     if (targetId != null) {
-                        if (targetId.equals(parentId)) continue;
+                        // =======================================================================
+                        // FIX: Self-reference check AFTER resolution (by both ID and UID)
+                        // =======================================================================
+                        if (targetId.equals(parentId)) {
+                            LOG.log(Level.WARNING, "[RelationSyncUtil] SELF-REFERENCE BLOCKED (post-resolution by ID): " +
+                                    parentId + " -> " + targetId);
+                            continue;
+                        }
+                        if (targetUid != null && targetUid.equals(parentUid)) {
+                            LOG.log(Level.WARNING, "[RelationSyncUtil] SELF-REFERENCE BLOCKED (post-resolution by UID): " +
+                                    parentUid + " -> " + targetUid);
+                            continue;
+                        }
 
                         T targetForJoin = targetEntity;
                         String targetIdForJoin = targetId;
@@ -788,7 +822,7 @@ public class RelationSyncUtil {
                             LOG.log(Level.FINE, "[RelationSyncUtil] Creating join entity " + joinClass.getSimpleName() +
                                     " for parent=" + parentId + ", target=" + targetIdForJoin);
                             try {
-                                boolean created = createJoinEntity(joinClass, parentDbObject, targetForJoin, parentSetter, targetSetter);
+                                boolean created = createJoinEntity(joinClass, parentDbObject, targetForJoin, parentSetter, targetSetter, parentFieldName);
                                 LOG.log(Level.FINE, "[RelationSyncUtil] Join creation result: " + created);
                                 if (!created) {
                                     LOG.log(Level.FINE, "[RelationSyncUtil] Join creation failed, creating pending relation");
@@ -899,6 +933,12 @@ public class RelationSyncUtil {
             String targetId = getModelId(target);
 
             if (targetId != null) {
+                // FIX: Self-reference check
+                if (targetId.equals(newParentId)) {
+                    LOG.log(Level.WARNING, "[RelationSyncUtil] SELF-REFERENCE BLOCKED when copying relations");
+                    continue;
+                }
+
                 try {
                     T targetForJoin = target;
                     String targetIdForJoin = targetId;
@@ -933,10 +973,16 @@ public class RelationSyncUtil {
                     setJoinRelationship(newJoin, newParentDbObject);
                     setJoinRelationship(newJoin, targetForJoin);
 
-                    initializeEmbeddedId(newJoin, newParentDbObject, targetForJoin);
+                    // FIX: Use explicit field name for embedded ID initialization
+                    initializeEmbeddedIdWithFieldName(newJoin, newParentDbObject, targetForJoin, parentFieldName);
                     EposDataModelDAO.getInstance().createJoinEntity(newJoin, newParentId, newParentDbObject.getClass(), targetIdForJoin, targetForJoin.getClass());
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "[RelationSyncUtil] Error copying relation: " + e.getMessage());
+                    String msg = e.getMessage();
+                    if (msg != null && (msg.contains("duplicate key") || msg.contains("already exists"))) {
+                        LOG.log(Level.FINE, "[RelationSyncUtil] Relation already exists (caught on copy)");
+                    } else {
+                        LOG.log(Level.WARNING, "[RelationSyncUtil] Error copying relation: " + e.getMessage());
+                    }
                 }
             }
         }
@@ -1126,21 +1172,35 @@ public class RelationSyncUtil {
 
     private static <P, J, T> boolean createJoinEntity(
             Class<J> joinClass, P parentDbObject, T targetEntity,
-            BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter
+            BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter,
+            String parentFieldName
     ) {
         try {
             String parentId = getModelId(parentDbObject);
             String targetId = getModelId(targetEntity);
+            String parentUid = getUid(parentDbObject);
+            String targetUid = getUid(targetEntity);
 
-            LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity called: join=" + joinClass.getSimpleName() +
-                    ", parent=" + parentId + ", target=" + targetId);
+            LOG.log(Level.INFO, "[RelationSyncUtil] createJoinEntity called: join=" + joinClass.getSimpleName() +
+                    ", parentId=" + parentId + ", parentUid=" + parentUid +
+                    ", targetId=" + targetId + ", targetUid=" + targetUid +
+                    ", parentField=" + parentFieldName);
 
+            // =======================================================================
+            // CRITICAL: Final self-reference check before any insert
+            // =======================================================================
             if (parentId != null && parentId.equals(targetId)) {
-                LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: Skipping self-reference");
+                LOG.log(Level.WARNING, "[RelationSyncUtil] BLOCKING SELF-REFERENCE in createJoinEntity: " +
+                        parentId + " (instanceId match)");
+                return true; // Return true to prevent retry/pending creation
+            }
+            if (parentUid != null && parentUid.equals(targetUid)) {
+                LOG.log(Level.WARNING, "[RelationSyncUtil] BLOCKING SELF-REFERENCE in createJoinEntity: " +
+                        parentUid + " (UID match)");
                 return true;
             }
 
-            if (joinExists(joinClass, parentDbObject, targetEntity)) {
+            if (joinExistsWithFieldName(joinClass, parentDbObject, targetEntity, parentFieldName)) {
                 LOG.log(Level.FINE, "[RelationSyncUtil] Join " + joinClass.getSimpleName() +
                         " already exists for parent=" + parentId + " target=" + targetId);
                 return true;
@@ -1149,29 +1209,203 @@ public class RelationSyncUtil {
             LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: Creating new join instance...");
             J newJoin = joinClass.getDeclaredConstructor().newInstance();
 
+            // =======================================================================
+            // Step 1: Initialize the embedded ID FIRST with explicit field names
+            // This is what actually determines what gets persisted to the database
+            // =======================================================================
+            initializeEmbeddedIdWithFieldName(newJoin, parentDbObject, targetEntity, parentFieldName);
+
+            // =======================================================================
+            // Step 2: Set entity references (these may be needed for JPA relationships)
+            // Note: With insertable=false, updatable=false, these don't affect persistence
+            // but may be needed for in-memory navigation before commit
+            // =======================================================================
             if (parentSetter != null) {
                 parentSetter.accept(newJoin, parentDbObject);
-                LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: Set parent entity reference");
+                LOG.log(Level.FINE, "[RelationSyncUtil] Set parent entity reference via parentSetter");
             }
             if (targetSetter != null) {
                 targetSetter.accept(newJoin, targetEntity);
-                LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: Set target entity reference");
+                LOG.log(Level.FINE, "[RelationSyncUtil] Set target entity reference via targetSetter");
             }
 
-            initializeEmbeddedId(newJoin, parentDbObject, targetEntity);
+            // =======================================================================
+            // CRITICAL: Verify the embedded ID is correct before persistence
+            // =======================================================================
+            try {
+                Method getIdMethod = newJoin.getClass().getMethod("getId");
+                Object embeddedId = getIdMethod.invoke(newJoin);
+                if (embeddedId != null) {
+                    Method getCat1Id = embeddedId.getClass().getMethod("getCategory1InstanceId");
+                    Method getCat2Id = embeddedId.getClass().getMethod("getCategory2InstanceId");
+                    String cat1Id = (String) getCat1Id.invoke(embeddedId);
+                    String cat2Id = (String) getCat2Id.invoke(embeddedId);
 
-            LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: Calling DAO.createJoinEntity...");
-            Boolean result = EposDataModelDAO.getInstance().createJoinEntity(
-                    newJoin, parentId, parentDbObject.getClass(), targetId, targetEntity.getClass()
-            );
-            LOG.log(Level.FINE, "[RelationSyncUtil] createJoinEntity: DAO result=" + result);
-            return result != null && result;
+                    LOG.log(Level.INFO, "[RelationSyncUtil] EmbeddedId BEFORE persist: cat1=" + cat1Id + ", cat2=" + cat2Id);
+
+                    if (cat1Id != null && cat1Id.equals(cat2Id)) {
+                        LOG.log(Level.SEVERE, "[RelationSyncUtil] CRITICAL: Self-reference in embedded ID! ABORTING");
+                        return true;
+                    }
+                }
+            } catch (NoSuchMethodException e) {
+                LOG.log(Level.FINE, "[RelationSyncUtil] Skipping CategoryIspartof-specific check");
+            }
+
+            // =======================================================================
+            // Step 3: Persist using updateObject to bypass createJoinEntity's ID logic
+            // =======================================================================
+            LOG.log(Level.INFO, "[RelationSyncUtil] Persisting join via updateObject...");
+            try {
+                EposDataModelDAO.getInstance().updateObject(newJoin);
+                LOG.log(Level.INFO, "[RelationSyncUtil] Successfully persisted join entity via updateObject");
+                return true;
+            } catch (Exception persistEx) {
+                String msg = persistEx.getMessage();
+                if (msg != null && (msg.contains("duplicate key") || msg.contains("already exists") || msg.contains("unique constraint"))) {
+                    LOG.log(Level.FINE, "[RelationSyncUtil] Join already exists (caught on persist)");
+                    return true;
+                }
+                LOG.log(Level.WARNING, "[RelationSyncUtil] updateObject failed: " + msg);
+                // Don't fall back to createJoinEntity as it may corrupt the embedded ID
+                throw persistEx;
+            }
         } catch (Exception e) {
             if (e.getMessage() != null && (e.getMessage().contains("duplicate key") || e.getMessage().contains("already exists"))) {
                 return true;
             }
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /**
+     * Checks if join exists using explicit field name (for same-class relations like Category->Category).
+     */
+    private static <J, P, T> boolean joinExistsWithFieldName(Class<J> joinClass, P parent, T target, String parentFieldName) {
+        try {
+            String parentId = getModelId(parent);
+            String targetId = getModelId(target);
+            if (parentId == null || targetId == null) return false;
+
+            // Use explicit field name instead of deriving from class name
+            String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+
+            List<?> existing = EposDataModelDAO.getInstance()
+                    .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+
+            if (existing != null) {
+                for (Object obj : existing) {
+                    String existingTargetId = getTargetIdFromJoinWithFieldName(obj, target.getClass().getSimpleName(), parentFieldName);
+                    if (targetId.equals(existingTargetId)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "[RelationSyncUtil] joinExistsWithFieldName check failed: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Gets target ID from join entity using explicit field name derivation.
+     */
+    private static String getTargetIdFromJoinWithFieldName(Object joinEntity, String targetClassName, String parentFieldName) {
+        try {
+            // Derive target field name by swapping 1<->2 in the field name
+            String targetFieldName;
+            if (parentFieldName.contains("1")) {
+                targetFieldName = parentFieldName.replace("1", "2");
+            } else if (parentFieldName.contains("2")) {
+                targetFieldName = parentFieldName.replace("2", "1");
+            } else {
+                // Fallback to class name based approach
+                targetFieldName = targetClassName.toLowerCase() + "Instance";
+            }
+
+            String getterName = "get" + capitalize(targetFieldName);
+            Method getter = joinEntity.getClass().getMethod(getterName);
+            Object target = getter.invoke(joinEntity);
+            if (target != null) {
+                return getModelId(target);
+            }
+        } catch (Exception e) {
+            // Try fallback
+            try {
+                String getterName = "get" + targetClassName + "Instance";
+                Method getter = joinEntity.getClass().getMethod(getterName);
+                Object target = getter.invoke(joinEntity);
+                if (target != null) {
+                    return getModelId(target);
+                }
+            } catch (Exception e2) {
+                // Ignore
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Initializes embedded ID using explicit field names.
+     * This fixes the bug where both fields get the same ID when parent and target are the same class.
+     *
+     * For CategoryIspartof with parentFieldName="category2Instance":
+     * - Parent goes to setCategory2InstanceId
+     * - Target goes to setCategory1InstanceId (the other field)
+     */
+    private static <P, T> void initializeEmbeddedIdWithFieldName(Object joinEntity, P parent, T target, String parentFieldName) {
+        try {
+            Method getIdMethod = null;
+            for (Method m : joinEntity.getClass().getMethods()) {
+                if (m.getName().equals("getId") && m.getParameterCount() == 0) {
+                    getIdMethod = m;
+                    break;
+                }
+            }
+            if (getIdMethod == null) return;
+
+            Class<?> idClass = getIdMethod.getReturnType();
+            Object idInstance = idClass.getDeclaredConstructor().newInstance();
+            String parentInstanceId = getModelId(parent);
+            String targetInstanceId = getModelId(target);
+
+            // Determine field names from parentFieldName
+            String parentIdField = parentFieldName.replace("Instance", "InstanceId");
+            String targetIdField;
+
+            if (parentFieldName.contains("1")) {
+                targetIdField = parentFieldName.replace("1", "2").replace("Instance", "InstanceId");
+            } else if (parentFieldName.contains("2")) {
+                targetIdField = parentFieldName.replace("2", "1").replace("Instance", "InstanceId");
+            } else {
+                // Fallback for non-numbered fields
+                targetIdField = target.getClass().getSimpleName().toLowerCase() + "InstanceId";
+            }
+
+            LOG.log(Level.FINE, "[RelationSyncUtil] initializeEmbeddedIdWithFieldName: parentField=" + parentIdField +
+                    " (" + parentInstanceId + "), targetField=" + targetIdField + " (" + targetInstanceId + ")");
+
+            // Set parent ID
+            try {
+                Method setter = idClass.getMethod("set" + capitalize(parentIdField), String.class);
+                setter.invoke(idInstance, parentInstanceId);
+            } catch (NoSuchMethodException e) {
+                LOG.log(Level.FINE, "[RelationSyncUtil] Setter not found: set" + capitalize(parentIdField));
+            }
+
+            // Set target ID
+            try {
+                Method setter = idClass.getMethod("set" + capitalize(targetIdField), String.class);
+                setter.invoke(idInstance, targetInstanceId);
+            } catch (NoSuchMethodException e) {
+                LOG.log(Level.FINE, "[RelationSyncUtil] Setter not found: set" + capitalize(targetIdField));
+            }
+
+            Method setIdMethod = joinEntity.getClass().getMethod("setId", idClass);
+            setIdMethod.invoke(joinEntity, idInstance);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[RelationSyncUtil] Error in initializeEmbeddedIdWithFieldName: " + e.getMessage());
         }
     }
 
@@ -1232,11 +1466,27 @@ public class RelationSyncUtil {
             String parentClassName = parent.getClass().getSimpleName().toLowerCase();
             String targetClassName = target.getClass().getSimpleName().toLowerCase();
 
-            boolean parentSet = false;
-            boolean targetSet = false;
+            // FIX: For same-class relations (like Category -> Category), use alphabetical ordering
+            // to ensure consistency. Sort setters alphabetically so behavior is deterministic.
+            List<Method> stringSetters = new ArrayList<>();
+            for (Method m : idClass.getMethods()) {
+                if (m.getName().startsWith("set") && m.getParameterCount() == 1 &&
+                        m.getParameterTypes()[0] == String.class) {
+                    stringSetters.add(m);
+                }
+            }
+            stringSetters.sort(Comparator.comparing(Method::getName));
 
-            for (Method setter : idClass.getMethods()) {
-                if (setter.getName().startsWith("set") && setter.getParameterCount() == 1 && setter.getParameterTypes()[0] == String.class) {
+            if (parentClassName.equals(targetClassName) && stringSetters.size() >= 2) {
+                // Same-class relation: first setter gets parent, second gets target
+                stringSetters.get(0).invoke(idInstance, parentInstanceId);
+                stringSetters.get(1).invoke(idInstance, targetInstanceId);
+            } else {
+                // Different classes: match by class name
+                boolean parentSet = false;
+                boolean targetSet = false;
+
+                for (Method setter : stringSetters) {
                     String setterNameLower = setter.getName().toLowerCase();
                     if (!parentSet && setterNameLower.contains(parentClassName)) {
                         setter.invoke(idInstance, parentInstanceId);
@@ -1275,6 +1525,23 @@ public class RelationSyncUtil {
     private static String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /**
+     * Checks if a LinkedEntity is a self-reference to the parent entity.
+     * This prevents a category from being its own broader or narrower.
+     */
+    private static boolean isSelfReference(LinkedEntity link, String parentId, String parentUid) {
+        if (link == null) return false;
+        // Check by instanceId
+        if (parentId != null && parentId.equals(link.getInstanceId())) {
+            return true;
+        }
+        // Check by UID
+        if (parentUid != null && parentUid.equals(link.getUid())) {
+            return true;
+        }
+        return false;
     }
 
     // =========================================================================
@@ -1379,6 +1646,12 @@ public class RelationSyncUtil {
 
         String sourceId = getModelId(sourceEntity);
         String targetId = getModelId(targetEntity);
+
+        // FIX: Self-reference check
+        if (sourceId != null && sourceId.equals(targetId)) {
+            LOG.log(Level.WARNING, "[RelationSyncUtil] SELF-REFERENCE BLOCKED in pending relation resolution");
+            return;
+        }
 
         if (joinRelationAlreadyExists(joinClass, sourceId, targetId, sourceEntity, targetEntity)) {
             LOG.log(Level.FINE, "[RelationSyncUtil] Join relation already exists, skipping: " +

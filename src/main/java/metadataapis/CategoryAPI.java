@@ -11,9 +11,12 @@ import relationsapi.RelationSyncUtil;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
+
+    private static final Logger LOG = Logger.getLogger(CategoryAPI.class.getName());
 
     public CategoryAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -73,32 +76,47 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
         if (Objects.nonNull(obj.getInScheme())) createInscheme(obj.getInScheme(), edmobj, overrideStatus, obj.getFileProvenance());
 
+        // =======================================================================
+        // FIX: Filter self-references BEFORE processing relations
+        // A category cannot be its own broader or narrower
+        // =======================================================================
+        List<LinkedEntity> safeBroader = filterSelfReferences(obj.getBroader(), edmobj.getUid(), edmobj.getInstanceId());
+        List<LinkedEntity> safeNarrower = filterSelfReferences(obj.getNarrower(), edmobj.getUid(), edmobj.getInstanceId());
+
+        // =======================================================================
         // BROADER (Complex Relation)
-        // In CategoryIspartof: category1 = child (this entity), category2 = parent (broader)
-        // edmobj is the child (category1), target is the parent (category2)
-        if (Objects.nonNull(obj.getBroader())) {
+        // Convention in CategoryIspartof:
+        //   - category1_instance_id = CHILD (the entity that has a broader)
+        //   - category2_instance_id = PARENT (the broader category)
+        //
+        // When processing BROADER: edmobj is the CHILD, target is the PARENT
+        // So: edmobj → category1, target → category2
+        // =======================================================================
+        if (Objects.nonNull(safeBroader) && !safeBroader.isEmpty()) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getBroader(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), safeBroader, relationFromUpdate, relationToUpdate,
                     CategoryIspartof.class, Category.class,
-                    "category1Instance", // This entity field (child)
-                    CategoryIspartof::getCategory2Instance, // Target Getter (parent/broader)
-                    CategoryIspartof::setCategory1Instance, // This entity Setter (child)
-                    CategoryIspartof::setCategory2Instance, // Target Setter (parent/broader)
+                    "category1Instance", // edmobj (child) field
+                    CategoryIspartof::getCategory2Instance, // Target Getter (get parent/broader)
+                    CategoryIspartof::setCategory1Instance, // Set edmobj as child
+                    CategoryIspartof::setCategory2Instance, // Set target as parent/broader
                     obj, previousObj, overrideStatus, false
             );
         }
 
+        // =======================================================================
         // NARROWER (Complex Relation)
-        // In CategoryIspartof: category1 = child (narrower), category2 = parent (this entity)
-        // edmobj is the parent (category2), target is the child (category1)
-        if (Objects.nonNull(obj.getNarrower())) {
+        // When processing NARROWER: edmobj is the PARENT, target is the CHILD
+        // So: edmobj → category2, target → category1
+        // =======================================================================
+        if (Objects.nonNull(safeNarrower) && !safeNarrower.isEmpty()) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getNarrower(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), safeNarrower, relationFromUpdate, relationToUpdate,
                     CategoryIspartof.class, Category.class,
-                    "category2Instance", // This entity field (parent)
-                    CategoryIspartof::getCategory1Instance, // Target Getter (child/narrower)
-                    CategoryIspartof::setCategory2Instance, // This entity Setter (parent)
-                    CategoryIspartof::setCategory1Instance, // Target Setter (child/narrower)
+                    "category2Instance", // edmobj (parent) field
+                    CategoryIspartof::getCategory1Instance, // Target Getter (get child/narrower)
+                    CategoryIspartof::setCategory2Instance, // Set edmobj as parent
+                    CategoryIspartof::setCategory1Instance, // Set target as child/narrower
                     obj, previousObj, overrideStatus, false
             );
         }
@@ -109,6 +127,37 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    /**
+     * Filters out self-references from a list of LinkedEntities.
+     * A category cannot be broader or narrower of itself.
+     */
+    private List<LinkedEntity> filterSelfReferences(List<LinkedEntity> links, String selfUid, String selfInstanceId) {
+        if (links == null || links.isEmpty()) {
+            return links;
+        }
+
+        List<LinkedEntity> filtered = new ArrayList<>();
+        for (LinkedEntity link : links) {
+            boolean isSelfReference = false;
+
+            // Check by UID
+            if (selfUid != null && selfUid.equals(link.getUid())) {
+                isSelfReference = true;
+                LOG.warning("[CategoryAPI] Filtering self-reference by UID: " + selfUid);
+            }
+            // Check by instanceId
+            else if (selfInstanceId != null && selfInstanceId.equals(link.getInstanceId())) {
+                isSelfReference = true;
+                LOG.warning("[CategoryAPI] Filtering self-reference by instanceId: " + selfInstanceId);
+            }
+
+            if (!isSelfReference) {
+                filtered.add(link);
+            }
+        }
+        return filtered;
     }
 
     private void createInscheme(LinkedEntity inscheme, Category edmobj, StatusType overrideStatus, String provenance){
@@ -172,24 +221,39 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
         // =======================================================================
         // FIX: Corrected broader/narrower retrieval logic
-        // In CategoryIspartof: category1 = child, category2 = parent (broader)
+        //
+        // In CategoryIspartof table:
+        //   - category1_instance_id = child (the entity that HAS a broader)
+        //   - category2_instance_id = parent (the broader category)
+        //
+        // So to find BROADER: query where this entity is category1 (child),
+        //                     return category2 (the parent/broader)
+        //
+        // And to find NARROWER: query where this entity is category2 (parent),
+        //                       return category1 (the child/narrower)
         // =======================================================================
 
         // Find BROADER (parents): where this entity is the CHILD (category1Instance)
-        // The parent (broader) is category2Instance
+        // Return category2 which is the parent/broader
         for(Object obj : getDbaccess().getOneFromDBBySpecificKey("category1Instance", edmobj.getInstanceId(), CategoryIspartof.class)){
             CategoryIspartof item = (CategoryIspartof) obj;
             if (item.getCategory2Instance() != null) {
-                broaders.add(retrieveLinkedEntity(item.getCategory2Instance().getInstanceId()));
+                LinkedEntity le = retrieveLinkedEntity(item.getCategory2Instance().getInstanceId());
+                if (le != null) {
+                    broaders.add(le);
+                }
             }
         }
 
         // Find NARROWER (children): where this entity is the PARENT (category2Instance)
-        // The child (narrower) is category1Instance
+        // Return category1 which is the child/narrower
         for(Object obj : getDbaccess().getOneFromDBBySpecificKey("category2Instance", edmobj.getInstanceId(), CategoryIspartof.class)){
             CategoryIspartof item = (CategoryIspartof) obj;
             if (item.getCategory1Instance() != null) {
-                narrowers.add(retrieveLinkedEntity(item.getCategory1Instance().getInstanceId()));
+                LinkedEntity le = retrieveLinkedEntity(item.getCategory1Instance().getInstanceId());
+                if (le != null) {
+                    narrowers.add(le);
+                }
             }
         }
 
