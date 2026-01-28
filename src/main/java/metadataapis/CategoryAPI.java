@@ -114,18 +114,31 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         }
 
         // BROADER (Category-to-Category relation)
-        if (broaderExplicitlySet || !isNewVersion) {
-            syncBroaderRelations(edmobj, obj.getBroader(), overrideStatus, useReferenceEntityLogic);
+        // This entity OWNS its broader relations (where it is the child pointing to parent)
+        if (broaderExplicitlySet) {
+            // Explicitly set: sync the relations (delete old, create new)
+            syncBroaderRelations(edmobj, obj.getBroader(), overrideStatus, useReferenceEntityLogic, true);
+        } else if (isUpdate && !isNewVersion) {
+            // Updating existing entity without explicit broader: keep existing relations
+            // (don't delete relations that may have been set previously)
         } else if (isNewVersion && oldInstanceId != null) {
+            // New version: copy relations from previous version
             copyBroaderFromPrevious(oldInstanceId, edmobj, useReferenceEntityLogic);
         }
+        // For first-time creation without explicit broader: nothing to do (no relations exist yet)
 
         // NARROWER (Category-to-Category relation - inverse of broader)
-        if (narrowerExplicitlySet || !isNewVersion) {
-            syncNarrowerRelations(edmobj, obj.getNarrower(), overrideStatus, useReferenceEntityLogic);
+        // This entity does NOT own narrower relations - children own them via their broader
+        // Only sync if explicitly set - otherwise don't touch relations created by children
+        if (narrowerExplicitlySet) {
+            // Explicitly set: sync the relations
+            syncNarrowerRelations(edmobj, obj.getNarrower(), overrideStatus, useReferenceEntityLogic, true);
         } else if (isNewVersion && oldInstanceId != null) {
+            // New version: copy relations from previous version
             copyNarrowerFromPrevious(oldInstanceId, edmobj, useReferenceEntityLogic);
         }
+        // IMPORTANT: For first-time creation or update without explicit narrower,
+        // do NOT touch narrower relations - they are managed by child categories via their broader
 
         getDbaccess().updateObject(edmobj);
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.CATEGORY.name(), edmobj);
@@ -235,12 +248,16 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     /**
      * Syncs broader relations (Category -> parent Category).
      * CategoryIspartof: category1 = child (this), category2 = parent (broader)
+     *
+     * @param deleteExisting if true, delete existing broader relations before creating new ones
      */
-    private void syncBroaderRelations(Category childEntity, List<LinkedEntity> broaderLinks, StatusType overrideStatus, boolean useReferenceEntityLogic) {
-        // Delete existing broader relations for this category
-        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category1Instance", childEntity.getInstanceId(), CategoryIspartof.class);
-        if (existing != null) {
-            for (Object o : existing) getDbaccess().deleteObject(o);
+    private void syncBroaderRelations(Category childEntity, List<LinkedEntity> broaderLinks, StatusType overrideStatus, boolean useReferenceEntityLogic, boolean deleteExisting) {
+        // Only delete existing broader relations if requested
+        if (deleteExisting) {
+            List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category1Instance", childEntity.getInstanceId(), CategoryIspartof.class);
+            if (existing != null) {
+                for (Object o : existing) getDbaccess().deleteObject(o);
+            }
         }
 
         if (broaderLinks == null || broaderLinks.isEmpty()) return;
@@ -286,12 +303,16 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     /**
      * Syncs narrower relations (parent Category -> this Category as child).
      * CategoryIspartof: category1 = narrower (child), category2 = this (parent)
+     *
+     * @param deleteExisting if true, delete existing narrower relations before creating new ones
      */
-    private void syncNarrowerRelations(Category parentEntity, List<LinkedEntity> narrowerLinks, StatusType overrideStatus, boolean useReferenceEntityLogic) {
-        // Delete existing narrower relations where this entity is the parent (category2)
-        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category2Instance", parentEntity.getInstanceId(), CategoryIspartof.class);
-        if (existing != null) {
-            for (Object o : existing) getDbaccess().deleteObject(o);
+    private void syncNarrowerRelations(Category parentEntity, List<LinkedEntity> narrowerLinks, StatusType overrideStatus, boolean useReferenceEntityLogic, boolean deleteExisting) {
+        // Only delete existing narrower relations if requested
+        if (deleteExisting) {
+            List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("category2Instance", parentEntity.getInstanceId(), CategoryIspartof.class);
+            if (existing != null) {
+                for (Object o : existing) getDbaccess().deleteObject(o);
+            }
         }
 
         if (narrowerLinks == null || narrowerLinks.isEmpty()) return;
