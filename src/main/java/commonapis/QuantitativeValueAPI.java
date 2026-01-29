@@ -10,6 +10,7 @@ import org.epos.eposdatamodel.QuantitativeValue;
 import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -87,7 +88,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
         List<Quantitativevalue> itemsToDelete = (List<Quantitativevalue>) getDbaccess().getAllFromDB(Quantitativevalue.class).stream()
                 .filter(item -> ((Quantitativevalue)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(itemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(itemsToDelete));
         return true;
     }
 

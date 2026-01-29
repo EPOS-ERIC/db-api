@@ -139,7 +139,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     private void copyElementsFromPreviousVersion(String oldInstanceId, Mapping newEdmobj, ElementType elementType, StatusType overrideStatus) {
-        List<Object> oldRelations = EposDataModelDAO.getInstance()
+        List<MappingElement> oldRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("mappingInstance", oldInstanceId, MappingElement.class);
         if (oldRelations == null) return;
 
@@ -153,7 +153,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     private void createInnerElement(ElementType elementType, String value, Mapping edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = EposDataModelDAO.getInstance()
+        List<MappingElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
 
         if (existingRelations != null) {

@@ -48,7 +48,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         boolean categoryExplicitlySet = isFieldExplicitlySet(obj, "category");
         boolean contactPointExplicitlySet = isFieldExplicitlySet(obj, "contactPoint");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -146,7 +146,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                         DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
             }
         } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
+            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
                     DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
         }
@@ -606,6 +606,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         deleteRelations("dataproduct1Instance", instanceId, DataproductSource.class);
         deleteRelations("dataproduct1Instance", instanceId, DataproductHaspart.class);
         deleteRelations("dataproduct1Instance", instanceId, DataproductIspartof.class);
+        deleteRelations("dataproduct2Instance", instanceId, DataproductSource.class);
+        deleteRelations("dataproduct2Instance", instanceId, DataproductHaspart.class);
+        deleteRelations("dataproduct2Instance", instanceId, DataproductIspartof.class);
 
         List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
         for (Dataproduct object : elementList) {
@@ -635,7 +638,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         o.setCreated(edmobj.getCreated());
         o.setIssued(edmobj.getIssued());
         o.setModified(edmobj.getModified());
-        o.setType(edmobj.getType());
         o.setVersionInfo(edmobj.getVersioninfo());
         o.setDocumentation(edmobj.getDocumentation());
         o.setQualityAssurance(edmobj.getQualityassurance());

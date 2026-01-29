@@ -10,6 +10,7 @@ import org.epos.eposdatamodel.Location;
 import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -111,7 +112,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         List<Spatial> spatialItems = (List<Spatial>) getDbaccess().getAllFromDB(Spatial.class).stream()
                 .filter(item -> ((Spatial)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(spatialItems);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(spatialItems));
 
         return true;
     }

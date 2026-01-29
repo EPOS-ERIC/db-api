@@ -10,6 +10,7 @@ import org.epos.eposdatamodel.SoftwareApplicationParameter;
 import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -117,12 +118,12 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
                 .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterItemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterItemsToDelete));
 
         List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
                 .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterListToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterListToDelete));
 
         return true;
     }

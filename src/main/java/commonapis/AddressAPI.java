@@ -10,10 +10,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -114,13 +111,13 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
                 .stream()
                 .filter(item -> ((FacilityAddress) item).getAddressInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(facilityAddresses);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(facilityAddresses));
 
         List<Address> addressesToDelete = (List<Address>) getDbaccess().getAllFromDB(Address.class)
                 .stream()
                 .filter(item -> ((Address)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(addressesToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(addressesToDelete));
 
         return true;
     }

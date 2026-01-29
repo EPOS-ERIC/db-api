@@ -107,14 +107,33 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         /** PROVIDER **/
         if (providerExplicitlySet || !isNewVersion) {
             if (obj.getProvider() != null) {
-                if (relationFromUpdate != null && obj.getProvider().equals(relationFromUpdate)) {
-                    obj.setProvider(relationToUpdate);
+                LinkedEntity providerLink = obj.getProvider();
+
+                // Handle relationFromUpdate substitution
+                if (relationFromUpdate != null && providerLink.equals(relationFromUpdate)) {
+                    providerLink = relationToUpdate;
                 }
-                Organization organization1 = (Organization) RelationChecker.checkRelation(obj, previousObj, null, obj.getProvider(), overrideStatus, Organization.class, true);
+
+                // Try to find existing Organization via RelationChecker
+                Organization organization1 = (Organization) RelationChecker.checkRelation(
+                        obj, previousObj, null, providerLink, overrideStatus, Organization.class, true);
+
                 if (organization1 != null) {
+                    // Found or created - set the provider
                     edmobj.setProvider(organization1.getInstanceId());
-                    getDbaccess().updateObject(edmobj);
+                } else {
+                    // FIX: RelationChecker returned null - try additional fallback strategies
+                    String resolvedProviderId = resolveProviderFallback(providerLink);
+                    if (resolvedProviderId != null) {
+                        edmobj.setProvider(resolvedProviderId);
+                    } else {
+                        System.out.println("[WebServiceAPI] Could not resolve provider: " +
+                                (providerLink.getUid() != null ? providerLink.getUid() : providerLink.getInstanceId()) +
+                                " - WebService: " + edmobj.getUid());
+                    }
                 }
+
+                getDbaccess().updateObject(edmobj);
             }
         } else if (isNewVersion && oldInstanceId != null) {
             copyProviderFromPreviousVersion(oldInstanceId, edmobj);
@@ -301,6 +320,57 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    private String resolveProviderFallback(LinkedEntity providerLink) {
+        if (providerLink == null) {
+            return null;
+        }
+
+        if (providerLink.getUid() != null) {
+            List<Organization> byUid = EposDataModelDAO.getInstance()
+                    .getOneFromDBByUIDNoCache(providerLink.getUid(), Organization.class);
+            if (!byUid.isEmpty()) {
+                for (Organization org : byUid) {
+                    if (org.getVersion() != null &&
+                            StatusType.PUBLISHED.toString().equals(org.getVersion().getStatus())) {
+                        return org.getInstanceId();
+                    }
+                }
+                return byUid.get(0).getInstanceId();
+            }
+        }
+
+        if (providerLink.getInstanceId() != null) {
+            List<Organization> byId = EposDataModelDAO.getInstance()
+                    .getOneFromDBByInstanceIdNoCache(providerLink.getInstanceId(), Organization.class);
+            if (!byId.isEmpty()) {
+                return byId.get(0).getInstanceId();
+            }
+        }
+
+        if (providerLink.getUid() != null) {
+            try {
+                org.epos.eposdatamodel.Organization stubDto = new org.epos.eposdatamodel.Organization();
+                stubDto.setUid(providerLink.getUid());
+                stubDto.setInstanceId(providerLink.getInstanceId() != null ?
+                        providerLink.getInstanceId() : UUID.randomUUID().toString());
+                stubDto.setMetaId(providerLink.getMetaId() != null ?
+                        providerLink.getMetaId() : UUID.randomUUID().toString());
+                stubDto.setStatus(StatusType.PUBLISHED);
+
+                LinkedEntity created = retrieveAPI(EntityNames.ORGANIZATION.name())
+                        .create(stubDto, StatusType.PUBLISHED, null, null);
+
+                if (created != null && created.getInstanceId() != null) {
+                    return created.getInstanceId();
+                }
+            } catch (Exception e) {
+                System.err.println("[WebServiceAPI] Failed to create Organization stub: " + e.getMessage());
+            }
+        }
+
+        return null;
     }
 
     private void copyProviderFromPreviousVersion(String oldInstanceId, Webservice newEdmobj) {
