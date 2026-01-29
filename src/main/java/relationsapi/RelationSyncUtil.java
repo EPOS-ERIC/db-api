@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 
 /**
  * RelationSyncUtil - Utility class for synchronizing entity relations.
- *
  * REFERENCE_ENTITIES: Shared entities (Category, CategoryScheme, Organization, Person, ContactPoint)
  * that should NOT be duplicated during cascade. They maintain links to existing PUBLISHED versions.
  * Exception: In "ingestor" mode, these are treated as normal entities.
@@ -245,6 +244,9 @@ public class RelationSyncUtil {
         StatusType currentStatus = mainEntity.getStatus();
         boolean isNewVersion = hasInstanceChanged && currentStatus == StatusType.DRAFT;
 
+        // For REFERENCE_ENTITIES, always enable stub creation
+        boolean effectiveEnableStore = enableStore || isReferenceEntity(targetClass);
+
         String parentMetaId = null;
         if (isNewVersion) {
             parentMetaId = getMetaId(parentDbObject);
@@ -307,7 +309,13 @@ public class RelationSyncUtil {
                 }
 
                 if (rawTarget == null) {
-                    rawTarget = RelationChecker.checkRelation(mainEntity, previousEntity, null, link, effectiveStatus, targetClass, enableStore);
+                    rawTarget = RelationChecker.checkRelation(mainEntity, previousEntity, null, link,
+                            effectiveStatus, targetClass, effectiveEnableStore);
+                }
+
+                // If still null and it's a REFERENCE_ENTITY, try to create stub directly
+                if (rawTarget == null && isReferenceEntity(targetClass) && link.getUid() != null) {
+                    rawTarget = createStubEntity(targetClass, link.getUid(), effectiveStatus);
                 }
 
                 if (rawTarget != null) {
@@ -381,6 +389,79 @@ public class RelationSyncUtil {
                 }
             }
         }
+    }
+
+    // ===== Stub Entity Creation for REFERENCE_ENTITIES =====
+
+    @SuppressWarnings("unchecked")
+    private static <T> T createStubEntity(Class<T> targetClass, String uid, StatusType status) {
+        try {
+            String entityName = targetClass.getSimpleName().toUpperCase();
+            AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
+            if (api == null) {
+                LOG.log(Level.WARNING, "No API found for stub creation: " + entityName);
+                return null;
+            }
+
+            // Create minimal DTO
+            org.epos.eposdatamodel.EPOSDataModelEntity dto = createMinimalDto(entityName, uid);
+            if (dto == null) return null;
+
+            // For REFERENCE_ENTITIES, always create as PUBLISHED
+            StatusType createStatus = isReferenceEntity(targetClass) ? StatusType.PUBLISHED : status;
+            dto.setStatus(createStatus);
+
+            LinkedEntity result = api.create(dto, createStatus, null, null);
+            if (result != null && result.getInstanceId() != null) {
+                List<Object> created = EposDataModelDAO.getInstance()
+                        .getOneFromDBByInstanceIdNoCache(result.getInstanceId(), targetClass);
+                if (created != null && !created.isEmpty()) {
+                    LOG.log(Level.INFO, "Created stub " + entityName + " with UID: " + uid);
+                    return targetClass.cast(created.get(0));
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Error creating stub entity: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private static org.epos.eposdatamodel.EPOSDataModelEntity createMinimalDto(String entityName, String uid) {
+        try {
+            org.epos.eposdatamodel.EPOSDataModelEntity dto = null;
+            switch (entityName.toUpperCase()) {
+                case "CATEGORY": dto = new org.epos.eposdatamodel.Category(); ((org.epos.eposdatamodel.Category)dto).setName("Stub: " + uid); break;
+                case "CATEGORYSCHEME": dto = new org.epos.eposdatamodel.CategoryScheme(); ((org.epos.eposdatamodel.CategoryScheme)dto).setTitle("Stub: " + uid); break;
+                case "ORGANIZATION": dto = new org.epos.eposdatamodel.Organization(); ((org.epos.eposdatamodel.Organization)dto).addLegalName("Stub: " + uid); break;
+                case "PERSON": dto = new org.epos.eposdatamodel.Person(); ((org.epos.eposdatamodel.Person)dto).setFamilyName("Stub"); break;
+                case "CONTACTPOINT": dto = new org.epos.eposdatamodel.ContactPoint(); break;
+                default: return createGenericDto(entityName, uid);
+            }
+            if (dto != null) dto.setUid(uid);
+            return dto;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Error creating minimal DTO: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static org.epos.eposdatamodel.EPOSDataModelEntity createGenericDto(String entityName, String uid) {
+        try {
+            AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
+            if (api == null) return null;
+            for (java.lang.reflect.Method m : api.getClass().getMethods()) {
+                if (m.getName().equals("create") && m.getParameterCount() == 4) {
+                    Class<?> paramType = m.getParameterTypes()[0];
+                    if (org.epos.eposdatamodel.EPOSDataModelEntity.class.isAssignableFrom(paramType)) {
+                        org.epos.eposdatamodel.EPOSDataModelEntity dto =
+                                (org.epos.eposdatamodel.EPOSDataModelEntity) paramType.getDeclaredConstructor().newInstance();
+                        dto.setUid(uid);
+                        return dto;
+                    }
+                }
+            }
+        } catch (Exception e) { }
+        return null;
     }
 
     // ===== Join Entity Creation =====
