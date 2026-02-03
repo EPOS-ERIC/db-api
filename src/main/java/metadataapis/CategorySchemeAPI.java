@@ -35,7 +35,8 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         // Capture if fields were explicitly set BEFORE any processing
         boolean topConceptsExplicitlySet = isFieldExplicitlySet(obj, "topConcepts");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 

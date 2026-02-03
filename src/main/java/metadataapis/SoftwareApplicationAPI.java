@@ -16,6 +16,7 @@ import relationsapi.RelationSyncUtil;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -30,7 +31,8 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     @Override
     public LinkedEntity create(SoftwareApplication obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
         String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
@@ -151,11 +153,12 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         List<Object> existing = getDbaccess().getOneFromDBBySpecificKey(parentKey, parent.getInstanceId(), joinClass);
         if (existing != null) {
             for (Object obj : existing) {
-                try {
-                    String entityInstanceId = (String) joinClass.getMethod("getEntityInstanceId").invoke(obj);
-                    String resourceEntity = (String) joinClass.getMethod("getResourceEntity").invoke(obj);
+                // Performance: Use cached reflection instead of repeated getMethod calls
+                String entityInstanceId = utilities.ReflectionCache.invokeStringGetter(obj, "getEntityInstanceId");
+                String resourceEntity = utilities.ReflectionCache.invokeStringGetter(obj, "getResourceEntity");
+                if (entityInstanceId != null && resourceEntity != null) {
                     existingRelations.put(resourceEntity + ":" + entityInstanceId, obj);
-                } catch (Exception e) { e.printStackTrace(); }
+                }
             }
         }
 
@@ -183,12 +186,12 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                     if (!existingRelations.containsKey(key)) {
                         try {
                             T pi = joinClass.getDeclaredConstructor().newInstance();
-                            joinClass.getMethod("setSoftwareapplication", Softwareapplication.class).invoke(pi, parent);
-                            joinClass.getMethod("setSoftwareapplicationInstanceId", String.class).invoke(pi, parent.getInstanceId());
-                            joinClass.getMethod("setResourceEntity", String.class).invoke(pi, link.getEntityType());
-                            joinClass.getMethod("setEntityInstanceId", String.class).invoke(pi, targetInstanceId);
+                            // Performance: Use cached reflection for setters
+                            utilities.ReflectionCache.invokeSetter(pi, "setSoftwareapplication", Softwareapplication.class, parent);
+                            utilities.ReflectionCache.invokeStringSetter(pi, "setSoftwareapplicationInstanceId", parent.getInstanceId());
+                            utilities.ReflectionCache.invokeStringSetter(pi, "setResourceEntity", link.getEntityType());
+                            utilities.ReflectionCache.invokeStringSetter(pi, "setEntityInstanceId", targetInstanceId);
 
-                            // FIX: Try update, catch exception if it already exists (race condition)
                             EposDataModelDAO.getInstance().updateObject(pi);
 
                         } catch (Exception e) {
@@ -252,14 +255,13 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     }
 
     private String getInstanceId(Object entity) {
-        try { return (String) entity.getClass().getMethod("getInstanceId").invoke(entity); } catch (Exception e) { return null; }
+        // Performance: Use cached reflection
+        return utilities.ReflectionCache.getInstanceId(entity);
     }
+    
     private String getVersionStatus(Object entity) {
-        try {
-            Object version = entity.getClass().getMethod("getVersion").invoke(entity);
-            if (version != null) return (String) version.getClass().getMethod("getStatus").invoke(version);
-        } catch (Exception e) { }
-        return null;
+        // Performance: Use cached reflection
+        return utilities.ReflectionCache.getVersionStatus(entity);
     }
 
     private void syncElements(Softwareapplication edmobj, List<String> values, ElementType type, StatusType overrideStatus, boolean isNewVersion) {
@@ -367,14 +369,20 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
     private void retrievePolymorphicRelations(org.epos.eposdatamodel.SoftwareApplication o, String id, Class<?> clazz, String methodName) {
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("softwareapplication", id, clazz)) {
-            try {
-                String resourceEntity = (String) clazz.getMethod("getResourceEntity").invoke(object);
-                String entityInstanceId = (String) clazz.getMethod("getEntityInstanceId").invoke(object);
-                LinkedEntity le = null;
-                if (EntityNames.PERSON.name().equals(resourceEntity)) le = retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(entityInstanceId);
-                else if (EntityNames.ORGANIZATION.name().equals(resourceEntity)) le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(entityInstanceId);
-                if (le != null) o.getClass().getMethod(methodName, LinkedEntity.class).invoke(o, le);
-            } catch (Exception e) { e.printStackTrace(); }
+            // Performance: Use cached reflection
+            String resourceEntity = utilities.ReflectionCache.invokeStringGetter(object, "getResourceEntity");
+            String entityInstanceId = utilities.ReflectionCache.invokeStringGetter(object, "getEntityInstanceId");
+            if (resourceEntity == null || entityInstanceId == null) continue;
+            
+            LinkedEntity le = null;
+            if (EntityNames.PERSON.name().equals(resourceEntity)) {
+                le = retrieveAPI(EntityNames.PERSON.name()).retrieveLinkedEntity(entityInstanceId);
+            } else if (EntityNames.ORGANIZATION.name().equals(resourceEntity)) {
+                le = retrieveAPI(EntityNames.ORGANIZATION.name()).retrieveLinkedEntity(entityInstanceId);
+            }
+            if (le != null) {
+                utilities.ReflectionCache.invokeSetter(o, methodName, LinkedEntity.class, le);
+            }
         }
     }
 

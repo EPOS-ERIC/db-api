@@ -1042,7 +1042,13 @@ public class RelationSyncUtil {
 
             List<Method> stringSetters = getStringSetters(idClass);
 
-            if (parentClassName.equals(targetClassName) && stringSetters.size() >= 2) {
+            if (parentClassName.equals(targetClassName)) {
+                if (stringSetters.size() < 2) {
+                    LOG.log(Level.WARNING, "Expected at least 2 string setters for embedded ID class {0}, found {1}. " +
+                            "Cannot initialize join entity for parent={2}, target={3}",
+                            new Object[]{idClass.getSimpleName(), stringSetters.size(), parentInstanceId, targetInstanceId});
+                    return;
+                }
                 stringSetters.get(0).invoke(idInstance, parentInstanceId);
                 stringSetters.get(1).invoke(idInstance, targetInstanceId);
             } else {
@@ -1269,5 +1275,15 @@ public class RelationSyncUtil {
             return s;
         }
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /**
+     * Explicitly cleans up ThreadLocal state to prevent memory leaks in thread-pooled environments.
+     * Should be called in a finally block at the top-level entry point of operations
+     * that use cascade functionality.
+     */
+    public static void cleanupThreadLocals() {
+        cascadeInProgress.remove();
+        cascadeCreatedVersions.remove();
     }
 }

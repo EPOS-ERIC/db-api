@@ -29,7 +29,8 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         boolean telephoneExplicitlySet = isFieldExplicitlySet(obj, "telephone");
         boolean emailExplicitlySet = isFieldExplicitlySet(obj, "email");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 

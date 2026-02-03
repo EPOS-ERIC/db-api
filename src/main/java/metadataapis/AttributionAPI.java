@@ -35,7 +35,8 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         boolean roleExplicitlySet = isFieldExplicitlySet(obj, "role");
         boolean agentExplicitlySet = isFieldExplicitlySet(obj, "agent");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
         String searchInstanceId = obj.getInstanceId();
 
         List<Attribution> returnList = getDbaccess().getOneFromDB(searchInstanceId, obj.getMetaId(), obj.getUid(), null, getEdmClass());
@@ -298,7 +299,10 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                 field.setAccessible(true);
                 return field.get(obj) != null;
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
+                    new Object[]{fieldName, e.getMessage()});
+        }
         return false;
     }
 

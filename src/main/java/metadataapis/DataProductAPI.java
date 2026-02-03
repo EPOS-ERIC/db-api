@@ -499,35 +499,8 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
     }
 
-    private void copyDataproductCategoryRelations(String oldInstanceId, Dataproduct newEdmobj) {
-        List<Object> oldRelations = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("dataproductInstance", oldInstanceId, DataproductCategory.class);
-
-        if (oldRelations == null) return;
-
-        for (Object obj : oldRelations) {
-            DataproductCategory oldRel = (DataproductCategory) obj;
-            DataproductCategory newRel = new DataproductCategory();
-            newRel.setDataproductInstance(newEdmobj);
-            newRel.setCategoryInstance(oldRel.getCategoryInstance());
-            EposDataModelDAO.getInstance().updateObject(newRel);
-        }
-    }
-
-    private void copyDataproductContactPointRelations(String oldInstanceId, Dataproduct newEdmobj) {
-        List<Object> oldRelations = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("dataproductInstance", oldInstanceId, DataproductContactpoint.class);
-
-        if (oldRelations == null) return;
-
-        for (Object obj : oldRelations) {
-            DataproductContactpoint oldRel = (DataproductContactpoint) obj;
-            DataproductContactpoint newRel = new DataproductContactpoint();
-            newRel.setDataproductInstance(newEdmobj);
-            newRel.setContactpointInstance(oldRel.getContactpointInstance());
-            EposDataModelDAO.getInstance().updateObject(newRel);
-        }
-    }
+    // Dead code removed: copyDataproductCategoryRelations and copyDataproductContactPointRelations
+    // These were replaced by RelationSyncUtil.syncComplexRelation()
 
     private void createInnerElement(ElementType elementType, String value, Dataproduct edmobj, StatusType overrideStatus) {
         List<Object> existingRelations = EposDataModelDAO.getInstance()
@@ -548,10 +521,13 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        if (edmobj.getVersion().getEditorId() != null) element.setEditorId(edmobj.getVersion().getEditorId());
-        if (edmobj.getVersion().getProvenance() != null) element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if (edmobj.getVersion().getChangeComment() != null) element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if (edmobj.getVersion().getChangeTimestamp() != null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null) element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null) element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null) element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null) element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);

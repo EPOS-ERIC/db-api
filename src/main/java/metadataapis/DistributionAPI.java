@@ -13,9 +13,13 @@ import relationsapi.RelationSyncUtil;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribution> {
+
+    private static final Logger LOG = Logger.getLogger(DistributionAPI.class.getName());
 
     public DistributionAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -30,7 +34,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         boolean accessURLExplicitlySet = isFieldExplicitlySet(obj, "accessURL");
         boolean downloadURLExplicitlySet = isFieldExplicitlySet(obj, "downloadURL");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -291,14 +296,17 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         element.setType(elementType);
         element.setValue(value);
 
-        if (edmobj.getVersion().getEditorId() != null)
-            element.setEditorId(edmobj.getVersion().getEditorId());
-        if (edmobj.getVersion().getProvenance() != null)
-            element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if (edmobj.getVersion().getChangeComment() != null)
-            element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if (edmobj.getVersion().getChangeTimestamp() != null)
-            element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null)
+                element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null)
+                element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null)
+                element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null)
+                element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
@@ -318,7 +326,10 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 field.setAccessible(true);
                 return field.get(obj) != null;
             }
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
+                    new Object[]{fieldName, e.getMessage()});
+        }
         return false;
     }
 

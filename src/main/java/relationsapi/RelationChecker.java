@@ -525,4 +525,13 @@ public class RelationChecker {
             return null;
         }
     }
+
+    /**
+     * Explicitly cleans up ThreadLocal state to prevent memory leaks in thread-pooled environments.
+     * Should be called in a finally block at the top-level entry point of operations
+     * that use relation checking functionality.
+     */
+    public static void cleanupThreadLocals() {
+        processingEntities.remove();
+    }
 }

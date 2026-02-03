@@ -10,14 +10,19 @@ import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 import relationsapi.RelationSyncUtil;
+import utilities.ReflectionCache;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> {
+
+    private static final Logger LOG = Logger.getLogger(EquipmentAPI.class.getName());
 
     public EquipmentAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -34,7 +39,8 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         boolean temporalExtentExplicitlySet = isFieldExplicitlySet(obj, "temporalExtent");
         boolean pageURLExplicitlySet = isFieldExplicitlySet(obj, "pageURL");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -258,32 +264,10 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
     /**
      * Extracts instanceId from either a JPA entity (model.*) or a DTO (org.epos.eposdatamodel.*).
      * This is needed because RelationChecker can return either type.
+     * Uses ReflectionCache for optimized performance.
      */
     private String extractInstanceId(Object obj) {
-        if (obj == null) return null;
-
-        try {
-            // Try getInstanceId() method - works for both JPA entities and DTOs
-            Method getInstanceId = obj.getClass().getMethod("getInstanceId");
-            Object result = getInstanceId.invoke(obj);
-            return result != null ? result.toString() : null;
-        } catch (NoSuchMethodException e) {
-            // Try alternative methods
-            try {
-                // Some entities might have different accessor names
-                for (Method method : obj.getClass().getMethods()) {
-                    if (method.getName().equals("getInstanceId") && method.getParameterCount() == 0) {
-                        Object result = method.invoke(obj);
-                        return result != null ? result.toString() : null;
-                    }
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+        return ReflectionCache.getInstanceId(obj);
     }
 
     private void copyEquipmentIsPartOfRelations(String oldInstanceId, Equipment newEdmobj) {
@@ -349,10 +333,13 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        if (edmobj.getVersion().getEditorId() != null) element.setEditorId(edmobj.getVersion().getEditorId());
-        if (edmobj.getVersion().getProvenance() != null) element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if (edmobj.getVersion().getChangeComment() != null) element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if (edmobj.getVersion().getChangeTimestamp() != null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null) element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null) element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null) element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null) element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);

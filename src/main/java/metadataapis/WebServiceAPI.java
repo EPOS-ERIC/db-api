@@ -40,7 +40,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         boolean webserviceRelationExplicitlySet = isFieldExplicitlySet(obj, "webserviceRelation");
         boolean providerExplicitlySet = isFieldExplicitlySet(obj, "provider");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 

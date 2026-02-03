@@ -29,7 +29,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         boolean payloadExplicitlySet = isFieldExplicitlySet(obj, "payload");
         boolean returnsExplicitlySet = isFieldExplicitlySet(obj, "returns");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -213,14 +214,17 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        if (edmobj.getVersion().getEditorId() != null)
-            element.setEditorId(edmobj.getVersion().getEditorId());
-        if (edmobj.getVersion().getProvenance() != null)
-            element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if (edmobj.getVersion().getChangeComment() != null)
-            element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if (edmobj.getVersion().getChangeTimestamp() != null)
-            element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null)
+                element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null)
+                element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null)
+                element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null)
+                element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new commonapis.ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);

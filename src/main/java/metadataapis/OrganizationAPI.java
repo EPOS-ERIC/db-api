@@ -41,7 +41,8 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         boolean telephoneExplicitlySet = isFieldExplicitlySet(obj, "telephone");
         boolean emailExplicitlySet = isFieldExplicitlySet(obj, "email");
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -477,7 +478,10 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 field.setAccessible(true);
                 return field.get(obj) != null;
             }
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
+                    new Object[]{fieldName, e.getMessage()});
+        }
         return false;
     }
 

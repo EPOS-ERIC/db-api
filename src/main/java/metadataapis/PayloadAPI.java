@@ -29,7 +29,8 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Payload obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
         String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();

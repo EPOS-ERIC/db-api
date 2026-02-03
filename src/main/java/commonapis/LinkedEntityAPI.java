@@ -10,10 +10,9 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.SoftwareApplicationInputParameter;
 import org.epos.eposdatamodel.SoftwareApplicationOutputParameter;
 
-import java.lang.reflect.InvocationTargetException;
+import utilities.ReflectionCache;
+
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -207,13 +206,7 @@ public class LinkedEntityAPI {
     }
 
     private static String extractInstanceId(Object modelEntity) {
-        try {
-            java.lang.reflect.Method method = modelEntity.getClass().getMethod("getInstanceId");
-            Object result = method.invoke(modelEntity);
-            return result != null ? result.toString() : null;
-        } catch (Exception e) {
-            return null;
-        }
+        return ReflectionCache.getInstanceId(modelEntity);
     }
 
 
@@ -241,18 +234,7 @@ public class LinkedEntityAPI {
 
 
     private static String getModelVersionStatus(Object modelEntity) {
-        try {
-            java.lang.reflect.Method getVersion = modelEntity.getClass().getMethod("getVersion");
-            Object versionObj = getVersion.invoke(modelEntity);
-            if (versionObj != null) {
-                java.lang.reflect.Method getStatus = versionObj.getClass().getMethod("getStatus");
-                Object statusObj = getStatus.invoke(versionObj);
-                return statusObj != null ? statusObj.toString() : null;
-            }
-        } catch (Exception e) {
-            // Ignore
-        }
-        return null;
+        return ReflectionCache.getVersionStatus(modelEntity);
     }
 
     private static LinkedEntity createLinkedEntityFromVersioningstatus(Versioningstatus vs, String entityType) {
@@ -265,27 +247,21 @@ public class LinkedEntityAPI {
     }
 
     private static LinkedEntity extractLinkedEntityFromModel(Object modelEntity, String entityType) {
-        try {
-            LinkedEntity le = new LinkedEntity();
-            le.setEntityType(entityType);
-
-            java.lang.reflect.Method getInstanceId = modelEntity.getClass().getMethod("getInstanceId");
-            Object instanceId = getInstanceId.invoke(modelEntity);
-            if (instanceId != null) le.setInstanceId(instanceId.toString());
-
-            java.lang.reflect.Method getMetaId = modelEntity.getClass().getMethod("getMetaId");
-            Object metaId = getMetaId.invoke(modelEntity);
-            if (metaId != null) le.setMetaId(metaId.toString());
-
-            java.lang.reflect.Method getUid = modelEntity.getClass().getMethod("getUid");
-            Object uid = getUid.invoke(modelEntity);
-            if (uid != null) le.setUid(uid.toString());
-
-            return le;
-        } catch (Exception e) {
-            LOG.warning("Could not extract LinkedEntity from model: " + e.getMessage());
-            return null;
-        }
+        if (modelEntity == null) return null;
+        
+        LinkedEntity le = new LinkedEntity();
+        le.setEntityType(entityType);
+        
+        String instanceId = ReflectionCache.getInstanceId(modelEntity);
+        if (instanceId != null) le.setInstanceId(instanceId);
+        
+        String metaId = ReflectionCache.getMetaId(modelEntity);
+        if (metaId != null) le.setMetaId(metaId);
+        
+        String uid = ReflectionCache.getUid(modelEntity);
+        if (uid != null) le.setUid(uid);
+        
+        return le;
     }
 
     private static EposDataModelDAO getDbaccess() {

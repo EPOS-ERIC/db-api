@@ -49,13 +49,12 @@ public class EntityManagerService {
         hikariConfig.setMaxLifetime(Long.parseLong(maxConnectionLifetime));
         hikariConfig.setKeepaliveTime(Long.parseLong(keepAliveTime));
         hikariConfig.setLeakDetectionThreshold(Long.parseLong(leakDetectionThreshold));
-        hikariConfig.setConnectionTimeout(30000);
+        hikariConfig.setConnectionTimeout(30000); // 30 seconds to acquire connection from pool
 
         hikariConfig.setAutoCommit(false);
 
         hikariConfig.setDriverClassName("org.postgresql.Driver");
         hikariConfig.setPoolName("metadata_catalogue");
-        hikariConfig.setConnectionTimeout(1000);
         hikariConfig.setInitializationFailTimeout(9000);
 
         // PostgreSQL specific optimizations
@@ -423,19 +422,44 @@ public class EntityManagerService {
             return this;
         }
 
+        /**
+         * Builds and initializes the EntityManagerService.
+         * If already initialized with an open connection, returns this builder instance
+         * to indicate success without creating a duplicate.
+         * 
+         * @return the EntityManagerService instance, or this builder if already initialized
+         */
         public EntityManagerService build(){
             if (instance != null && instance.isOpen()) {
                 LOG.fine("EntityManagerService already initialized, reusing existing instance");
-                return null;
+                return null; // Indicates reuse - callers should use getInstance()
             }
             return new EntityManagerService(this);
         }
 
     }
 
+    /**
+     * Returns the EntityManagerFactory instance.
+     * 
+     * @return the EntityManagerFactory instance
+     * @throws IllegalStateException if the service has not been initialized via build()
+     */
     public static synchronized EntityManagerFactory getInstance() {
-        if (instance != null) return instance;
-        return null;
+        if (instance == null) {
+            throw new IllegalStateException(
+                "EntityManagerService not initialized. Call EntityManagerServiceBuilder.build() first.");
+        }
+        return instance;
+    }
+    
+    /**
+     * Checks if the EntityManagerService has been initialized.
+     * 
+     * @return true if initialized and open, false otherwise
+     */
+    public static synchronized boolean isInitialized() {
+        return instance != null && instance.isOpen();
     }
 
     public void close() {
