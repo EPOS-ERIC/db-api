@@ -3,6 +3,8 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
+import metadataapis.OrganizationAPI;
+import metadataapis.PersonAPI;
 import model.*;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Group;
@@ -77,6 +79,11 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
         getDbaccess().updateObject(edmobj);
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ADDRESS.name(), edmobj);
+        
+        // Resolve pending address relations for Person and Organization entities
+        // that were created before this Address existed
+        PersonAPI.resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
+        OrganizationAPI.resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())

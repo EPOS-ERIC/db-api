@@ -9,6 +9,8 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 
 import java.lang.reflect.Field;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -100,13 +102,21 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         if (isUpdate && !isNewVersion) deleteExistingElements(oldInstanceId);
 
-        // ADDRESS (Single)
+        // ADDRESS (Single) - with pending relation support for out-of-order creation
         if (addressExplicitlySet || !isNewVersion) {
             if (obj.getAddress() != null) {
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (le != null && le.getInstanceId() != null) {
                     List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
-                    if (!addressList.isEmpty()) edmobj.setAddress(addressList.get(0));
+                    if (!addressList.isEmpty()) {
+                        edmobj.setAddress(addressList.get(0));
+                    } else {
+                        // Address entity not found - create pending relation
+                        createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
+                    }
+                } else {
+                    // LinkedEntity couldn't be resolved - create pending relation
+                    createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
                 }
             }
         } else if (isNewVersion && oldInstanceId != null) {
@@ -583,5 +593,78 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             return new LinkedEntity().instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid()).entityType(EntityNames.ORGANIZATION.name());
         }
         return null;
+    }
+
+    // ===== Pending Address Relation Support =====
+
+    /**
+     * Creates a pending relation when an Organization references an Address that doesn't exist yet.
+     * The relation will be resolved when the Address is created later.
+     */
+    private void createPendingAddressRelation(String organizationInstanceId, LinkedEntity addressLink) {
+        if (addressLink == null || addressLink.getUid() == null) return;
+        try {
+            Versioningstatus pending = new Versioningstatus();
+            pending.setVersionId(UUID.randomUUID().toString());
+            pending.setInstanceId(UUID.randomUUID().toString());
+            pending.setReviewComment(organizationInstanceId);
+            pending.setUid(addressLink.getUid());
+            pending.setMetaId("ORGANIZATION_ADDRESS");
+            pending.setStatus(StatusType.PENDING.name());
+            pending.setProvenance(EntityNames.ORGANIZATION.name());
+            pending.setChangeComment("ADDRESS_REF");
+            pending.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
+            EposDataModelDAO.getInstance().createObject(pending);
+            LOG.log(Level.FINE, "Created pending address relation for Organization {0} -> Address UID {1}",
+                    new Object[]{organizationInstanceId, addressLink.getUid()});
+        } catch (Exception e) {
+            LOG.warning("Error creating pending address relation: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Resolves pending Organization-Address relations when an Address is created.
+     * Called by AddressAPI after successfully creating an Address entity.
+     * 
+     * @param addressUid The UID of the newly created Address
+     * @param addressInstanceId The instanceId of the newly created Address
+     */
+    public static void resolvePendingAddressRelationsForAddress(String addressUid, String addressInstanceId) {
+        try {
+            List<Versioningstatus> candidates = EposDataModelDAO.getInstance()
+                    .getOneFromDBBySpecificKeySimpleNoCache("uid", addressUid, Versioningstatus.class);
+            if (candidates == null) return;
+
+            Address addressEntity = null;
+
+            for (Versioningstatus vs : candidates) {
+                if (StatusType.PENDING.name().equals(vs.getStatus()) && "ORGANIZATION_ADDRESS".equals(vs.getMetaId())) {
+                    String organizationInstanceId = vs.getReviewComment();
+                    List<Organization> orgList = EposDataModelDAO.getInstance()
+                            .getOneFromDBByInstanceId(organizationInstanceId, Organization.class);
+
+                    if (!orgList.isEmpty()) {
+                        // Lazy load address entity only when needed
+                        if (addressEntity == null) {
+                            List<Address> addrList = EposDataModelDAO.getInstance()
+                                    .getOneFromDBByInstanceId(addressInstanceId, Address.class);
+                            if (!addrList.isEmpty()) {
+                                addressEntity = addrList.get(0);
+                            }
+                        }
+                        if (addressEntity != null) {
+                            Organization org = orgList.get(0);
+                            org.setAddress(addressEntity);
+                            EposDataModelDAO.getInstance().updateObject(org);
+                            EposDataModelDAO.getInstance().deleteObject(vs);
+                            LOG.log(Level.FINE, "Resolved pending address relation: Organization {0} -> Address {1}",
+                                    new Object[]{organizationInstanceId, addressInstanceId});
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.warning("Error resolving pending address relations for Organization: " + e.getMessage());
+        }
     }
 }
