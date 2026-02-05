@@ -7,8 +7,10 @@ import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.SoftwareApplicationParameter;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,16 +27,13 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     public LinkedEntity create(SoftwareApplicationParameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Parameter> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
                 obj.getMetaId(),
                 obj.getUid(),
                 null,
-                getEdmClass());
+                Parameter.class);
 
         if(!returnList.isEmpty()){
             Parameter selectedEntity = returnList.get(0);
@@ -52,10 +51,17 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -70,6 +76,8 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         edmobj.setAction(obj.getAction());
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), edmobj);
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -110,12 +118,12 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
                 .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterItemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterItemsToDelete));
 
         List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
                 .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterListToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterListToDelete));
 
         return true;
     }

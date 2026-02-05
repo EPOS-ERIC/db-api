@@ -9,6 +9,7 @@ import model.*;
 import org.epos.eposdatamodel.Documentation;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
@@ -29,9 +30,6 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
     public LinkedEntity create(Documentation obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -56,10 +54,17 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Documentation) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -79,6 +84,8 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
         getDbaccess().updateObject(edmobj);
 
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DOCUMENTATION.name(), edmobj);
+
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
@@ -94,9 +101,8 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
         Element edmobj = elementList.get(0);
 
-        // Add type validation - only process DOCUMENTATION type Elements
         if (!"DOCUMENTATION".equals(edmobj.getType())) {
-            return null; // Skip non-DOCUMENTATION Elements
+            return null;
         }
 
         org.epos.eposdatamodel.Documentation o = new org.epos.eposdatamodel.Documentation();
@@ -115,7 +121,6 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
     @Override
     public Boolean delete(String instanceId) {
-
         for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
             ContactpointElement item = (ContactpointElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
@@ -177,7 +182,6 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
             }
         }
 
-        // Delete Element itself
         List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
         elementList.stream()
                 .filter(item -> item.getInstanceId().equals(instanceId))
@@ -208,12 +212,8 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
     private List<org.epos.eposdatamodel.Documentation> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
-
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

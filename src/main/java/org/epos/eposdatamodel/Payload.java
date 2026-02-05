@@ -14,7 +14,7 @@ public class Payload extends EPOSDataModelEntity {
     /**
      * A variable-to-property mapping of the IRI template.
      **/
-    @Schema(name = "mapping", description = "A variable-to-property mapping of the IRI template.", example = "[{\n" +
+    @Schema(name = "outputMapping", description = "A variable-to-property mapping of the IRI template.", example = "[{\n" +
             "    \"entityType\": \"OUTPUTMAPPING\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +
@@ -25,7 +25,7 @@ public class Payload extends EPOSDataModelEntity {
     /**
      * Reverse reference to the related webservice.
      */
-    @Schema(name = "maturity", description = "Reverse reference to the related operation.", example = "{\n" +
+    @Schema(name = "supportedOperation", description = "Reverse reference to the related operation.", example = "{\n" +
             "    \"entityType\": \"OPERATION\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +

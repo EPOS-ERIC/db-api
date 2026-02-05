@@ -7,8 +7,10 @@ import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.QuantitativeValue;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,9 +27,6 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
     public LinkedEntity create(QuantitativeValue obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Quantitativevalue> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -52,14 +51,20 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.QuantitativeValue) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
-        // Create a new Quantitativevalue entity
         Quantitativevalue edmobj = new Quantitativevalue();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
@@ -70,6 +75,8 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
         getDbaccess().updateObject(edmobj);
 
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.QUANTITATIVEVALUE.name(), edmobj);
+
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
@@ -78,11 +85,10 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public Boolean delete(String instanceId) {
-        // Batch delete Quantitativevalue entities
         List<Quantitativevalue> itemsToDelete = (List<Quantitativevalue>) getDbaccess().getAllFromDB(Quantitativevalue.class).stream()
                 .filter(item -> ((Quantitativevalue)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(itemsToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(itemsToDelete));
         return true;
     }
 
@@ -128,10 +134,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
 
     @Override

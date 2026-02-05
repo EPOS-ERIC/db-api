@@ -90,7 +90,7 @@ public class SoftwareApplication extends EPOSDataModelEntity {
     /**
      * This property represents an input or output parameters of the Software Application.
      **/
-    @Schema(name="parameter", description = "This property represents a input parameters of the Software Application.", example = "[{\n" +
+    @Schema(name="inputParameter", description = "This property represents a input parameters of the Software Application.", example = "[{\n" +
             "    \"entityType\": \"PARAMETER\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +
@@ -101,7 +101,7 @@ public class SoftwareApplication extends EPOSDataModelEntity {
     /**
      * This property represents an input or output parameters of the Software Application.
      **/
-    @Schema(name="parameter", description = "This property represents a output parameters of the Software Application.", example = "[{\n" +
+    @Schema(name="outputParameter", description = "This property represents a output parameters of the Software Application.", example = "[{\n" +
             "    \"entityType\": \"PARAMETER\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +

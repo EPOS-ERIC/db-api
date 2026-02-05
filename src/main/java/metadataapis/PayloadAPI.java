@@ -2,6 +2,7 @@ package metadataapis;
 
 import abstractapis.AbstractAPI;
 import commonapis.EposDataModelEntityIDAPI;
+import commonapis.LinkedEntityAPI;
 import commonapis.VersioningStatusAPI;
 import dao.EposDataModelDAO;
 import model.*;
@@ -14,9 +15,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
+
+    private static final Logger LOG = Logger.getLogger(PayloadAPI.class.getName());
 
     public PayloadAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -25,12 +29,11 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Payload obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
+        String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Payload> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -51,11 +54,22 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Payload) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Payload edmobj = new Payload();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -78,30 +92,67 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         // SUPPORTED OPERATION
         if (obj.getSupportedOperation() != null) {
-            // Treat single operation as a list of 1 for sync utility or keep simplified if 1-to-1/1-to-many from other side
-            // Payload -> Operation seems to be Many-to-One or One-to-One? In model, getSupportedOperation returns LinkedEntity (singular).
-            // But OperationPayload table suggests link.
-            // If singular, we handle it directly.
-            Operation operation = (Operation) RelationChecker.checkRelation(obj, previousObj, null, obj.getSupportedOperation(), overrideStatus, Operation.class, true);
-            if(operation != null){
-                // Assuming singular link, we should clear previous or check if update needed
-                // For simplicity/safety with current DB structure:
-                List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), OperationPayload.class);
-                if(existing != null) existing.forEach(EposDataModelDAO.getInstance()::deleteObject);
+            Object resolvedObj = RelationChecker.checkRelation(obj, previousObj, null, obj.getSupportedOperation(), overrideStatus, Operation.class, true);
 
-                OperationPayload pi = new OperationPayload();
-                pi.setPayloadInstance(edmobj);
-                pi.setOperationInstance(operation);
-                EposDataModelDAO.getInstance().updateObject(pi);
+            if (resolvedObj != null) {
+                // Extract instanceId from resolved object (could be DTO or JPA entity)
+                String relatedInstanceId = extractInstanceId(resolvedObj);
+
+                if (relatedInstanceId != null) {
+                    // Delete existing relations only if updating same version
+                    if (!isNewVersion) {
+                        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), OperationPayload.class);
+                        if (existing != null) existing.forEach(EposDataModelDAO.getInstance()::deleteObject);
+                    }
+
+                    // Get the JPA entity for the relation
+                    List<Operation> operations = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(relatedInstanceId, Operation.class);
+                    if (!operations.isEmpty()) {
+                        OperationPayload pi = new OperationPayload();
+                        pi.setPayloadInstance(edmobj);
+                        pi.setOperationInstance(operations.get(0));
+                        EposDataModelDAO.getInstance().updateObject(pi);
+                    }
+                }
             }
         }
 
         getDbaccess().updateObject(edmobj);
 
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.PAYLOAD.name(), edmobj);
+
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+    }
+
+    /**
+     * Extract instanceId from an object that could be either a DTO or a JPA entity
+     */
+    private String extractInstanceId(Object obj) {
+        if (obj == null) return null;
+
+        try {
+            // Try DTO method first (getInstanceId)
+            java.lang.reflect.Method getInstanceId = obj.getClass().getMethod("getInstanceId");
+            Object result = getInstanceId.invoke(obj);
+            if (result != null) return result.toString();
+        } catch (Exception e) {
+            // Ignore and try next approach
+        }
+
+        try {
+            // Try JPA entity method (instanceId field)
+            java.lang.reflect.Field field = obj.getClass().getDeclaredField("instanceId");
+            field.setAccessible(true);
+            Object result = field.get(obj);
+            if (result != null) return result.toString();
+        } catch (Exception e) {
+            LOG.warning("Could not extract instanceId from object: " + obj.getClass().getName());
+        }
+
+        return null;
     }
 
     @Override

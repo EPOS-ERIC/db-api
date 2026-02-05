@@ -10,10 +10,8 @@ import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,12 +24,18 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
+        // Capture if fields were explicitly set BEFORE any processing
+        boolean categoryExplicitlySet = isFieldExplicitlySet(obj, "category");
+        boolean contactPointExplicitlySet = isFieldExplicitlySet(obj, "contactPoint");
+        boolean addressExplicitlySet = isFieldExplicitlySet(obj, "address");
+        boolean isPartOfExplicitlySet = isFieldExplicitlySet(obj, "isPartOf");
+        boolean spatialExtentExplicitlySet = isFieldExplicitlySet(obj, "spatialExtent");
+        boolean pageURLExplicitlySet = isFieldExplicitlySet(obj, "pageURL");
+
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Facility> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -40,7 +44,8 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 null,
                 getEdmClass());
 
-        if(!returnList.isEmpty()){
+        String oldInstanceId = null;
+        if (!returnList.isEmpty()) {
             Facility selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
             for (Facility item : returnList) {
@@ -49,14 +54,30 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                     break;
                 }
             }
+            oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
+
+            if (previousObj == null) {
+                previousObj = retrieve(selectedEntity.getInstanceId());
+            }
         }
 
         obj = (org.epos.eposdatamodel.Facility) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
         Facility edmobj = new Facility();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -65,51 +86,106 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
         getDbaccess().updateObject(edmobj);
 
-        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName()+"/"+UUID.randomUUID().toString()));
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setType(obj.getType());
         edmobj.setIdentifier(obj.getIdentifier());
         edmobj.setDescription(obj.getDescription());
         edmobj.setTitle(obj.getTitle());
         if (obj.getKeywords() != null) edmobj.setKeywords(String.join(",", obj.getKeywords()));
 
-        if (obj.getCategory() != null) CategoryRelationsAPI.createRelation(edmobj,obj, overrideStatus);
-        if (obj.getContactPoint() != null) ContactPointRelationsAPI.createRelation(edmobj,obj, overrideStatus);
+        if (isUpdate && !isNewVersion) {
+            deleteExistingElements(oldInstanceId);
+        }
 
-        // ADDRESS
-        if (obj.getAddress() != null) {
+        // CATEGORY
+        if (categoryExplicitlySet || !isNewVersion) {
+            if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
+                CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyFacilityCategoryRelations(oldInstanceId, edmobj);
+        }
+
+        // CONTACTPOINT
+        if (contactPointExplicitlySet || !isNewVersion) {
+            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
+                ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyFacilityContactPointRelations(oldInstanceId, edmobj);
+        }
+
+        // ADDRESS - Enable Store = True to allow creation of missing addresses
+        if (addressExplicitlySet || !isNewVersion) {
+            if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), obj.getAddress(), relationFromUpdate, relationToUpdate,
+                        FacilityAddress.class, Address.class,
+                        "facilityInstance", FacilityAddress::getAddressInstance, FacilityAddress::setFacilityInstance, FacilityAddress::setAddressInstance,
+                        obj, previousObj, overrideStatus, true
+                );
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getAddress(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     FacilityAddress.class, Address.class,
                     "facilityInstance", FacilityAddress::getAddressInstance, FacilityAddress::setFacilityInstance, FacilityAddress::setAddressInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 
-        // ISPARTOF (Facility -> Facility)
-        if (obj.getIsPartOf() != null) {
+        // ISPARTOF (Facility -> Facility) - Enable Store = True to allow creation of missing facilities
+        if (isPartOfExplicitlySet || !isNewVersion) {
+            if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
+                        FacilityIspartof.class, Facility.class,
+                        "facility1Instance", FacilityIspartof::getFacility2Instance, FacilityIspartof::setFacility1Instance, FacilityIspartof::setFacility2Instance,
+                        obj, previousObj, overrideStatus, true
+                );
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     FacilityIspartof.class, Facility.class,
                     "facility1Instance", FacilityIspartof::getFacility2Instance, FacilityIspartof::setFacility1Instance, FacilityIspartof::setFacility2Instance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 
-        // SPATIAL
-        if (obj.getSpatialExtent() != null) {
+        // SPATIAL - Enable Store = True
+        if (spatialExtentExplicitlySet || !isNewVersion) {
+            if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                        FacilitySpatial.class, Spatial.class,
+                        "facilityInstance", FacilitySpatial::getSpatialInstance, FacilitySpatial::setFacilityInstance, FacilitySpatial::setSpatialInstance,
+                        obj, previousObj, overrideStatus, true
+                );
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     FacilitySpatial.class, Spatial.class,
                     "facilityInstance", FacilitySpatial::getSpatialInstance, FacilitySpatial::setFacilityInstance, FacilitySpatial::setSpatialInstance,
-                    obj, previousObj, overrideStatus, false
+                    obj, previousObj, overrideStatus, true
             );
         }
 
-        if(obj.getPageURL()!=null){
-            for(String pageurl : obj.getPageURL()) createInnerElement(ElementType.PAGEURL, pageurl, edmobj, overrideStatus);
+        // PAGE URL (list of strings)
+        if (pageURLExplicitlySet || !isNewVersion) {
+            if (obj.getPageURL() != null && !obj.getPageURL().isEmpty()) {
+                for (String pageurl : obj.getPageURL()) {
+                    createInnerElement(ElementType.PAGEURL, pageurl, edmobj, overrideStatus);
+                }
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PAGEURL, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.FACILITY.name(), edmobj);
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -117,9 +193,67 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 .uid(edmobj.getUid());
     }
 
-    private void createInnerElement(ElementType elementType, String value, Facility edmobj, StatusType overrideStatus){
+    private void copyFacilityCategoryRelations(String oldInstanceId, Facility newEdmobj) {
+        List<Object> oldRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId("facilityInstance", oldInstanceId, FacilityCategory.class);
+        if (oldRelations == null) return;
+
+        for (Object obj : oldRelations) {
+            FacilityCategory oldRel = (FacilityCategory) obj;
+            FacilityCategory newRel = new FacilityCategory();
+            newRel.setFacilityInstance(newEdmobj);
+            newRel.setCategoryInstance(oldRel.getCategoryInstance());
+            EposDataModelDAO.getInstance().updateObject(newRel);
+        }
+    }
+
+    private void copyFacilityContactPointRelations(String oldInstanceId, Facility newEdmobj) {
+        List<Object> oldRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId("facilityInstance", oldInstanceId, FacilityContactpoint.class);
+        if (oldRelations == null) return;
+
+        for (Object obj : oldRelations) {
+            FacilityContactpoint oldRel = (FacilityContactpoint) obj;
+            FacilityContactpoint newRel = new FacilityContactpoint();
+            newRel.setFacilityInstance(newEdmobj);
+            newRel.setContactpointInstance(oldRel.getContactpointInstance());
+            EposDataModelDAO.getInstance().updateObject(newRel);
+        }
+    }
+
+    private void copyElementsFromPreviousVersion(String oldInstanceId, Facility newEdmobj, ElementType elementType, StatusType overrideStatus) {
+        List<Object> oldRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId("facilityInstance", oldInstanceId, FacilityElement.class);
+        if (oldRelations == null) return;
+
+        for (Object obj : oldRelations) {
+            FacilityElement oldRelation = (FacilityElement) obj;
+            Element oldElement = oldRelation.getElementInstance();
+            if (oldElement != null && oldElement.getType().equals(elementType.name())) {
+                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void deleteExistingElements(String facilityInstanceId) {
+        // FIX: Use getJoinEntitiesByRelationField which queries the @ManyToOne relationship field
+        List<FacilityElement> existingRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("facilityInstance", facilityInstanceId, FacilityElement.class);
+
+        if (existingRelations != null) {
+            for (FacilityElement relation : existingRelations) {
+                EposDataModelDAO.getInstance().deleteObject(relation);
+                // Also delete the Element entity
+                if (relation.getElementInstance() != null) {
+                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                }
+            }
+        }
+    }
+
+    private void createInnerElement(ElementType elementType, String value, Facility edmobj, StatusType overrideStatus) {
         List<Object> existingRelations = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilityElement.class);
+                .getJoinEntitiesByRelationField("facilityInstance", edmobj.getInstanceId(), FacilityElement.class);
         if (existingRelations != null) {
             for (Object obj : existingRelations) {
                 FacilityElement relation = (FacilityElement) obj;
@@ -133,20 +267,48 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
-        if(edmobj.getVersion().getEditorId()!=null) element.setEditorId(edmobj.getVersion().getEditorId());
-        if(edmobj.getVersion().getProvenance()!=null) element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if(edmobj.getVersion().getChangeComment()!=null) element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if(edmobj.getVersion().getChangeTimestamp()!=null) element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null) element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null) element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null) element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null) element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
 
-        if(!el.isEmpty()) {
+        if (!el.isEmpty()) {
             FacilityElement ce = new FacilityElement();
             ce.setFacilityInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
         }
+    }
+
+    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
+        try {
+            Field field = findField(obj.getClass(), fieldName);
+            if (field != null) {
+                field.setAccessible(true);
+                Object value = field.get(obj);
+                return value != null;
+            }
+        } catch (Exception e) {
+            // Fallback: assume not explicitly set
+        }
+        return false;
+    }
+
+    private Field findField(Class<?> clazz, String fieldName) {
+        while (clazz != null) {
+            try {
+                return clazz.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        return null;
     }
 
     @Override
@@ -159,15 +321,15 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         deleteRelations("facilityInstance", instanceId, FacilityAddress.class);
 
         List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
-        for(Facility object : elementList){
+        for (Facility object : elementList) {
             EposDataModelDAO.getInstance().deleteObject(object);
         }
         return true;
     }
 
     private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if(list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        List<Object> list = getDbaccess().getJoinEntitiesByParentId(key, instanceId, clazz);
+        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
     }
 
     @Override
@@ -184,35 +346,35 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         o.setIdentifier(edmobj.getIdentifier());
         o.setDescription(edmobj.getDescription());
         o.setTitle(edmobj.getTitle());
-        if(edmobj.getKeywords()!=null && !edmobj.getKeywords().isEmpty())
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isEmpty())
             o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityCategory.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilityCategory.class)) {
             FacilityCategory item = (FacilityCategory) object;
             o.addCategory(retrieveAPI(EntityNames.CATEGORY.name()).retrieveLinkedEntity(item.getCategoryInstance().getInstanceId()));
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityContactpoint.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilityContactpoint.class)) {
             FacilityContactpoint item = (FacilityContactpoint) object;
             o.addContactPoint(retrieveAPI(EntityNames.CONTACTPOINT.name()).retrieveLinkedEntity(item.getContactpointInstance().getInstanceId()));
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityAddress.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilityAddress.class)) {
             FacilityAddress item = (FacilityAddress) object;
             o.addAddress(retrieveAPI(EntityNames.ADDRESS.name()).retrieveLinkedEntity(item.getAddressInstance().getInstanceId()));
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(),FacilityIspartof.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facility1Instance", edmobj.getInstanceId(), FacilityIspartof.class)) {
             FacilityIspartof item = (FacilityIspartof) object;
             o.addIsPartOf(retrieveAPI(EntityNames.FACILITY.name()).retrieveLinkedEntity(item.getFacility2Instance().getInstanceId()));
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilitySpatial.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilitySpatial.class)) {
             FacilitySpatial item = (FacilitySpatial) object;
             o.addSpatialExtent(retrieveAPI(EntityNames.LOCATION.name()).retrieveLinkedEntity(item.getSpatialInstance().getInstanceId()));
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(),FacilityElement.class)) {
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("facilityInstance", edmobj.getInstanceId(), FacilityElement.class)) {
             FacilityElement item = (FacilityElement) object;
             Element el = item.getElementInstance();
             if (el.getType().equals(ElementType.PAGEURL.name())) o.addPageURL(el.getValue());
@@ -227,25 +389,227 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         List<Facility> returnList = getDbaccess().getOneFromDBByUID(uid, Facility.class);
         return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Facility.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Facility.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Facility> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Facility.class, status));
     }
+
     private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
     }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     */
+    private List<org.epos.eposdatamodel.Facility> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Facility entities
+        Map<String, Facility> facilities = getDbaccess().batchFetchByInstanceIds(instanceIds, Facility.class);
+        if (facilities.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(facilities.keySet());
+        
+        // Step 2: Batch fetch ALL join tables
+        Map<String, List<FacilityCategory>> categories = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityCategory.class);
+        Map<String, List<FacilityContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityContactpoint.class);
+        Map<String, List<FacilityAddress>> addresses = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityAddress.class);
+        Map<String, List<FacilityIspartof>> isPartOfs = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facility1Instance", foundIds, FacilityIspartof.class);
+        Map<String, List<FacilitySpatial>> spatials = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilitySpatial.class);
+        Map<String, List<FacilityElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityElement.class);
+        
+        // Step 3: Collect all target entity IDs
+        Set<String> allCategoryIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allAddressIds = new HashSet<>();
+        Set<String> allParentFacilityIds = new HashSet<>();
+        Set<String> allSpatialIds = new HashSet<>();
+        
+        categories.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        addresses.values().forEach(list -> list.forEach(r -> {
+            if (r.getAddressInstance() != null) allAddressIds.add(r.getAddressInstance().getInstanceId());
+        }));
+        isPartOfs.values().forEach(list -> list.forEach(r -> {
+            if (r.getFacility2Instance() != null) allParentFacilityIds.add(r.getFacility2Instance().getInstanceId());
+        }));
+        spatials.values().forEach(list -> list.forEach(r -> {
+            if (r.getSpatialInstance() != null) allSpatialIds.add(r.getSpatialInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Category> categoryMap = allCategoryIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), Category.class);
+        Map<String, Contactpoint> contactPointMap = allContactPointIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Address> addressMap = allAddressIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allAddressIds), Address.class);
+        Map<String, Facility> parentFacilityMap = allParentFacilityIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allParentFacilityIds), Facility.class);
+        Map<String, Spatial> spatialMap = allSpatialIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DTOs
+        List<org.epos.eposdatamodel.Facility> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Facility edmobj = facilities.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Facility dto = assembleFacility(
+                        instanceId, edmobj, categories, contactPoints, addresses, isPartOfs, spatials, elements,
+                        categoryMap, contactPointMap, addressMap, parentFacilityMap, spatialMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Facility assembleFacility(
+            String instanceId,
+            Facility edmobj,
+            Map<String, List<FacilityCategory>> categories,
+            Map<String, List<FacilityContactpoint>> contactPoints,
+            Map<String, List<FacilityAddress>> addresses,
+            Map<String, List<FacilityIspartof>> isPartOfs,
+            Map<String, List<FacilitySpatial>> spatials,
+            Map<String, List<FacilityElement>> elements,
+            Map<String, Category> categoryMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Address> addressMap,
+            Map<String, Facility> parentFacilityMap,
+            Map<String, Spatial> spatialMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Facility o = new org.epos.eposdatamodel.Facility();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setIdentifier(edmobj.getIdentifier());
+        o.setDescription(edmobj.getDescription());
+        o.setTitle(edmobj.getTitle());
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isEmpty()) {
+            o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
+        }
+        
+        // Categories
+        for (FacilityCategory rel : categories.getOrDefault(instanceId, Collections.emptyList())) {
+            Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addCategory(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        // ContactPoints
+        for (FacilityContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        // Addresses
+        for (FacilityAddress rel : addresses.getOrDefault(instanceId, Collections.emptyList())) {
+            Address target = addressMap.get(rel.getAddressInstance().getInstanceId());
+            if (target != null) {
+                o.addAddress(createLinkedEntity(target, EntityNames.ADDRESS.name()));
+            }
+        }
+        
+        // IsPartOf
+        for (FacilityIspartof rel : isPartOfs.getOrDefault(instanceId, Collections.emptyList())) {
+            Facility target = parentFacilityMap.get(rel.getFacility2Instance().getInstanceId());
+            if (target != null) {
+                o.addIsPartOf(createLinkedEntity(target, EntityNames.FACILITY.name()));
+            }
+        }
+        
+        // Spatials
+        for (FacilitySpatial rel : spatials.getOrDefault(instanceId, Collections.emptyList())) {
+            Spatial target = spatialMap.get(rel.getSpatialInstance().getInstanceId());
+            if (target != null) {
+                o.addSpatialExtent(createLinkedEntity(target, EntityNames.LOCATION.name()));
+            }
+        }
+        
+        // Elements (pageURL)
+        for (FacilityElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null && ElementType.PAGEURL.name().equals(el.getType())) {
+                o.addPageURL(el.getValue());
+            }
+        }
+        
+        // Apply versioning
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
+    }
+
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
-        if(elementList!=null && !elementList.isEmpty()) {
+        if (elementList != null && !elementList.isEmpty()) {
             Facility edmobj = elementList.get(0);
             LinkedEntity o = new LinkedEntity();
             o.setInstanceId(edmobj.getInstanceId());

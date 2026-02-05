@@ -50,5 +50,47 @@ public class EntityManagementWebserviceRelationTest extends TestcontainersLifecy
         assertNotNull(retrievedWebservice);
     }
 
+    @Test
+    @Order(2)
+    public void testCreateAndGetItems2() {
+
+
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(UUID.randomUUID().toString());
+        le.setMetaId(UUID.randomUUID().toString());
+        le.setUid(UUID.randomUUID().toString());
+        le.setEntityType(EntityNames.OPERATION.name());
+
+        WebService webService = new WebService();
+        webService.setInstanceId(UUID.randomUUID().toString());
+        webService.setMetaId(UUID.randomUUID().toString());
+        webService.setUid(UUID.randomUUID().toString());
+        webService.setName("Test Webservice");
+        webService.setDescription("Test Webservice Description");
+        webService.addKeywords("Test");
+        webService.addKeywords("Test 2");
+        webService.addKeywords("Test 3");
+        webService.addKeywords("Test 4");
+        webService.addSupportedOperation(le);
+
+
+        Operation operation = new Operation();
+        operation.setInstanceId(le.getInstanceId());
+        operation.setMetaId(le.getMetaId());
+        operation.setUid(le.getUid());
+        operation.setTemplate("Test Webservice 2");
+
+        AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name()).create(webService, null, null, null);
+        AbstractAPI.retrieveAPI(EntityNames.OPERATION.name()).create(operation, null, null, null);
+
+        for(Object object : AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveAll()){
+            System.out.println(object);
+        }
+
+        for(Object object : AbstractAPI.retrieveAPI(EntityNames.OPERATION.name()).retrieveAll()){
+            System.out.println(object);
+        }
+    }
+
 
 }

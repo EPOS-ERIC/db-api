@@ -3,16 +3,16 @@ package commonapis;
 import abstractapis.AbstractAPI;
 import dao.EposDataModelDAO;
 import metadataapis.EntityNames;
+import metadataapis.OrganizationAPI;
+import metadataapis.PersonAPI;
 import model.*;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,9 +27,6 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     public LinkedEntity create(org.epos.eposdatamodel.Address obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Address> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -54,10 +51,17 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Address) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -73,6 +77,13 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
         edmobj.setLocality(obj.getLocality());
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ADDRESS.name(), edmobj);
+        
+        // Resolve pending address relations for Person and Organization entities
+        // that were created before this Address existed
+        PersonAPI.resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
+        OrganizationAPI.resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -103,19 +114,17 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
     @Override
     public Boolean delete(String instanceId) {
-
-        // Batch deletion for FacilityAddress and Address
         List<FacilityAddress> facilityAddresses = (List<FacilityAddress>) getDbaccess().getAllFromDB(FacilityAddress.class)
                 .stream()
                 .filter(item -> ((FacilityAddress) item).getAddressInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(facilityAddresses);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(facilityAddresses));
 
         List<Address> addressesToDelete = (List<Address>) getDbaccess().getAllFromDB(Address.class)
                 .stream()
                 .filter(item -> ((Address)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(addressesToDelete);
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(addressesToDelete));
 
         return true;
     }
@@ -144,10 +153,7 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
     private List<org.epos.eposdatamodel.Address> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
 
     @Override

@@ -14,37 +14,37 @@ public class OutputMapping extends EPOSDataModelEntity {
     /**
      * This property contains a short string used to describe the meaning of the parameter.
      **/
-    @Schema(name = "label", description = "This property contains a short string used to describe the meaning of the parameter.", example = "Parameter label", required = false)
+    @Schema(name = "outputLabel", description = "This property contains a short string used to describe the meaning of the parameter.", example = "Parameter label", required = false)
     private String outputLabel;
 
     /**
      * This property contains the vocabulary term which indicates the semantic description of parameter.
      **/
-    @Schema(name = "property", description = "This property contains the vocabulary term which indicates the semantic description of parameter.", example = "schema:endDate", required = false)
+    @Schema(name = "outputProperty", description = "This property contains the vocabulary term which indicates the semantic description of parameter.", example = "schema:endDate", required = false)
     private String outputProperty;
 
     /**
      * This property contains the type of parameter
      **/
-    @Schema(name = "range", description = "This property contains the type of parameter", example = "string", required = false)
+    @Schema(name = "outputRange", description = "This property contains the type of parameter", example = "string", required = false)
     private String outputRange;
 
     /**
      * This property contains true if the property is required, false otherwise.
      **/
-    @Schema(name = "required", description = "This property contains true if the property is required, false otherwise.", example = "true", required = false)
+    @Schema(name = "outputRequired", description = "This property contains true if the property is required, false otherwise.", example = "true", required = false)
     private String outputRequired;
 
     /**
      * This property contains the regular expression for testing values according to the parameters specification.
      **/
-    @Schema(name = "valuePattern", description = "This property contains the regular expression for testing values according to the parameters specification.", example = "yyyy-MM-dd", required = false)
+    @Schema(name = "outputValuePattern", description = "This property contains the regular expression for testing values according to the parameters specification.", example = "yyyy-MM-dd", required = false)
     private String outputValuePattern;
 
     /**
      * This property contains the name of the parameter as required by web service specifications.
      **/
-    @Schema(name = "variable", description = "This property contains the name of the parameter as required by web service specifications.", example = "eventid", required = false)
+    @Schema(name = "outputVariable", description = "This property contains the name of the parameter as required by web service specifications.", example = "eventid", required = false)
     private String outputVariable;
 
     /**

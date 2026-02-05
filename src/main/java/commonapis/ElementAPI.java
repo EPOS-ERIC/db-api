@@ -6,6 +6,7 @@ import metadataapis.EntityNames;
 import model.*;
 import org.epos.eposdatamodel.Group;
 import org.epos.eposdatamodel.LinkedEntity;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
@@ -26,9 +27,6 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
     public LinkedEntity create(org.epos.eposdatamodel.Element obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Element> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -53,10 +51,17 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
         }
 
         obj = (org.epos.eposdatamodel.Element) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
 
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
 
@@ -69,6 +74,8 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
         edmobj.setValue(Optional.ofNullable(obj.getValue()).orElse(null));
 
         getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ELEMENT.name(), edmobj);
 
         return new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
@@ -97,7 +104,6 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     @Override
     public Boolean delete(String instanceId) {
-        // List of element types to delete
         for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
             ContactpointElement item = (ContactpointElement) object;
             if(item.getElementInstance().getInstanceId().equals(instanceId)){
@@ -159,7 +165,6 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
             }
         }
 
-        // Delete Element itself
         List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
         elementList.stream()
                 .filter(item -> item.getInstanceId().equals(instanceId))
@@ -191,12 +196,8 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     private List<org.epos.eposdatamodel.Element> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
     }
-
 
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

@@ -10,13 +10,16 @@ import model.Operation;
 import org.epos.eposdatamodel.*;
 import relationsapi.RelationSyncUtil;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribution> {
+
+    private static final Logger LOG = Logger.getLogger(DistributionAPI.class.getName());
 
     public DistributionAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -25,12 +28,16 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Distribution obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
 
-        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId()) != null ? retrieve(obj.getInstanceId()) : null;
+        boolean accessServiceExplicitlySet = isFieldExplicitlySet(obj, "accessService");
+        boolean supportedOperationExplicitlySet = isFieldExplicitlySet(obj, "supportedOperation");
+        boolean dataProductExplicitlySet = isFieldExplicitlySet(obj, "dataProduct");
+        boolean accessURLExplicitlySet = isFieldExplicitlySet(obj, "accessURL");
+        boolean downloadURLExplicitlySet = isFieldExplicitlySet(obj, "downloadURL");
+
+        // Performance: Single retrieve call instead of potentially calling twice
+        EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
-        if (obj.getUid() != null) {
-            searchInstanceId = null;
-        }
 
         List<Distribution> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -39,6 +46,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 null,
                 getEdmClass());
 
+        String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             Distribution selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
@@ -48,14 +56,32 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                     break;
                 }
             }
+            oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
-            obj.setVersionId(selectedEntity.getVersion().getVersionId());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
+
+            if (previousObj == null) {
+                previousObj = retrieve(selectedEntity.getInstanceId());
+            }
         }
 
         obj = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
         EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
+        boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
+
+        String newInstanceId = obj.getInstanceId();
 
         Distribution edmobj = new Distribution();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
@@ -76,54 +102,87 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         if (obj.getModified() != null) edmobj.setModified(obj.getModified());
         if (obj.getIssued() != null) edmobj.setIssued(obj.getIssued());
 
+        if (isUpdate && !isNewVersion) {
+            deleteExistingElements(oldInstanceId);
+        }
+
         /** TITLE **/
-        if (obj.getTitle() != null) {
+        List<String> titles = obj.getTitle();
+        if (titles != null && !titles.isEmpty()) {
             RelationSyncUtil.syncSimpleOneToMany(
-                    edmobj, edmobj.getInstanceId(), obj.getTitle(), model.DistributionTitle.class,
+                    edmobj, edmobj.getInstanceId(), titles, model.DistributionTitle.class,
+                    "distributionInstance", "Title",
+                    model.DistributionTitle::getTitle, model.DistributionTitle::setTitle, model.DistributionTitle::setDistributionInstance
+            );
+        } else if (isNewVersion && oldInstanceId != null) {
+            RelationSyncUtil.copySimpleOneToMany(
+                    oldInstanceId, edmobj, newInstanceId, model.DistributionTitle.class,
                     "distributionInstance", "Title",
                     model.DistributionTitle::getTitle, model.DistributionTitle::setTitle, model.DistributionTitle::setDistributionInstance
             );
         }
 
         /** DESCRIPTION **/
-        if (obj.getDescription() != null) {
+        List<String> descriptions = obj.getDescription();
+        if (descriptions != null && !descriptions.isEmpty()) {
             RelationSyncUtil.syncSimpleOneToMany(
-                    edmobj, edmobj.getInstanceId(), obj.getDescription(), model.DistributionDescription.class,
+                    edmobj, edmobj.getInstanceId(), descriptions, model.DistributionDescription.class,
+                    "distributionInstance", "Description",
+                    model.DistributionDescription::getDescription, model.DistributionDescription::setDescription, model.DistributionDescription::setDistributionInstance
+            );
+        } else if (isNewVersion && oldInstanceId != null) {
+            RelationSyncUtil.copySimpleOneToMany(
+                    oldInstanceId, edmobj, newInstanceId, model.DistributionDescription.class,
                     "distributionInstance", "Description",
                     model.DistributionDescription::getDescription, model.DistributionDescription::setDescription, model.DistributionDescription::setDistributionInstance
             );
         }
 
-        /** DATAPRODUCT (DistributionDataproduct) **/
-        if (obj.getDataProduct() != null) {
+        /** DATAPRODUCT **/
+        if (dataProductExplicitlySet || !isNewVersion) {
+            List<LinkedEntity> dataProducts = obj.getDataProduct();
+            if (dataProducts != null && !dataProducts.isEmpty()) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), dataProducts, relationFromUpdate, relationToUpdate,
+                        DistributionDataproduct.class, Dataproduct.class,
+                        "distributionInstance",
+                        DistributionDataproduct::getDataproductInstance,
+                        DistributionDataproduct::setDistributionInstance,
+                        DistributionDataproduct::setDataproductInstance,
+                        obj, previousObj, overrideStatus, true
+                );
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getDataProduct(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     DistributionDataproduct.class, Dataproduct.class,
                     "distributionInstance",
                     DistributionDataproduct::getDataproductInstance,
                     DistributionDataproduct::setDistributionInstance,
                     DistributionDataproduct::setDataproductInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
-
-        /** SUPPORTED OPERATION (OperationDistribution) **/
-        if (obj.getSupportedOperation() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
-                    OperationDistribution.class, Operation.class,
-                    "distributionInstance",
-                    OperationDistribution::getOperationInstance,
-                    OperationDistribution::setDistributionInstance,
-                    OperationDistribution::setOperationInstance,
                     obj, previousObj, overrideStatus, true
             );
         }
 
-        /** ACCESS SERVICE (WebserviceDistribution) **/
-        if (obj.getAccessService() != null) {
+        /** ACCESSSERVICE **/
+        if (accessServiceExplicitlySet || !isNewVersion) {
+            List<LinkedEntity> accessServices = obj.getAccessService();
+            if (accessServices != null && !accessServices.isEmpty()) {
+                System.out.println("AccessService: " + accessServices);
+                System.out.println(overrideStatus);
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), accessServices, relationFromUpdate, relationToUpdate,
+                        WebserviceDistribution.class, Webservice.class,
+                        "distributionInstance",
+                        WebserviceDistribution::getWebserviceInstance,
+                        WebserviceDistribution::setDistributionInstance,
+                        WebserviceDistribution::setWebserviceInstance,
+                        obj, previousObj, overrideStatus, true
+                );
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getAccessService(), relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
                     WebserviceDistribution.class, Webservice.class,
                     "distributionInstance",
                     WebserviceDistribution::getWebserviceInstance,
@@ -133,30 +192,94 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             );
         }
 
-        if (obj.getAccessURL() != null) {
-            for (String accessurl : obj.getAccessURL()) {
-                createInnerElement(ElementType.ACCESSURL, accessurl, edmobj, overrideStatus);
+        /** SUPPORTEDOPERATION **/
+        if (supportedOperationExplicitlySet || !isNewVersion) {
+            List<LinkedEntity> operations = obj.getSupportedOperation();
+            if (operations != null && !operations.isEmpty()) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), operations, relationFromUpdate, relationToUpdate,
+                        OperationDistribution.class, Operation.class,
+                        "distributionInstance",
+                        OperationDistribution::getOperationInstance,
+                        OperationDistribution::setDistributionInstance,
+                        OperationDistribution::setOperationInstance,
+                        obj, previousObj, overrideStatus, false
+                );
             }
+        } else if (isNewVersion && oldInstanceId != null) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    OperationDistribution.class, Operation.class,
+                    "distributionInstance",
+                    OperationDistribution::getOperationInstance,
+                    OperationDistribution::setDistributionInstance,
+                    OperationDistribution::setOperationInstance,
+                    obj, previousObj, overrideStatus, false
+            );
         }
 
-        if (obj.getDownloadURL() != null) {
-            for (String downloadURL : obj.getDownloadURL()) {
-                createInnerElement(ElementType.DOWNLOADURL, downloadURL, edmobj, overrideStatus);
+        /** ACCESSURL **/
+        if (accessURLExplicitlySet || !isNewVersion) {
+            List<String> accessURLs = obj.getAccessURL();
+            if (accessURLs != null && !accessURLs.isEmpty()) {
+                for (String url : accessURLs) {
+                    createInnerElement(ElementType.ACCESSURL, url, edmobj, overrideStatus);
+                }
             }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.ACCESSURL, overrideStatus);
+        }
+
+        /** DOWNLOADURL **/
+        if (downloadURLExplicitlySet || !isNewVersion) {
+            List<String> downloadURLs = obj.getDownloadURL();
+            if (downloadURLs != null && !downloadURLs.isEmpty()) {
+                for (String url : downloadURLs) {
+                    createInnerElement(ElementType.DOWNLOADURL, url, edmobj, overrideStatus);
+                }
+            }
+        } else if (isNewVersion && oldInstanceId != null) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.DOWNLOADURL, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DISTRIBUTION.name(), edmobj);
+
+        return new LinkedEntity()
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
-                .uid(edmobj.getUid());
+                .uid(edmobj.getUid())
+                .entityType(EntityNames.DISTRIBUTION.name());
+    }
 
+    private void deleteExistingElements(String instanceId) {
+        List<Object> existingElements = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", instanceId, DistributionElement.class);
+        if (existingElements != null) {
+            for (Object obj : existingElements) {
+                DistributionElement de = (DistributionElement) obj;
+                EposDataModelDAO.getInstance().deleteObject(de);
+                if (de.getElementInstance() != null) {
+                    EposDataModelDAO.getInstance().deleteObject(de.getElementInstance());
+                }
+            }
+        }
+    }
+
+    private void copyElementsFromPreviousVersion(String oldInstanceId, Distribution newEdmobj, ElementType type, StatusType overrideStatus) {
+        List<Object> oldElements = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", oldInstanceId, DistributionElement.class);
+        if (oldElements != null) {
+            for (Object obj : oldElements) {
+                DistributionElement oldDe = (DistributionElement) obj;
+                if (oldDe.getElementInstance() != null && type.name().equals(oldDe.getElementInstance().getType())) {
+                    createInnerElement(type, oldDe.getElementInstance().getValue(), newEdmobj, overrideStatus);
+                }
+            }
+        }
     }
 
     private void createInnerElement(ElementType elementType, String value, Distribution edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(), DistributionElement.class);
+        List<Object> existingRelations = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(), DistributionElement.class);
         if (existingRelations != null) {
             for (Object obj : existingRelations) {
                 DistributionElement relation = (DistributionElement) obj;
@@ -168,18 +291,22 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 }
             }
         }
+
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
 
-        if (edmobj.getVersion().getEditorId() != null)
-            element.setEditorId(edmobj.getVersion().getEditorId());
-        if (edmobj.getVersion().getProvenance() != null)
-            element.setFileProvenance(edmobj.getVersion().getProvenance());
-        if (edmobj.getVersion().getChangeComment() != null)
-            element.setChangeComment(edmobj.getVersion().getChangeComment());
-        if (edmobj.getVersion().getChangeTimestamp() != null)
-            element.setChangeTimestamp(edmobj.getVersion().getChangeTimestamp().toLocalDateTime());
+        Versioningstatus version = edmobj.getVersion();
+        if (version != null) {
+            if (version.getEditorId() != null)
+                element.setEditorId(version.getEditorId());
+            if (version.getProvenance() != null)
+                element.setFileProvenance(version.getProvenance());
+            if (version.getChangeComment() != null)
+                element.setChangeComment(version.getChangeComment());
+            if (version.getChangeTimestamp() != null)
+                element.setChangeTimestamp(version.getChangeTimestamp().toLocalDateTime());
+        }
 
         LinkedEntity le = new ElementAPI(EntityNames.ELEMENT.name(), Element.class).create(element, overrideStatus, null, null);
         List<Element> el = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Element.class);
@@ -190,6 +317,28 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
         }
+    }
+
+    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
+        try {
+            Field field = findField(obj.getClass(), fieldName);
+            if (field != null) {
+                field.setAccessible(true);
+                return field.get(obj) != null;
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
+                    new Object[]{fieldName, e.getMessage()});
+        }
+        return false;
+    }
+
+    private Field findField(Class<?> clazz, String fieldName) {
+        while (clazz != null) {
+            try { return clazz.getDeclaredField(fieldName); }
+            catch (NoSuchFieldException e) { clazz = clazz.getSuperclass(); }
+        }
+        return null;
     }
 
     @Override
@@ -229,7 +378,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         o.setDataPolicy(edmobj.getDatapolicy());
         o.setIssued(edmobj.getIssued());
         o.setModified(edmobj.getModified());
-        o.setType(edmobj.getType());
         o.setByteSize(edmobj.getByteSize());
         o.setMaturity(edmobj.getMaturity());
         o.setMediaType(edmobj.getMediaType());
@@ -278,21 +426,215 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         List<Distribution> returnList = getDbaccess().getOneFromDBByUID(uid, Distribution.class);
         return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
     }
+
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveBunch(List<String> entities) {
         return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Distribution.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Distribution.class));
     }
+
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Distribution.class, status));
     }
+
     private List<org.epos.eposdatamodel.Distribution> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
     }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     * Instead of N+1 queries per entity, this fetches all data in batches.
+     */
+    private List<org.epos.eposdatamodel.Distribution> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Distribution entities
+        Map<String, Distribution> distributions = getDbaccess().batchFetchByInstanceIds(instanceIds, Distribution.class);
+        
+        if (distributions.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(distributions.keySet());
+        
+        // Step 2: Batch fetch ALL join tables for ALL distributions at once
+        Map<String, List<DistributionDescription>> descriptions = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionDescription.class);
+        Map<String, List<DistributionTitle>> titles = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionTitle.class);
+        Map<String, List<DistributionDataproduct>> dataproducts = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionDataproduct.class);
+        Map<String, List<WebserviceDistribution>> webservices = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, WebserviceDistribution.class);
+        Map<String, List<OperationDistribution>> operations = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, OperationDistribution.class);
+        Map<String, List<DistributionElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionElement.class);
+        
+        // Step 3: Collect all target entity IDs for batch fetching
+        Set<String> allDataproductIds = new HashSet<>();
+        Set<String> allWebserviceIds = new HashSet<>();
+        Set<String> allOperationIds = new HashSet<>();
+        
+        dataproducts.values().forEach(list -> list.forEach(r -> {
+            if (r.getDataproductInstance() != null) allDataproductIds.add(r.getDataproductInstance().getInstanceId());
+        }));
+        webservices.values().forEach(list -> list.forEach(r -> {
+            if (r.getWebserviceInstance() != null) allWebserviceIds.add(r.getWebserviceInstance().getInstanceId());
+        }));
+        operations.values().forEach(list -> list.forEach(r -> {
+            if (r.getOperationInstance() != null) allOperationIds.add(r.getOperationInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Dataproduct> dataproductMap = allDataproductIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allDataproductIds), Dataproduct.class);
+        Map<String, Webservice> webserviceMap = allWebserviceIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allWebserviceIds), Webservice.class);
+        Map<String, Operation> operationMap = allOperationIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOperationIds), Operation.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble all DTOs from pre-fetched data
+        List<org.epos.eposdatamodel.Distribution> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Distribution edmobj = distributions.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Distribution dto = assembleDistribution(
+                        instanceId, edmobj,
+                        descriptions, titles, dataproducts, webservices, operations, elements,
+                        dataproductMap, webserviceMap, operationMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    /**
+     * Assembles a Distribution DTO from pre-fetched data without additional queries.
+     */
+    private org.epos.eposdatamodel.Distribution assembleDistribution(
+            String instanceId,
+            Distribution edmobj,
+            Map<String, List<DistributionDescription>> descriptions,
+            Map<String, List<DistributionTitle>> titles,
+            Map<String, List<DistributionDataproduct>> dataproducts,
+            Map<String, List<WebserviceDistribution>> webservices,
+            Map<String, List<OperationDistribution>> operations,
+            Map<String, List<DistributionElement>> elements,
+            Map<String, Dataproduct> dataproductMap,
+            Map<String, Webservice> webserviceMap,
+            Map<String, Operation> operationMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Distribution o = new org.epos.eposdatamodel.Distribution();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setFormat(edmobj.getFormat());
+        o.setLicence(edmobj.getLicense());
+        o.setDataPolicy(edmobj.getDatapolicy());
+        o.setIssued(edmobj.getIssued());
+        o.setModified(edmobj.getModified());
+        o.setByteSize(edmobj.getByteSize());
+        o.setMaturity(edmobj.getMaturity());
+        o.setMediaType(edmobj.getMediaType());
+        
+        // Add descriptions
+        for (DistributionDescription item : descriptions.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addDescription(item.getDescription());
+        }
+        
+        // Add titles
+        for (DistributionTitle item : titles.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addTitle(item.getTitle());
+        }
+        
+        // Add dataproduct relations
+        for (DistributionDataproduct rel : dataproducts.getOrDefault(instanceId, Collections.emptyList())) {
+            Dataproduct target = dataproductMap.get(rel.getDataproductInstance().getInstanceId());
+            if (target != null) {
+                o.addDataproduct(createLinkedEntity(target, EntityNames.DATAPRODUCT.name()));
+            }
+        }
+        
+        // Add webservice (accessService) relations
+        for (WebserviceDistribution rel : webservices.getOrDefault(instanceId, Collections.emptyList())) {
+            Webservice target = webserviceMap.get(rel.getWebserviceInstance().getInstanceId());
+            if (target != null) {
+                o.addAccessService(createLinkedEntity(target, EntityNames.WEBSERVICE.name()));
+            }
+        }
+        
+        // Add operation (supportedOperation) relations
+        for (OperationDistribution rel : operations.getOrDefault(instanceId, Collections.emptyList())) {
+            Operation target = operationMap.get(rel.getOperationInstance().getInstanceId());
+            if (target != null) {
+                o.addSupportedOperation(createLinkedEntity(target, EntityNames.OPERATION.name()));
+            }
+        }
+        
+        // Add element data (accessURL, downloadURL)
+        for (DistributionElement item : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = item.getElementInstance();
+            if (el != null) {
+                if (ElementType.ACCESSURL.name().equals(el.getType())) o.addAccessURL(el.getValue());
+                if (ElementType.DOWNLOADURL.name().equals(el.getType())) o.addDownloadURL(el.getValue());
+            }
+        }
+        
+        // Apply versioning from pre-fetched data
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    /**
+     * Creates a LinkedEntity from a JPA entity.
+     */
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
+    }
+
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
