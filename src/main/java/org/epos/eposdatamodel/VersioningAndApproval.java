@@ -69,7 +69,7 @@ public abstract class VersioningAndApproval {
     /**
      * State of the instance
      */
-    @Schema(name="status", description = "State of the instance (DISCARDERD, ARCHIVED, DRAFT, SUBMITTED, PUBLISHED)", example = "John", required = false)
+    @Schema(name="status", description = "State of the instance (DISCARDERD, ARCHIVED, DRAFT, SUBMITTED, PUBLISHED)", example = "PUBLISHED", required = false)
     private StatusType status;
 
     /**

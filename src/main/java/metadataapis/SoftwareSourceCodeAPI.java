@@ -170,7 +170,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
                         try {
                             T pi = joinClass.getDeclaredConstructor().newInstance();
                             // Performance: Use cached reflection for setters
-                            utilities.ReflectionCache.invokeSetter(pi, "softwaresourcecode", Softwaresourcecode.class, parent);
+                            utilities.ReflectionCache.invokeSetter(pi, "setSoftwaresourcecode", Softwaresourcecode.class, parent);
                             utilities.ReflectionCache.invokeStringSetter(pi, "setSoftwaresourcecodeInstanceId", parent.getInstanceId());
                             utilities.ReflectionCache.invokeStringSetter(pi, "setResourceEntity", link.getEntityType());
                             utilities.ReflectionCache.invokeStringSetter(pi, "setEntityInstanceId", targetInstanceId);

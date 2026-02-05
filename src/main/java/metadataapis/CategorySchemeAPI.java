@@ -383,8 +383,14 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Object> rels = getDbaccess().getJoinEntitiesByParentId("categorySchemeInstanceId", instanceId, CategoryHastopconcept.class);
-        if (rels != null) rels.forEach(EposDataModelDAO.getInstance()::deleteObject);
+
+        List<org.epos.eposdatamodel.Category> categories = AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveAll();
+        for(org.epos.eposdatamodel.Category category : categories) {
+            if(category.getInScheme() != null && category.getInScheme().getInstanceId().equals(instanceId)) {
+                category.setInScheme(null);
+                AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).create(category,null,null,null);
+            }
+        }
 
         List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
         for (CategoryScheme object : elementList) {
