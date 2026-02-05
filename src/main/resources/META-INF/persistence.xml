@@ -4,109 +4,233 @@
              xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd">
     <persistence-unit name="EPOSDataModel">
 
+		<class>model.Address</class>
+		<class>model.Attribution</class>
+		<class>model.AttributionRole</class>
+		<class>model.AuthorizationGroup</class>
+		<class>model.Category</class>
+		<class>model.CategoryHastopconcept</class>
+		<class>model.CategoryHastopconceptId</class>
+		<class>model.CategoryIspartof</class>
+		<class>model.CategoryIspartofId</class>
+		<class>model.CategoryScheme</class>
+		<class>model.Contactpoint</class>
+		<class>model.ContactpointElement</class>
+		<class>model.ContactpointElementId</class>
+		<class>model.Dataproduct</class>
+		<class>model.DataproductAttribution</class>
+		<class>model.DataproductAttributionId</class>
+		<class>model.DataproductCategory</class>
+		<class>model.DataproductCategoryId</class>
+		<class>model.DataproductContactpoint</class>
+		<class>model.DataproductContactpointId</class>
+		<class>model.DataproductDescription</class>
+		<class>model.DataproductElement</class>
+		<class>model.DataproductElementId</class>
+		<class>model.DataproductHaspart</class>
+		<class>model.DataproductHaspartId</class>
+		<class>model.DataproductIdentifier</class>
+		<class>model.DataproductIdentifierId</class>
+		<class>model.DataproductIspartof</class>
+		<class>model.DataproductIspartofId</class>
+		<class>model.DataproductProvenance</class>
+		<class>model.DataproductPublisher</class>
+		<class>model.DataproductPublisherId</class>
+		<class>model.DataproductRelation</class>
+		<class>model.DataproductSource</class>
+		<class>model.DataproductSourceId</class>
+		<class>model.DataproductSpatial</class>
+		<class>model.DataproductSpatialId</class>
+		<class>model.DataproductTemporal</class>
+		<class>model.DataproductTemporalId</class>
+		<class>model.DataproductTitle</class>
+		<class>model.Distribution</class>
+		<class>model.DistributionDataproduct</class>
+		<class>model.DistributionDataproductId</class>
+		<class>model.DistributionDescription</class>
+		<class>model.DistributionElement</class>
+		<class>model.DistributionElementId</class>
+		<class>model.DistributionTitle</class>
+		<class>model.EdmEntityId</class>
+		<class>model.Element</class>
+		<class>model.Equipment</class>
+		<class>model.EquipmentCategory</class>
+		<class>model.EquipmentCategoryId</class>
+		<class>model.EquipmentContactpoint</class>
+		<class>model.EquipmentContactpointId</class>
+		<class>model.EquipmentElement</class>
+		<class>model.EquipmentElementId</class>
+		<class>model.EquipmentIspartof</class>
+		<class>model.EquipmentRelation</class>
+		<class>model.EquipmentSpatial</class>
+		<class>model.EquipmentSpatialId</class>
+		<class>model.EquipmentTemporal</class>
+		<class>model.EquipmentTemporalId</class>
+		<class>model.Facility</class>
+		<class>model.FacilityAddress</class>
+		<class>model.FacilityAddressId</class>
+		<class>model.FacilityCategory</class>
+		<class>model.FacilityCategoryId</class>
+		<class>model.FacilityContactpoint</class>
+		<class>model.FacilityContactpointId</class>
+		<class>model.FacilityElement</class>
+		<class>model.FacilityElementId</class>
+		<class>model.FacilityIspartof</class>
+		<class>model.FacilityIspartofId</class>
+		<class>model.FacilitySpatial</class>
+		<class>model.FacilitySpatialId</class>
+		<class>model.Identifier</class>
+		<class>model.Mapping</class>
+		<class>model.MappingElement</class>
+		<class>model.MappingElementId</class>
+		<class>model.MetadataGroup</class>
+		<class>model.MetadataGroupUser</class>
+		<class>model.MetadataUser</class>
+		<class>model.Ontology</class>
+		<class>model.Operation</class>
+		<class>model.OperationDistribution</class>
+		<class>model.OperationDistributionId</class>
+		<class>model.OperationElement</class>
+		<class>model.OperationElementId</class>
+		<class>model.OperationMapping</class>
+		<class>model.OperationMappingId</class>
+		<class>model.OperationPayload</class>
+		<class>model.OperationWebservice</class>
+		<class>model.OperationWebserviceId</class>
+		<class>model.Organization</class>
+		<class>model.OrganizationAffiliation</class>
+		<class>model.OrganizationAffiliationId</class>
+		<class>model.OrganizationContactpoint</class>
+		<class>model.OrganizationContactpointId</class>
+		<class>model.OrganizationElement</class>
+		<class>model.OrganizationElementId</class>
+		<class>model.OrganizationIdentifier</class>
+		<class>model.OrganizationIdentifierId</class>
+		<class>model.OrganizationMemberof</class>
+		<class>model.OrganizationMemberofId</class>
+		<class>model.OrganizationOwn</class>
+		<class>model.OutputMapping</class>
+		<class>model.Parameter</class>
+		<class>model.Payload</class>
+		<class>model.PayloadOutputMapping</class>
+		<class>model.Person</class>
+		<class>model.PersonContactpoint</class>
+		<class>model.PersonContactpointId</class>
+		<class>model.PersonElement</class>
+		<class>model.PersonElementId</class>
+		<class>model.PersonIdentifier</class>
+		<class>model.PersonIdentifierId</class>
+		<class>model.Publication</class>
+		<class>model.PublicationCategory</class>
+		<class>model.PublicationCategoryId</class>
+		<class>model.PublicationContributor</class>
+		<class>model.PublicationContributorId</class>
+		<class>model.Quantitativevalue</class>
+		<class>model.Service</class>
+		<class>model.ServiceCategory</class>
+		<class>model.ServiceCategoryId</class>
+		<class>model.ServiceContactpoint</class>
+		<class>model.ServiceContactpointId</class>
+		<class>model.ServiceIdentifier</class>
+		<class>model.ServiceIdentifierId</class>
+		<class>model.ServiceProvider</class>
+		<class>model.ServiceSpatial</class>
+		<class>model.ServiceSpatialId</class>
+		<class>model.ServiceTemporal</class>
+		<class>model.ServiceTemporalId</class>
+		<class>model.Softwareapplication</class>
+		<class>model.SoftwareapplicationAuthor</class>
+		<class>model.SoftwareapplicationCategory</class>
+		<class>model.SoftwareapplicationCategoryId</class>
+		<class>model.SoftwareapplicationElement</class>
+		<class>model.SoftwareapplicationElementId</class>
+		<class>model.SoftwareapplicationContactpoint</class>
+		<class>model.SoftwareapplicationContactpointId</class>
+		<class>model.SoftwareapplicationContributor</class>
+		<class>model.SoftwareapplicationCreator</class>
+		<class>model.SoftwareapplicationFunder</class>
+		<class>model.SoftwareapplicationIdentifier</class>
+		<class>model.SoftwareapplicationIdentifierId</class>
+		<class>model.SoftwareapplicationMaintainer</class>
+		<class>model.SoftwareapplicationOperation</class>
+		<class>model.SoftwareapplicationOperationId</class>
+		<class>model.SoftwareapplicationParameter</class>
+		<class>model.SoftwareapplicationParameterId</class>
+		<class>model.SoftwareapplicationProvider</class>
+		<class>model.SoftwareapplicationPublisher</class>
+		<class>model.Softwaresourcecode</class>
+		<class>model.SoftwaresourcecodeAuthor</class>
+		<class>model.SoftwaresourcecodeCategory</class>
+		<class>model.SoftwaresourcecodeCategoryId</class>
+		<class>model.SoftwaresourcecodeContactpoint</class>
+		<class>model.SoftwaresourcecodeContactpointId</class>
+		<class>model.SoftwaresourcecodeContributor</class>
+		<class>model.SoftwaresourcecodeCreator</class>
+		<class>model.SoftwaresourcecodeElement</class>
+		<class>model.SoftwaresourcecodeElementId</class>
+		<class>model.SoftwaresourcecodeFunder</class>
+		<class>model.SoftwaresourcecodeIdentifier</class>
+		<class>model.SoftwaresourcecodeIdentifierId</class>
+		<class>model.SoftwaresourcecodeMaintainer</class>
+		<class>model.SoftwaresourcecodeProvider</class>
+		<class>model.SoftwaresourcecodePublisher</class>
+		<class>model.Spatial</class>
+		<class>model.Temporal</class>
+		<class>model.Versioningstatus</class>
+		<class>model.Webservice</class>
+		<class>model.WebserviceCategory</class>
+		<class>model.WebserviceCategoryId</class>
+		<class>model.WebserviceContactpoint</class>
+		<class>model.WebserviceContactpointId</class>
+		<class>model.WebserviceDistribution</class>
+		<class>model.WebserviceDistributionId</class>
+		<class>model.WebserviceElement</class>
+		<class>model.WebserviceElementId</class>
+		<class>model.WebserviceIdentifier</class>
+		<class>model.WebserviceIdentifierId</class>
+		<class>model.WebserviceRelation</class>
+		<class>model.WebserviceSpatial</class>
+		<class>model.WebserviceSpatialId</class>
+		<class>model.WebserviceTemporal</class>
+		<class>model.WebserviceTemporalId</class>
 
-        <class>org.epos.handler.dbapi.model.EDMAddress</class>
-        <class>org.epos.handler.dbapi.model.EDMAffiliation</class>
-        <class>org.epos.handler.dbapi.model.EDMAuthorization</class>
-        <class>org.epos.handler.dbapi.model.EDMCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMCategoryScheme</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpoint</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointDataproduct</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointEmail</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointEquipment</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointFacility</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointLanguage</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointOrganization</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointService</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointSoftwareapplication</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointSoftwaresourcecode</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointTelephone</class>
-        <class>org.epos.handler.dbapi.model.EDMContactpointWebservice</class>
-        <class>org.epos.handler.dbapi.model.EDMContract</class>
-        <class>org.epos.handler.dbapi.model.EDMContributor</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproduct</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductDescription</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductImplementationStatus</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductProvenance</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductSpatial</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductTemporal</class>
-        <class>org.epos.handler.dbapi.model.EDMDataproductTitle</class>
-        <class>org.epos.handler.dbapi.model.EDMDistribution</class>
-        <class>org.epos.handler.dbapi.model.EDMDistributionDescription</class>
-        <class>org.epos.handler.dbapi.model.EDMDistributionDownloadurl</class>
-        <class>org.epos.handler.dbapi.model.EDMDistributionTitle</class>
-        <class>org.epos.handler.dbapi.model.EDMEdmEntityId</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipment</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipmentCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipmentEquipment</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipmentFacility</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipmentSpatial</class>
-        <class>org.epos.handler.dbapi.model.EDMEquipmentTemporal</class>
-        <class>org.epos.handler.dbapi.model.EDMFacility</class>
-        <class>org.epos.handler.dbapi.model.EDMFacilityCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMFacilityFacility</class>
-        <class>org.epos.handler.dbapi.model.EDMFacilityPageurl</class>
-        <class>org.epos.handler.dbapi.model.EDMFacilityService</class>
-        <class>org.epos.handler.dbapi.model.EDMFacilitySpatial</class>
-        <class>org.epos.handler.dbapi.model.EDMGroup</class>
-        <class>org.epos.handler.dbapi.model.EDMGroupUser</class>
-        <class>org.epos.handler.dbapi.model.EDMHaspartDataproduct</class>
-        <class>org.epos.handler.dbapi.model.EDMHasTopConcept</class>
-        <class>org.epos.handler.dbapi.model.EDMIsDistribution</class>
-        <class>org.epos.handler.dbapi.model.EDMIspartofCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMIspartofDataproduct</class>
-        <class>org.epos.handler.dbapi.model.EDMMapping</class>
-        <class>org.epos.handler.dbapi.model.EDMMappingParamvalue</class>
-        <class>org.epos.handler.dbapi.model.EDMMemberof</class>
-        <class>org.epos.handler.dbapi.model.EDMOperation</class>
-        <class>org.epos.handler.dbapi.model.EDMOperationReturns</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganization</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganizationEmail</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganizationIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganizationLegalname</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganizationTelephone</class>
-        <class>org.epos.handler.dbapi.model.EDMOrganizationOwner</class>
-        <class>org.epos.handler.dbapi.model.EDMPerson</class>
-        <class>org.epos.handler.dbapi.model.EDMPersonEmail</class>
-        <class>org.epos.handler.dbapi.model.EDMPersonIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMPersonTelephone</class>
-        <class>org.epos.handler.dbapi.model.EDMPublication</class>
-        <class>org.epos.handler.dbapi.model.EDMPublicationCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMPublicationIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMPublisher</class>
-        <class>org.epos.handler.dbapi.model.EDMQuantitativevalue</class>
-        <class>org.epos.handler.dbapi.model.EDMRole</class>
-        <class>org.epos.handler.dbapi.model.EDMService</class>
-        <class>org.epos.handler.dbapi.model.EDMServiceCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMServiceImplementationStatus</class>
-        <class>org.epos.handler.dbapi.model.EDMServiceSpatial</class>
-        <class>org.epos.handler.dbapi.model.EDMServiceTemporal</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwareapplication</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwareapplicationCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwareapplicationIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwareapplicationOperation</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwareapplicationParameters</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwaresourcecode</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwaresourcecodeCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwaresourcecodeIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMSoftwaresourcecodeProgramminglanguage</class>
-        <class>org.epos.handler.dbapi.model.EDMSupportedOperation</class>
-        <class>org.epos.handler.dbapi.model.EDMWebservice</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceCategory</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceDocumentation</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceSpatial</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceTemporal</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceIdentifier</class>
-        <class>org.epos.handler.dbapi.model.EDMPersonLite</class>
-        <class>org.epos.handler.dbapi.model.EDMWebserviceRelation</class>
-        <class>org.epos.handler.dbapi.model.EDMDistributionAccessURL</class>
+		<properties>
 
-        <properties>
-            <property name="eclipselink.jdbc.fetch-size" value="128" />
-            <property name="eclipselink.jdbc.cache-statements" value="true" />
-        </properties>
+			<!-- ================= ECLIPSELINK PERFORMANCE TUNING ================= -->
 
-    </persistence-unit>
+			<!-- Batch writing for better performance -->
+			<property name="eclipselink.jdbc.batch-writing" value="JDBC"/>
+			<property name="eclipselink.jdbc.batch-writing.size" value="25"/>
+
+			<!-- Connection pooling optimization -->
+			<property name="eclipselink.connection-pool.default.connection-creation-failure-policy" value="retry"/>
+			<property name="eclipselink.connection-pool.default.fail-on-wait" value="false"/>
+
+			<!-- Cache settings -->
+			<property name="eclipselink.cache.shared.default" value="true"/>
+			<property name="eclipselink.cache.type.default" value="SoftWeak"/>
+			<property name="eclipselink.cache.size.default" value="1000"/>
+
+			<!-- Query optimization -->
+			<property name="eclipselink.query-results-cache" value="true"/>
+			<property name="eclipselink.query-results-cache.size" value="500"/>
+
+			<!-- Logging (WARNING level for production) -->
+			<property name="eclipselink.logging.level" value="WARNING"/>
+			<property name="eclipselink.logging.parameters" value="false"/>
+
+			<!-- Performance monitoring -->
+			<property name="eclipselink.jpa.performance-monitor" value="QueryMonitor"/>
+
+			<!-- DDL generation (set to 'none' for production) -->
+			<property name="eclipselink.ddl-generation" value="none"/>
+			<property name="eclipselink.validate-existence" value="false"/>
+
+			<property name="eclipselink.weaving" value="static"/>
+			<property name="eclipselink.weaving.EAGER" value="true"/>
+			<property name="eclipselink.weaving.changetracking" value="true"/>
+			<property name="eclipselink.weaving.fetchgroups" value="true"/>
+
+		</properties>
+	</persistence-unit>
 </persistence>

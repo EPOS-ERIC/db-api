@@ -1,13 +1,31 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>CI_COMMIT_REF_NAME</version>
+	<version>4.2.27</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
-	<url>hhttps://epos-ci.brgm.fr/epos/db-api.git</url>
+	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
+
+	<!--<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub EPOS ERIC Apache Maven Packages</name>
+			<url>https://maven.pkg.github.com/epos-eu/db-api</url>
+		</repository>
+	</distributionManagement>-->
+
+	<properties>
+		<java.version>21</java.version>
+		<maven.compiler.source>${java.version}</maven.compiler.source>
+		<maven.compiler.target>${java.version}</maven.compiler.target>
+
+		<caffeine.version>3.2.0</caffeine.version>
+		<logback.version>1.5.18</logback.version>
+		<micrometer.version>1.15.0</micrometer.version>
+	</properties>
 
 	<developers>
 		<developer>
@@ -15,12 +33,6 @@
 			<email>valerio.vinciarelli@epos-eric.eu</email>
 			<organization>EPOS ERIC</organization>
 			<organizationUrl>https://www.epos-eu.org/</organizationUrl>
-		</developer>
-		<developer>
-			<name>Andrea Orfino</name>
-			<email>andrea.orfino@ingv.it</email>
-			<organization>Istituto Nazionale di Geofisica e Vulcanologia</organization>
-			<organizationUrl>https://www.ingv.it/</organizationUrl>
 		</developer>
 	</developers>
 
@@ -39,55 +51,29 @@
 		</license>
 	</licenses>
 
-	<distributionManagement>
-		<snapshotRepository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-		<repository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
-	</distributionManagement>
-
 	<build>
 		<plugins>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version><!--$NO-MVN-MAN-VER$ -->
+				<version>3.14.0</version><!--$NO-MVN-MAN-VER$ -->
 				<configuration>
-					<release>11</release>
+					<release>21</release>
 				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M5</version>
+				<version>3.5.3</version>
 			</plugin>
 
-			<!-- TEST DEPLOY -->
-			<plugin>
-				<artifactId>maven-deploy-plugin</artifactId>
-				<version>3.0.0-M1</version>
-				<executions>
-					<execution>
-						<id>default-deploy</id>
-						<phase>deploy</phase>
-						<goals>
-							<goal>deploy</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- END TEST DEPLOY -->
 
 			<!-- SIGNATURE -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-gpg-plugin</artifactId>
-				<version>3.0.1</version>
+				<version>3.2.7</version>
 				<executions>
 					<execution>
 						<id>sign-artifacts</id>
@@ -100,48 +86,21 @@
 			</plugin>
 			<!-- END SIGNATURE -->
 
-			<!-- RELEASE -->
-
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
-				<configuration>
-					<localCheckout>true</localCheckout>
-					<pushChanges>false</pushChanges>
-					<mavenExecutorId>forked-path</mavenExecutorId>
-					<arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
-				</configuration>
-				<dependencies>
-					<dependency>
-						<groupId>org.apache.maven.scm</groupId>
-						<artifactId>maven-scm-provider-gitexe</artifactId>
-						<version>1.9.5</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-
-			<!-- END RELEASE -->
-
-			<!-- STAGING PLUGIN -->
-
-			<plugin>
-				<groupId>org.sonatype.plugins</groupId>
-				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.8</version>
+				<groupId>org.sonatype.central</groupId>
+				<artifactId>central-publishing-maven-plugin</artifactId>
+				<version>0.7.0</version>
 				<extensions>true</extensions>
 				<configuration>
-					<serverId>ossrh</serverId>
-					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-					<autoReleaseAfterClose>true</autoReleaseAfterClose>
+					<publishingServerId>central</publishingServerId>
+					<autoPublish>true</autoPublish>
 				</configuration>
 			</plugin>
-
-			<!-- END STAGING PLUGIN -->
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.11.2</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -157,7 +116,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
+				<version>3.3.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -168,6 +127,25 @@
 				</executions>
 			</plugin>
 			<!-- END SOURCE -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.1</version>
+				<executions>
+					<execution>
+						<id>weave</id>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>org.eclipse.persistence.tools.weaving.jpa.StaticWeave</mainClass>
+							<commandlineArgs>-loglevel FINE ${project.build.outputDirectory} ${project.build.outputDirectory}</commandlineArgs>
+							<classpathScope>compile</classpathScope>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 
 		</plugins>
 	</build>
@@ -186,7 +164,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>3.0.1</version>
+						<version>3.2.7</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -207,45 +185,26 @@
 		<dependency>
 			<groupId>com.zaxxer</groupId>
 			<artifactId>HikariCP</artifactId>
-			<version>5.0.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.eclipse.persistence</groupId>
-			<artifactId>eclipselink</artifactId>
-			<version>2.7.9</version>
+			<version>6.3.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.5.1</version>
+			<version>42.7.6</version>
 		</dependency>
-		<dependency>
-			<groupId>org.epos-eu.ics-c</groupId>
-			<artifactId>epos-data-model-beans</artifactId>
-			<version>1.3.15</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi</artifactId>
-			<version>5.2.3</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml</artifactId>
-			<version>5.2.3</version>
-		</dependency>
+
 		<!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
-			<version>2.10.1</version>
+			<version>2.13.1</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
-			<version>3.1.4</version>
+			<version>3.5.0</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -253,23 +212,81 @@
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
-			<version>5.10.0</version>
+			<version>5.13.0</version>
 			<scope>test</scope>
 		</dependency>
 
-
+		<!-- https://mvnrepository.com/artifact/org.eclipse.persistence/eclipselink -->
 		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>postgresql</artifactId>
-			<version>1.19.0</version>
-			<scope>test</scope>
+			<groupId>org.eclipse.persistence</groupId>
+			<artifactId>eclipselink</artifactId>
+			<version>4.0.6</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>2.0.9</version>
+			<version>2.0.17</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-webmvc-core -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-ui</artifactId>
+			<version>1.8.0</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.testcontainers/junit-jupiter -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<version>2.0.2</version>
+			<scope>test</scope>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<version>2.0.2</version>
+			<scope>test</scope>
+		</dependency>
+
+
+		<dependency>
+			<groupId>jakarta.validation</groupId>
+			<artifactId>jakarta.validation-api</artifactId>
+			<version>3.1.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.springframework.data/spring-data-commons -->
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-commons</artifactId>
+			<version>4.0.0-M3</version>
+		</dependency>
+
+		<!-- Caffeine Cache - High-performance caching -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+			<version>${caffeine.version}</version>
+		</dependency>
+
+		<!-- Logback for better logging performance -->
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+
+
+		<!-- Micrometer for metrics (optional) -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-core</artifactId>
+			<version>${micrometer.version}</version>
+			<optional>true</optional>
 		</dependency>
 
 	</dependencies>

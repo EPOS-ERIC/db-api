@@ -1,0 +1,45 @@
+package model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "authorization_group", schema = "usergroup_catalogue")
+public class AuthorizationGroup {
+    @Id
+    @jakarta.validation.constraints.Size(max = 100)
+    @Column(name = "id", nullable = false, length = 100)
+    private String id;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "group_id")
+    private model.MetadataGroup group;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "meta_id")
+    private model.EdmEntityId meta;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public model.MetadataGroup getGroup() {
+        return group;
+    }
+
+    public void setGroup(model.MetadataGroup group) {
+        this.group = group;
+    }
+
+    public model.EdmEntityId getMeta() {
+        return meta;
+    }
+
+    public void setMeta(model.EdmEntityId meta) {
+        this.meta = meta;
+    }
+
+}

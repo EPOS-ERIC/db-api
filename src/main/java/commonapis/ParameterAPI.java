@@ -1,0 +1,171 @@
+package commonapis;
+
+import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
+import metadataapis.EntityNames;
+import model.*;
+import org.epos.eposdatamodel.Group;
+import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.SoftwareApplicationParameter;
+import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApplicationParameter> {
+
+    public ParameterAPI(String entityName, Class<?> edmClass) {
+        super(entityName, edmClass);
+    }
+
+    @Override
+    public LinkedEntity create(SoftwareApplicationParameter obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+
+        String searchInstanceId = obj.getInstanceId();
+
+        List<Parameter> returnList = getDbaccess().getOneFromDB(
+                searchInstanceId,
+                obj.getMetaId(),
+                obj.getUid(),
+                null,
+                Parameter.class);
+
+        if(!returnList.isEmpty()){
+            Parameter selectedEntity = returnList.get(0);
+
+            StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
+
+            for (Parameter item : returnList) {
+                if (item.getVersion() != null &&
+                        targetStatus.toString().equals(item.getVersion().getStatus())) {
+                    selectedEntity = item;
+                    break;
+                }
+            }
+
+            obj.setInstanceId(selectedEntity.getInstanceId());
+            obj.setMetaId(selectedEntity.getMetaId());
+            obj.setUid(selectedEntity.getUid());
+            if (selectedEntity.getVersion() != null) obj.setVersionId(selectedEntity.getVersion().getVersionId());
+        }
+
+        obj = (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceId() == null) {
+            obj.setInstanceId(UUID.randomUUID().toString());
+        }
+        if (obj.getMetaId() == null) {
+            obj.setMetaId(UUID.randomUUID().toString());
+        }
+
+        EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+
+        // Create the new parameter entity
+        Parameter edmobj = new Parameter();
+        edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
+        edmobj.setInstanceId(obj.getInstanceId());
+        edmobj.setMetaId(obj.getMetaId());
+        edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
+        edmobj.setEncodingformat(obj.getEncodingformat());
+        edmobj.setConformsto(obj.getConformsto());
+        edmobj.setAction(obj.getAction());
+
+        getDbaccess().updateObject(edmobj);
+
+        RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name(), edmobj);
+
+        return new LinkedEntity().entityType(entityName)
+                .instanceId(edmobj.getInstanceId())
+                .metaId(edmobj.getMetaId())
+                .uid(edmobj.getUid());
+    }
+
+    @Override
+    public org.epos.eposdatamodel.SoftwareApplicationParameter retrieve(String instanceId) {
+        List<Parameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Parameter.class);
+        if (elementList.isEmpty()) {
+            return null;
+        }
+
+        Parameter edmobj = elementList.get(0);
+        org.epos.eposdatamodel.SoftwareApplicationParameter o = new org.epos.eposdatamodel.SoftwareApplicationParameter();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setEncodingformat(edmobj.getEncodingformat());
+        o.setConformsto(edmobj.getConformsto());
+        o.setAction(edmobj.getAction());
+
+        return (org.epos.eposdatamodel.SoftwareApplicationParameter) VersioningStatusAPI.retrieveVersion(o);
+    }
+
+    @Override
+    public org.epos.eposdatamodel.SoftwareApplicationParameter retrieveByUID(String uid) {
+        List<Parameter> returnList = getDbaccess().getOneFromDBByUID(uid, Parameter.class);
+        if (!returnList.isEmpty()) {
+            return retrieve(returnList.get(0).getInstanceId());
+        }
+        return null;
+    }
+    @Override
+    public Boolean delete(String instanceId) {
+        // Batch delete for SoftwareApplicationParameter and Parameter
+        List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
+                .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterItemsToDelete));
+
+        List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
+                .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
+                .collect(Collectors.toList());
+        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterListToDelete));
+
+        return true;
+    }
+
+
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveBunch(List<String> entities) {
+        return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Parameter.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAll() {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Parameter.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllWithStatus(StatusType status) {
+        return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Parameter.class, status));
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> dbEntities = dbFetcher.apply(null);
+
+        return dbEntities.parallelStream()
+                .map(item -> retrieve(item))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public LinkedEntity retrieveLinkedEntity(String instanceId) {
+        List<Parameter> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Parameter.class);
+        if (elementList.isEmpty()) {
+            return null;
+        }
+
+        Parameter edmobj = elementList.get(0);
+        LinkedEntity o = new LinkedEntity();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setEntityType(edmobj.getAction().equals("OBJECT")
+                ? EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER.name()
+                : EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER.name());
+
+        return o;
+    }
+}

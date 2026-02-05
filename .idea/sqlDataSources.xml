@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DdlMappings">
+    <mapping uuid="f6c69613-1c47-488d-94b1-a1f04f2e1524" name="eposdatamodel Mapping">
+      <data-sources db="5a77d90b-6040-4bb9-abc9-186825417396" ddl="ae6e45ae-a56c-4a33-8dd0-373ae4feeb14" />
+      <scope>
+        <node kind="database" qname="cerif">
+          <node kind="schema" qname="public" />
+        </node>
+      </scope>
+    </mapping>
+  </component>
+</project>
