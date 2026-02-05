@@ -165,7 +165,7 @@ public class WebService extends EPOSDataModelEntity {
     /**
      * It represents the link to another Epos resource.
      */
-    @Schema(name= "relation", description = "It represents the link to another Epos resource.", example = "{\n" +
+    @Schema(name= "webserviceRelation", description = "It represents the link to another Epos resource.", example = "{\n" +
             "    \"entityType\": \"ANY ENTITY\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +

@@ -43,7 +43,7 @@ public class Operation extends EPOSDataModelEntity {
     /**
      * Reverse reference to the related webservice.
      */
-    @Schema(name = "maturity", description = "Reverse reference to the related webservice.", example = "{\n" +
+    @Schema(name = "webservice", description = "Reverse reference to the related webservice.", example = "{\n" +
             "    \"entityType\": \"WEBSERVICE\",\n" +
             "    \"instanceId\": \"an UUID\",\n" +
             "    \"metaId\": \"an UUID\",\n" +

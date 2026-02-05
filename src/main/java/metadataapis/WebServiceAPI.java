@@ -595,7 +595,263 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     }
 
     private List<org.epos.eposdatamodel.WebService> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     */
+    private List<org.epos.eposdatamodel.WebService> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Webservice entities
+        Map<String, Webservice> webservices = getDbaccess().batchFetchByInstanceIds(instanceIds, Webservice.class);
+        if (webservices.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(webservices.keySet());
+        
+        // Step 2: Batch fetch ALL join tables
+        Map<String, List<WebserviceCategory>> categories = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceCategory.class);
+        Map<String, List<WebserviceContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceContactpoint.class);
+        Map<String, List<WebserviceElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceElement.class);
+        Map<String, List<WebserviceIdentifier>> identifiers = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceIdentifier.class);
+        Map<String, List<WebserviceSpatial>> spatials = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceSpatial.class);
+        Map<String, List<WebserviceTemporal>> temporals = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceTemporal.class);
+        Map<String, List<OperationWebservice>> operations = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, OperationWebservice.class);
+        Map<String, List<WebserviceRelation>> relations = 
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceRelation.class);
+        
+        // Step 3: Collect all target entity IDs
+        Set<String> allCategoryIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allIdentifierIds = new HashSet<>();
+        Set<String> allSpatialIds = new HashSet<>();
+        Set<String> allTemporalIds = new HashSet<>();
+        Set<String> allOperationIds = new HashSet<>();
+        Set<String> allProviderIds = new HashSet<>();
+        Set<String> allRelatedWebserviceIds = new HashSet<>();
+        
+        categories.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        identifiers.values().forEach(list -> list.forEach(r -> {
+            if (r.getIdentifierInstance() != null) allIdentifierIds.add(r.getIdentifierInstance().getInstanceId());
+        }));
+        spatials.values().forEach(list -> list.forEach(r -> {
+            if (r.getSpatialInstance() != null) allSpatialIds.add(r.getSpatialInstance().getInstanceId());
+        }));
+        temporals.values().forEach(list -> list.forEach(r -> {
+            if (r.getTemporalInstance() != null) allTemporalIds.add(r.getTemporalInstance().getInstanceId());
+        }));
+        operations.values().forEach(list -> list.forEach(r -> {
+            if (r.getOperationInstance() != null) allOperationIds.add(r.getOperationInstance().getInstanceId());
+        }));
+        relations.values().forEach(list -> list.forEach(r -> {
+            if (r.getId() != null) allRelatedWebserviceIds.add(r.getId().getEntityInstanceId());
+        }));
+        // Collect provider IDs
+        for (Webservice ws : webservices.values()) {
+            if (ws.getProvider() != null) allProviderIds.add(ws.getProvider());
+        }
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, model.Category> categoryMap = allCategoryIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), model.Category.class);
+        Map<String, Contactpoint> contactPointMap = allContactPointIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Identifier> identifierMap = allIdentifierIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allIdentifierIds), Identifier.class);
+        Map<String, Spatial> spatialMap = allSpatialIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
+        Map<String, Temporal> temporalMap = allTemporalIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allTemporalIds), Temporal.class);
+        Map<String, model.Operation> operationMap = allOperationIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOperationIds), model.Operation.class);
+        Map<String, Organization> providerMap = allProviderIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allProviderIds), Organization.class);
+        Map<String, Webservice> relatedWsMap = allRelatedWebserviceIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allRelatedWebserviceIds), Webservice.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DTOs
+        List<org.epos.eposdatamodel.WebService> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Webservice edmobj = webservices.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.WebService dto = assembleWebService(
+                        instanceId, edmobj,
+                        categories, contactPoints, elements, identifiers, spatials, temporals, operations, relations,
+                        categoryMap, contactPointMap, identifierMap, spatialMap, temporalMap, operationMap, providerMap, relatedWsMap,
+                        versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.WebService assembleWebService(
+            String instanceId,
+            Webservice edmobj,
+            Map<String, List<WebserviceCategory>> categories,
+            Map<String, List<WebserviceContactpoint>> contactPoints,
+            Map<String, List<WebserviceElement>> elements,
+            Map<String, List<WebserviceIdentifier>> identifiers,
+            Map<String, List<WebserviceSpatial>> spatials,
+            Map<String, List<WebserviceTemporal>> temporals,
+            Map<String, List<OperationWebservice>> operations,
+            Map<String, List<WebserviceRelation>> relations,
+            Map<String, model.Category> categoryMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Identifier> identifierMap,
+            Map<String, Spatial> spatialMap,
+            Map<String, Temporal> temporalMap,
+            Map<String, model.Operation> operationMap,
+            Map<String, Organization> providerMap,
+            Map<String, Webservice> relatedWsMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.WebService o = new org.epos.eposdatamodel.WebService();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setDateModified(edmobj.getDatamodified());
+        o.setDatePublished(edmobj.getDatapublished());
+        o.setDescription(edmobj.getDescription());
+        o.setEntryPoint(edmobj.getEntrypoint());
+        o.setLicense(edmobj.getLicense());
+        o.setName(edmobj.getName());
+        o.setAaaiTypes(edmobj.getAaaitypes());
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isBlank()) {
+            for (String item : edmobj.getKeywords().split("\\|")) {
+                o.addKeywords(item);
+            }
+        }
+        
+        // Categories
+        for (WebserviceCategory rel : categories.getOrDefault(instanceId, Collections.emptyList())) {
+            model.Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addCategory(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        // ContactPoints
+        for (WebserviceContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        // Provider
+        if (edmobj.getProvider() != null) {
+            Organization provider = providerMap.get(edmobj.getProvider());
+            if (provider != null) {
+                o.setProvider(createLinkedEntity(provider, EntityNames.ORGANIZATION.name()));
+            }
+        }
+        
+        // Elements (documentation)
+        for (WebserviceElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null && ElementType.DOCUMENTATION.name().equals(el.getType())) {
+                o.addDocumentation(createLinkedEntity(el, EntityNames.DOCUMENTATION.name()));
+            }
+        }
+        
+        // Identifiers
+        for (WebserviceIdentifier rel : identifiers.getOrDefault(instanceId, Collections.emptyList())) {
+            Identifier target = identifierMap.get(rel.getIdentifierInstance().getInstanceId());
+            if (target != null) {
+                o.addIdentifier(createLinkedEntity(target, EntityNames.IDENTIFIER.name()));
+            }
+        }
+        
+        // Spatials
+        for (WebserviceSpatial rel : spatials.getOrDefault(instanceId, Collections.emptyList())) {
+            Spatial target = spatialMap.get(rel.getSpatialInstance().getInstanceId());
+            if (target != null) {
+                o.addSpatialExtentItem(createLinkedEntity(target, EntityNames.LOCATION.name()));
+            }
+        }
+        
+        // Temporals
+        for (WebserviceTemporal rel : temporals.getOrDefault(instanceId, Collections.emptyList())) {
+            Temporal target = temporalMap.get(rel.getTemporalInstance().getInstanceId());
+            if (target != null) {
+                o.addTemporalExtent(createLinkedEntity(target, EntityNames.PERIODOFTIME.name()));
+            }
+        }
+        
+        // Operations
+        for (OperationWebservice rel : operations.getOrDefault(instanceId, Collections.emptyList())) {
+            model.Operation target = operationMap.get(rel.getOperationInstance().getInstanceId());
+            if (target != null) {
+                o.addSupportedOperation(createLinkedEntity(target, EntityNames.OPERATION.name()));
+            }
+        }
+        
+        // WebService relations
+        for (WebserviceRelation rel : relations.getOrDefault(instanceId, Collections.emptyList())) {
+            Webservice target = relatedWsMap.get(rel.getId().getEntityInstanceId());
+            if (target != null) {
+                o.addWebserviceRelation(createLinkedEntity(target, EntityNames.WEBSERVICE.name()));
+            }
+        }
+        
+        // Apply versioning
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

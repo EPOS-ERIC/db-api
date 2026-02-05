@@ -11,10 +11,7 @@ import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
 
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -409,7 +406,204 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
     }
 
     private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     */
+    private List<org.epos.eposdatamodel.Facility> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Facility entities
+        Map<String, Facility> facilities = getDbaccess().batchFetchByInstanceIds(instanceIds, Facility.class);
+        if (facilities.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(facilities.keySet());
+        
+        // Step 2: Batch fetch ALL join tables
+        Map<String, List<FacilityCategory>> categories = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityCategory.class);
+        Map<String, List<FacilityContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityContactpoint.class);
+        Map<String, List<FacilityAddress>> addresses = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityAddress.class);
+        Map<String, List<FacilityIspartof>> isPartOfs = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facility1Instance", foundIds, FacilityIspartof.class);
+        Map<String, List<FacilitySpatial>> spatials = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilitySpatial.class);
+        Map<String, List<FacilityElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("facilityInstance", foundIds, FacilityElement.class);
+        
+        // Step 3: Collect all target entity IDs
+        Set<String> allCategoryIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allAddressIds = new HashSet<>();
+        Set<String> allParentFacilityIds = new HashSet<>();
+        Set<String> allSpatialIds = new HashSet<>();
+        
+        categories.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        addresses.values().forEach(list -> list.forEach(r -> {
+            if (r.getAddressInstance() != null) allAddressIds.add(r.getAddressInstance().getInstanceId());
+        }));
+        isPartOfs.values().forEach(list -> list.forEach(r -> {
+            if (r.getFacility2Instance() != null) allParentFacilityIds.add(r.getFacility2Instance().getInstanceId());
+        }));
+        spatials.values().forEach(list -> list.forEach(r -> {
+            if (r.getSpatialInstance() != null) allSpatialIds.add(r.getSpatialInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Category> categoryMap = allCategoryIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), Category.class);
+        Map<String, Contactpoint> contactPointMap = allContactPointIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Address> addressMap = allAddressIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allAddressIds), Address.class);
+        Map<String, Facility> parentFacilityMap = allParentFacilityIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allParentFacilityIds), Facility.class);
+        Map<String, Spatial> spatialMap = allSpatialIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DTOs
+        List<org.epos.eposdatamodel.Facility> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Facility edmobj = facilities.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Facility dto = assembleFacility(
+                        instanceId, edmobj, categories, contactPoints, addresses, isPartOfs, spatials, elements,
+                        categoryMap, contactPointMap, addressMap, parentFacilityMap, spatialMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Facility assembleFacility(
+            String instanceId,
+            Facility edmobj,
+            Map<String, List<FacilityCategory>> categories,
+            Map<String, List<FacilityContactpoint>> contactPoints,
+            Map<String, List<FacilityAddress>> addresses,
+            Map<String, List<FacilityIspartof>> isPartOfs,
+            Map<String, List<FacilitySpatial>> spatials,
+            Map<String, List<FacilityElement>> elements,
+            Map<String, Category> categoryMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Address> addressMap,
+            Map<String, Facility> parentFacilityMap,
+            Map<String, Spatial> spatialMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Facility o = new org.epos.eposdatamodel.Facility();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setIdentifier(edmobj.getIdentifier());
+        o.setDescription(edmobj.getDescription());
+        o.setTitle(edmobj.getTitle());
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isEmpty()) {
+            o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
+        }
+        
+        // Categories
+        for (FacilityCategory rel : categories.getOrDefault(instanceId, Collections.emptyList())) {
+            Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addCategory(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        // ContactPoints
+        for (FacilityContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        // Addresses
+        for (FacilityAddress rel : addresses.getOrDefault(instanceId, Collections.emptyList())) {
+            Address target = addressMap.get(rel.getAddressInstance().getInstanceId());
+            if (target != null) {
+                o.addAddress(createLinkedEntity(target, EntityNames.ADDRESS.name()));
+            }
+        }
+        
+        // IsPartOf
+        for (FacilityIspartof rel : isPartOfs.getOrDefault(instanceId, Collections.emptyList())) {
+            Facility target = parentFacilityMap.get(rel.getFacility2Instance().getInstanceId());
+            if (target != null) {
+                o.addIsPartOf(createLinkedEntity(target, EntityNames.FACILITY.name()));
+            }
+        }
+        
+        // Spatials
+        for (FacilitySpatial rel : spatials.getOrDefault(instanceId, Collections.emptyList())) {
+            Spatial target = spatialMap.get(rel.getSpatialInstance().getInstanceId());
+            if (target != null) {
+                o.addSpatialExtent(createLinkedEntity(target, EntityNames.LOCATION.name()));
+            }
+        }
+        
+        // Elements (pageURL)
+        for (FacilityElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null && ElementType.PAGEURL.name().equals(el.getType())) {
+                o.addPageURL(el.getValue());
+            }
+        }
+        
+        // Apply versioning
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

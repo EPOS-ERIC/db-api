@@ -351,7 +351,169 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     }
 
     private List<org.epos.eposdatamodel.Operation> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     */
+    private List<org.epos.eposdatamodel.Operation> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Operation entities
+        Map<String, Operation> operations = getDbaccess().batchFetchByInstanceIds(instanceIds, Operation.class);
+        if (operations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(operations.keySet());
+        
+        // Step 2: Batch fetch ALL join tables
+        Map<String, List<OperationWebservice>> webservices = 
+                getDbaccess().batchFetchRelationsForMultipleParents("operationInstance", foundIds, OperationWebservice.class);
+        Map<String, List<OperationPayload>> payloads = 
+                getDbaccess().batchFetchRelationsForMultipleParents("operationInstance", foundIds, OperationPayload.class);
+        Map<String, List<OperationMapping>> mappings = 
+                getDbaccess().batchFetchRelationsForMultipleParents("operationInstance", foundIds, OperationMapping.class);
+        Map<String, List<OperationElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("operationInstance", foundIds, OperationElement.class);
+        
+        // Step 3: Collect all target entity IDs
+        Set<String> allWebserviceIds = new HashSet<>();
+        Set<String> allPayloadIds = new HashSet<>();
+        Set<String> allMappingIds = new HashSet<>();
+        
+        webservices.values().forEach(list -> list.forEach(r -> {
+            if (r.getWebserviceInstance() != null) allWebserviceIds.add(r.getWebserviceInstance().getInstanceId());
+        }));
+        payloads.values().forEach(list -> list.forEach(r -> {
+            if (r.getPayloadInstance() != null) allPayloadIds.add(r.getPayloadInstance().getInstanceId());
+        }));
+        mappings.values().forEach(list -> list.forEach(r -> {
+            if (r.getMappingInstance() != null) allMappingIds.add(r.getMappingInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Webservice> webserviceMap = allWebserviceIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allWebserviceIds), Webservice.class);
+        Map<String, Payload> payloadMap = allPayloadIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allPayloadIds), Payload.class);
+        Map<String, Mapping> mappingMap = allMappingIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allMappingIds), Mapping.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DTOs
+        List<org.epos.eposdatamodel.Operation> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Operation edmobj = operations.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Operation dto = assembleOperation(
+                        instanceId, edmobj, webservices, payloads, mappings, elements,
+                        webserviceMap, payloadMap, mappingMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Operation assembleOperation(
+            String instanceId,
+            Operation edmobj,
+            Map<String, List<OperationWebservice>> webservices,
+            Map<String, List<OperationPayload>> payloads,
+            Map<String, List<OperationMapping>> mappings,
+            Map<String, List<OperationElement>> elements,
+            Map<String, Webservice> webserviceMap,
+            Map<String, Payload> payloadMap,
+            Map<String, Mapping> mappingMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Operation o = new org.epos.eposdatamodel.Operation();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setMethod(edmobj.getMethod());
+        o.setTemplate(edmobj.getTemplate());
+        
+        // Webservices
+        for (OperationWebservice rel : webservices.getOrDefault(instanceId, Collections.emptyList())) {
+            Webservice target = webserviceMap.get(rel.getWebserviceInstance().getInstanceId());
+            if (target != null) {
+                o.addWebservice(createLinkedEntity(target, EntityNames.WEBSERVICE.name()));
+            }
+        }
+        
+        // Payloads
+        for (OperationPayload rel : payloads.getOrDefault(instanceId, Collections.emptyList())) {
+            Payload target = payloadMap.get(rel.getPayloadInstance().getInstanceId());
+            if (target != null) {
+                o.addPayload(createLinkedEntity(target, EntityNames.PAYLOAD.name()));
+            }
+        }
+        
+        // Mappings
+        for (OperationMapping rel : mappings.getOrDefault(instanceId, Collections.emptyList())) {
+            Mapping target = mappingMap.get(rel.getMappingInstance().getInstanceId());
+            if (target != null) {
+                o.addMapping(createLinkedEntity(target, EntityNames.MAPPING.name()));
+            }
+        }
+        
+        // Build IriTemplate
+        IriTemplate iriTemplateObject = new IriTemplate();
+        iriTemplateObject.setMappings(o.getMapping());
+        iriTemplateObject.setTemplate(o.getTemplate());
+        o.setIriTemplateObject(iriTemplateObject);
+        
+        // Elements (returns)
+        for (OperationElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null && ElementType.RETURNS.name().equals(el.getType())) {
+                o.addReturns(el.getValue());
+            }
+        }
+        
+        // Apply versioning
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

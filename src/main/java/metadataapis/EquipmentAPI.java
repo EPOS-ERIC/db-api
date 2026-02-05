@@ -485,7 +485,226 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
     }
 
     private List<org.epos.eposdatamodel.Equipment> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     */
+    private List<org.epos.eposdatamodel.Equipment> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Equipment entities
+        Map<String, Equipment> equipments = getDbaccess().batchFetchByInstanceIds(instanceIds, Equipment.class);
+        if (equipments.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(equipments.keySet());
+        
+        // Step 2: Batch fetch ALL join tables
+        Map<String, List<EquipmentCategory>> categories = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipmentInstance", foundIds, EquipmentCategory.class);
+        Map<String, List<EquipmentContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipmentInstance", foundIds, EquipmentContactpoint.class);
+        Map<String, List<EquipmentIspartof>> isPartOfs = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipment", foundIds, EquipmentIspartof.class);
+        Map<String, List<EquipmentSpatial>> spatials = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipmentInstance", foundIds, EquipmentSpatial.class);
+        Map<String, List<EquipmentTemporal>> temporals = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipmentInstance", foundIds, EquipmentTemporal.class);
+        Map<String, List<EquipmentElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("equipmentInstance", foundIds, EquipmentElement.class);
+        
+        // Step 3: Collect all target entity IDs
+        Set<String> allCategoryIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allFacilityIds = new HashSet<>();
+        Set<String> allEquipmentIds = new HashSet<>();
+        Set<String> allSpatialIds = new HashSet<>();
+        Set<String> allTemporalIds = new HashSet<>();
+        
+        categories.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        isPartOfs.values().forEach(list -> list.forEach(r -> {
+            if (EntityNames.FACILITY.name().equals(r.getResourceEntity())) {
+                allFacilityIds.add(r.getEntityInstanceId());
+            } else if (EntityNames.EQUIPMENT.name().equals(r.getResourceEntity())) {
+                allEquipmentIds.add(r.getEntityInstanceId());
+            }
+        }));
+        spatials.values().forEach(list -> list.forEach(r -> {
+            if (r.getSpatialInstance() != null) allSpatialIds.add(r.getSpatialInstance().getInstanceId());
+        }));
+        temporals.values().forEach(list -> list.forEach(r -> {
+            if (r.getTemporalInstance() != null) allTemporalIds.add(r.getTemporalInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Category> categoryMap = allCategoryIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), Category.class);
+        Map<String, Contactpoint> contactPointMap = allContactPointIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Facility> facilityMap = allFacilityIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allFacilityIds), Facility.class);
+        Map<String, Equipment> equipmentParentMap = allEquipmentIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allEquipmentIds), Equipment.class);
+        Map<String, Spatial> spatialMap = allSpatialIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
+        Map<String, Temporal> temporalMap = allTemporalIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allTemporalIds), Temporal.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DTOs
+        List<org.epos.eposdatamodel.Equipment> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Equipment edmobj = equipments.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Equipment dto = assembleEquipment(
+                        instanceId, edmobj, categories, contactPoints, isPartOfs, spatials, temporals, elements,
+                        categoryMap, contactPointMap, facilityMap, equipmentParentMap, spatialMap, temporalMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Equipment assembleEquipment(
+            String instanceId,
+            Equipment edmobj,
+            Map<String, List<EquipmentCategory>> categories,
+            Map<String, List<EquipmentContactpoint>> contactPoints,
+            Map<String, List<EquipmentIspartof>> isPartOfs,
+            Map<String, List<EquipmentSpatial>> spatials,
+            Map<String, List<EquipmentTemporal>> temporals,
+            Map<String, List<EquipmentElement>> elements,
+            Map<String, Category> categoryMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Facility> facilityMap,
+            Map<String, Equipment> equipmentParentMap,
+            Map<String, Spatial> spatialMap,
+            Map<String, Temporal> temporalMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Equipment o = new org.epos.eposdatamodel.Equipment();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setResolution(edmobj.getResolution());
+        o.setDescription(edmobj.getDescription());
+        o.setDynamicRange(edmobj.getDynamicrange());
+        o.setFilter(edmobj.getFilter());
+        o.setIdentifier(edmobj.getIdentifier());
+        o.setName(edmobj.getName());
+        o.setPageURL(edmobj.getPageurl());
+        o.setOrientation(edmobj.getOrientation());
+        o.setSamplePeriod(edmobj.getSampleperiod());
+        o.setSerialNumber(edmobj.getSerialnumber());
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isEmpty()) {
+            o.setKeywords(Arrays.asList(edmobj.getKeywords().split(",")));
+        }
+        
+        // Categories
+        for (EquipmentCategory rel : categories.getOrDefault(instanceId, Collections.emptyList())) {
+            Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addCategory(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        // ContactPoints
+        for (EquipmentContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        // IsPartOf (polymorphic: Facility or Equipment)
+        for (EquipmentIspartof rel : isPartOfs.getOrDefault(instanceId, Collections.emptyList())) {
+            if (EntityNames.FACILITY.name().equals(rel.getResourceEntity())) {
+                Facility target = facilityMap.get(rel.getEntityInstanceId());
+                if (target != null) {
+                    o.addIsPartOf(createLinkedEntity(target, EntityNames.FACILITY.name()));
+                }
+            } else if (EntityNames.EQUIPMENT.name().equals(rel.getResourceEntity())) {
+                Equipment target = equipmentParentMap.get(rel.getEntityInstanceId());
+                if (target != null) {
+                    o.addIsPartOf(createLinkedEntity(target, EntityNames.EQUIPMENT.name()));
+                }
+            }
+        }
+        
+        // Spatials
+        for (EquipmentSpatial rel : spatials.getOrDefault(instanceId, Collections.emptyList())) {
+            Spatial target = spatialMap.get(rel.getSpatialInstance().getInstanceId());
+            if (target != null) {
+                o.addSpatialExtentItem(createLinkedEntity(target, EntityNames.LOCATION.name()));
+            }
+        }
+        
+        // Temporals
+        for (EquipmentTemporal rel : temporals.getOrDefault(instanceId, Collections.emptyList())) {
+            Temporal target = temporalMap.get(rel.getTemporalInstance().getInstanceId());
+            if (target != null) {
+                o.addTemporalExtent(createLinkedEntity(target, EntityNames.PERIODOFTIME.name()));
+            }
+        }
+        
+        // Elements (pageURL) - Note: pageURL is already a direct field, but check for element-based version
+        for (EquipmentElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null && ElementType.PAGEURL.name().equals(el.getType())) {
+                o.setPageURL(el.getValue());
+            }
+        }
+        
+        // Apply versioning
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

@@ -582,7 +582,231 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     }
 
     private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     * Instead of N+1 queries per entity, this fetches all data in batches.
+     */
+    private List<org.epos.eposdatamodel.Organization> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Organization entities
+        Map<String, Organization> organizations = getDbaccess().batchFetchByInstanceIds(instanceIds, Organization.class);
+        
+        if (organizations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(organizations.keySet());
+        
+        // Step 2: Batch fetch ALL join tables for ALL organizations at once
+        Map<String, List<OrganizationIdentifier>> identifiers = 
+                getDbaccess().batchFetchRelationsForMultipleParents("organizationInstance", foundIds, OrganizationIdentifier.class);
+        Map<String, List<OrganizationContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("organizationInstance", foundIds, OrganizationContactpoint.class);
+        Map<String, List<OrganizationElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("organizationInstance", foundIds, OrganizationElement.class);
+        Map<String, List<OrganizationOwn>> owns = 
+                getDbaccess().batchFetchRelationsForMultipleParents("organization", foundIds, OrganizationOwn.class);
+        Map<String, List<OrganizationMemberof>> memberOfs = 
+                getDbaccess().batchFetchRelationsForMultipleParents("organization2Instance", foundIds, OrganizationMemberof.class);
+        
+        // Step 3: Collect all target entity IDs for batch fetching
+        Set<String> allIdentifierIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allAddressIds = new HashSet<>();
+        Set<String> allFacilityIds = new HashSet<>();
+        Set<String> allEquipmentIds = new HashSet<>();
+        Set<String> allParentOrgIds = new HashSet<>();
+        
+        identifiers.values().forEach(list -> list.forEach(r -> {
+            if (r.getIdentifierInstance() != null) allIdentifierIds.add(r.getIdentifierInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        // Collect addresses from the Organization entities directly
+        for (Organization org : organizations.values()) {
+            if (org.getAddress() != null) allAddressIds.add(org.getAddress().getInstanceId());
+        }
+        owns.values().forEach(list -> list.forEach(r -> {
+            if (EntityNames.FACILITY.name().equals(r.getResourceEntity())) allFacilityIds.add(r.getEntityInstanceId());
+            if (EntityNames.EQUIPMENT.name().equals(r.getResourceEntity())) allEquipmentIds.add(r.getEntityInstanceId());
+        }));
+        memberOfs.values().forEach(list -> list.forEach(r -> {
+            if (r.getOrganization1Instance() != null) allParentOrgIds.add(r.getOrganization1Instance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Identifier> identifierMap = allIdentifierIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allIdentifierIds), Identifier.class);
+        Map<String, Contactpoint> contactPointMap = allContactPointIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Address> addressMap = allAddressIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allAddressIds), Address.class);
+        Map<String, Facility> facilityMap = allFacilityIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allFacilityIds), Facility.class);
+        Map<String, Equipment> equipmentMap = allEquipmentIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allEquipmentIds), Equipment.class);
+        Map<String, Organization> parentOrgMap = allParentOrgIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allParentOrgIds), Organization.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble all DTOs from pre-fetched data
+        List<org.epos.eposdatamodel.Organization> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Organization edmobj = organizations.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Organization dto = assembleOrganization(
+                        instanceId, edmobj,
+                        identifiers, contactPoints, elements, owns, memberOfs,
+                        identifierMap, contactPointMap, addressMap, facilityMap, equipmentMap, parentOrgMap,
+                        versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    /**
+     * Assembles an Organization DTO from pre-fetched data without additional queries.
+     */
+    private org.epos.eposdatamodel.Organization assembleOrganization(
+            String instanceId,
+            Organization edmobj,
+            Map<String, List<OrganizationIdentifier>> identifiers,
+            Map<String, List<OrganizationContactpoint>> contactPoints,
+            Map<String, List<OrganizationElement>> elements,
+            Map<String, List<OrganizationOwn>> owns,
+            Map<String, List<OrganizationMemberof>> memberOfs,
+            Map<String, Identifier> identifierMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Address> addressMap,
+            Map<String, Facility> facilityMap,
+            Map<String, Equipment> equipmentMap,
+            Map<String, Organization> parentOrgMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Organization o = new org.epos.eposdatamodel.Organization();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setAcronym(edmobj.getAcronym());
+        o.setLeiCode(edmobj.getLeicode());
+        o.setLogo(edmobj.getLogo());
+        o.setURL(edmobj.getUrl());
+        o.setType(edmobj.getType());
+        o.setMaturity(edmobj.getMaturity());
+        
+        // Parse legalName
+        if (edmobj.getLegalname() != null && !edmobj.getLegalname().isBlank()) {
+            for (String item : edmobj.getLegalname().split("\\|")) {
+                o.addLegalName(item);
+            }
+        }
+        
+        // Add identifier relations
+        for (OrganizationIdentifier rel : identifiers.getOrDefault(instanceId, Collections.emptyList())) {
+            Identifier target = identifierMap.get(rel.getIdentifierInstance().getInstanceId());
+            if (target != null) {
+                o.addIdentifier(createLinkedEntity(target, EntityNames.IDENTIFIER.name()));
+            }
+        }
+        
+        // Add address (single field)
+        if (edmobj.getAddress() != null) {
+            Address addr = addressMap.get(edmobj.getAddress().getInstanceId());
+            if (addr != null) {
+                o.setAddress(createLinkedEntity(addr, EntityNames.ADDRESS.name()));
+            }
+        }
+        
+        // Add contactPoint relations
+        for (OrganizationContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        // Add element data (telephone, email)
+        for (OrganizationElement item : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = item.getElementInstance();
+            if (el != null) {
+                if (ElementType.TELEPHONE.name().equals(el.getType())) o.addTelephone(el.getValue());
+                if (ElementType.EMAIL.name().equals(el.getType())) o.addEmail(el.getValue());
+            }
+        }
+        
+        // Add owns relations (polymorphic: Facility or Equipment)
+        for (OrganizationOwn rel : owns.getOrDefault(instanceId, Collections.emptyList())) {
+            if (EntityNames.FACILITY.name().equals(rel.getResourceEntity())) {
+                Facility target = facilityMap.get(rel.getEntityInstanceId());
+                if (target != null) {
+                    o.addOwns(createLinkedEntity(target, EntityNames.FACILITY.name()));
+                }
+            } else if (EntityNames.EQUIPMENT.name().equals(rel.getResourceEntity())) {
+                Equipment target = equipmentMap.get(rel.getEntityInstanceId());
+                if (target != null) {
+                    o.addOwns(createLinkedEntity(target, EntityNames.EQUIPMENT.name()));
+                }
+            }
+        }
+        
+        // Add memberOf relations
+        for (OrganizationMemberof rel : memberOfs.getOrDefault(instanceId, Collections.emptyList())) {
+            Organization parent = parentOrgMap.get(rel.getOrganization1Instance().getInstanceId());
+            if (parent != null) {
+                o.addMemberOf(createLinkedEntity(parent, EntityNames.ORGANIZATION.name()));
+            }
+        }
+        
+        // Apply versioning from pre-fetched data
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    /**
+     * Creates a LinkedEntity from a JPA entity.
+     */
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

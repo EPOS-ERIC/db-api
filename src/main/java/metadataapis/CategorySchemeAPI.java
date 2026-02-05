@@ -450,7 +450,98 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     }
 
     private List<org.epos.eposdatamodel.CategoryScheme> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    private List<org.epos.eposdatamodel.CategoryScheme> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, model.CategoryScheme> schemes = getDbaccess().batchFetchByInstanceIds(instanceIds, model.CategoryScheme.class);
+        if (schemes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(schemes.keySet());
+        
+        Map<String, List<CategoryHastopconcept>> topConcepts = 
+                getDbaccess().batchFetchRelationsForMultipleParents("categorySchemeInstance", foundIds, CategoryHastopconcept.class);
+        
+        Set<String> allCategoryIds = new HashSet<>();
+        topConcepts.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        
+        Map<String, Category> categoryMap = allCategoryIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), Category.class);
+        
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        List<org.epos.eposdatamodel.CategoryScheme> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            model.CategoryScheme edmobj = schemes.get(instanceId);
+            if (edmobj != null) {
+                results.add(assembleCategoryScheme(instanceId, edmobj, topConcepts, categoryMap, versioningMap));
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.CategoryScheme assembleCategoryScheme(
+            String instanceId, model.CategoryScheme edmobj,
+            Map<String, List<CategoryHastopconcept>> topConcepts,
+            Map<String, Category> categoryMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.CategoryScheme o = new org.epos.eposdatamodel.CategoryScheme();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setTitle(edmobj.getName());
+        o.setDescription(edmobj.getDescription());
+        o.setCode(edmobj.getCode());
+        o.setHomepage(edmobj.getHomepage());
+        o.setLogo(edmobj.getLogo());
+        o.setColor(edmobj.getColor());
+        o.setOrderitemnumber(edmobj.getOrderitemnumber());
+        
+        for (CategoryHastopconcept rel : topConcepts.getOrDefault(instanceId, Collections.emptyList())) {
+            Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addTopConcepts(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

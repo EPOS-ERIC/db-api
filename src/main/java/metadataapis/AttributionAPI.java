@@ -364,7 +364,100 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
     }
 
     private List<org.epos.eposdatamodel.Attribution> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    private List<org.epos.eposdatamodel.Attribution> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Attribution> attributions = getDbaccess().batchFetchByInstanceIds(instanceIds, Attribution.class);
+        if (attributions.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(attributions.keySet());
+        
+        Map<String, List<AttributionRole>> roles = 
+                getDbaccess().batchFetchRelationsForMultipleParents("attributionInstance", foundIds, AttributionRole.class);
+        
+        // Collect agent IDs (Organizations)
+        Set<String> allOrganizationIds = new HashSet<>();
+        for (Attribution attr : attributions.values()) {
+            if (attr.getAgentId() != null && "ORGANIZATION".equals(attr.getAgentType())) {
+                allOrganizationIds.add(attr.getAgentId());
+            }
+        }
+        
+        Map<String, Organization> organizationMap = allOrganizationIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOrganizationIds), Organization.class);
+        
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        List<org.epos.eposdatamodel.Attribution> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Attribution edmobj = attributions.get(instanceId);
+            if (edmobj != null) {
+                results.add(assembleAttribution(instanceId, edmobj, roles, organizationMap, versioningMap));
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Attribution assembleAttribution(
+            String instanceId, Attribution edmobj,
+            Map<String, List<AttributionRole>> roles,
+            Map<String, Organization> organizationMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Attribution o = new org.epos.eposdatamodel.Attribution();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        
+        for (AttributionRole role : roles.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addRole(role.getRoletype());
+        }
+        
+        if (edmobj.getAgentId() != null && edmobj.getAgentType() != null) {
+            if ("ORGANIZATION".equals(edmobj.getAgentType())) {
+                Organization org = organizationMap.get(edmobj.getAgentId());
+                if (org != null) {
+                    o.setAgent(createLinkedEntity(org, EntityNames.ORGANIZATION.name()));
+                }
+            }
+        }
+        
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

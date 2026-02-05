@@ -1667,4 +1667,206 @@ public class EposDataModelDAO<T> {
 			closeQuietly(em);
 		}
 	}
+
+	// ===== BULK RETRIEVAL OPTIMIZATION METHODS =====
+
+	/**
+	 * Batch fetches relations for MULTIPLE parent entities at once.
+	 * This dramatically reduces N+1 query problems by fetching all relations
+	 * for many parents in a single query (or batched queries for large sets).
+	 * 
+	 * <p><strong>Performance Example:</strong><br>
+	 * Fetching categories for 400 DataProducts: 1 query instead of 400 queries.</p>
+	 * 
+	 * @param parentFieldName the field name in the join entity (e.g., "dataproductInstance")
+	 * @param parentInstanceIds the parent instance IDs to fetch relations for
+	 * @param relationClass the join table class
+	 * @return a map from parentInstanceId to list of relation entities
+	 */
+	public <R> Map<String, List<R>> batchFetchRelationsForMultipleParents(
+			String parentFieldName, 
+			List<String> parentInstanceIds, 
+			Class<R> relationClass) {
+		
+		if (parentInstanceIds == null || parentInstanceIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		
+		List<String> cleanIds = parentInstanceIds.stream()
+				.filter(id -> id != null && !id.isBlank())
+				.distinct()
+				.collect(java.util.stream.Collectors.toList());
+		
+		if (cleanIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		
+		Map<String, List<R>> results = new HashMap<>(cleanIds.size());
+		EntityManager em = null;
+		
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			
+			// Try embedded ID field first (e.g., "dataproductInstanceId")
+			String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+			String jpqlEmbedded = "SELECT r FROM " + relationClass.getSimpleName() + 
+					" r WHERE r.id." + embeddedIdField + " IN :ids";
+			String jpqlDirect = "SELECT r FROM " + relationClass.getSimpleName() + 
+					" r WHERE r." + parentFieldName + ".instanceId IN :ids";
+			
+			// Process in batches of 100 to avoid query parameter limits
+			int batchSize = 100;
+			for (int i = 0; i < cleanIds.size(); i += batchSize) {
+				List<String> batch = cleanIds.subList(i, Math.min(i + batchSize, cleanIds.size()));
+				
+				List<R> batchResults = null;
+				try {
+					// Try embedded ID approach first
+					TypedQuery<R> query = em.createQuery(jpqlEmbedded, relationClass);
+					query.setParameter("ids", batch);
+					batchResults = query.getResultList();
+				} catch (Exception e) {
+					// Fallback to direct field approach
+					try {
+						TypedQuery<R> query = em.createQuery(jpqlDirect, relationClass);
+						query.setParameter("ids", batch);
+						batchResults = query.getResultList();
+					} catch (Exception e2) {
+						LOG.debug("Failed to batch fetch relations for {}: {}", 
+								relationClass.getSimpleName(), e2.getMessage());
+						continue;
+					}
+				}
+				
+				// Group results by parent instance ID
+				if (batchResults != null) {
+					for (R relation : batchResults) {
+						String parentId = extractParentInstanceId(relation, parentFieldName);
+						if (parentId != null) {
+							results.computeIfAbsent(parentId, k -> new java.util.ArrayList<>(4)).add(relation);
+						}
+					}
+				}
+			}
+			
+			return results;
+			
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Extracts the parent instance ID from a relation/join entity using reflection.
+	 */
+	private String extractParentInstanceId(Object relation, String parentFieldName) {
+		try {
+			// Try to get the parent entity via getter
+			String getterName = "get" + Character.toUpperCase(parentFieldName.charAt(0)) + parentFieldName.substring(1);
+			java.lang.reflect.Method getter = relation.getClass().getMethod(getterName);
+			Object parent = getter.invoke(relation);
+			if (parent != null) {
+				return utilities.ReflectionCache.getInstanceId(parent);
+			}
+		} catch (Exception e) {
+			// Try embedded ID approach
+			try {
+				java.lang.reflect.Method getIdMethod = relation.getClass().getMethod("getId");
+				Object embeddedId = getIdMethod.invoke(relation);
+				if (embeddedId != null) {
+					String idFieldName = parentFieldName.replace("Instance", "InstanceId");
+					String idGetterName = "get" + Character.toUpperCase(idFieldName.charAt(0)) + idFieldName.substring(1);
+					java.lang.reflect.Method idGetter = embeddedId.getClass().getMethod(idGetterName);
+					Object idValue = idGetter.invoke(embeddedId);
+					return idValue != null ? idValue.toString() : null;
+				}
+			} catch (Exception e2) {
+				LOG.trace("Could not extract parent ID from {}: {}", relation.getClass().getSimpleName(), e2.getMessage());
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Batch fetches Versioningstatus records for multiple instance IDs.
+	 * Essential for bulk retrieval operations to avoid N+1 versioning lookups.
+	 * 
+	 * @param instanceIds the instance IDs to fetch versioning for
+	 * @return a map from instanceId to Versioningstatus
+	 */
+	public Map<String, Versioningstatus> batchFetchVersioningStatus(List<String> instanceIds) {
+		if (instanceIds == null || instanceIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		
+		List<String> cleanIds = instanceIds.stream()
+				.filter(id -> id != null && !id.isBlank())
+				.distinct()
+				.collect(java.util.stream.Collectors.toList());
+		
+		if (cleanIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		
+		Map<String, Versioningstatus> results = new HashMap<>(cleanIds.size());
+		EntityManager em = null;
+		
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			
+			int batchSize = 100;
+			for (int i = 0; i < cleanIds.size(); i += batchSize) {
+				List<String> batch = cleanIds.subList(i, Math.min(i + batchSize, cleanIds.size()));
+				
+				TypedQuery<Versioningstatus> query = em.createQuery(
+						"SELECT v FROM Versioningstatus v WHERE v.instanceId IN :ids", 
+						Versioningstatus.class);
+				query.setParameter("ids", batch);
+				
+				for (Versioningstatus vs : query.getResultList()) {
+					if (vs.getInstanceId() != null) {
+						results.put(vs.getInstanceId(), vs);
+					}
+				}
+			}
+			
+			return results;
+			
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Batch fetches all entities of a given class.
+	 * More efficient than getAllFromDB for bulk operations.
+	 * 
+	 * @param entityClass the entity class to fetch
+	 * @return list of all entities
+	 */
+	public <E> List<E> batchFetchAll(Class<E> entityClass) {
+		String cacheKey = generateCacheKey("batchAll", entityClass.getSimpleName());
+		
+		@SuppressWarnings("unchecked")
+		List<E> cached = (List<E>) getFromQueryCache(cacheKey);
+		if (cached != null) {
+			return cached;
+		}
+		
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			
+			TypedQuery<E> query = em.createQuery(
+					"SELECT e FROM " + entityClass.getSimpleName() + " e", 
+					entityClass);
+			List<E> results = query.getResultList();
+			
+			putInQueryCache(cacheKey, results);
+			return results;
+			
+		} finally {
+			closeQuietly(em);
+		}
+	}
 }

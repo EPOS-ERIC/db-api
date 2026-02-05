@@ -297,7 +297,123 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     }
 
     private List<org.epos.eposdatamodel.ContactPoint> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    private List<org.epos.eposdatamodel.ContactPoint> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Contactpoint> contactpoints = getDbaccess().batchFetchByInstanceIds(instanceIds, Contactpoint.class);
+        if (contactpoints.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(contactpoints.keySet());
+        
+        Map<String, List<ContactpointElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("contactpointInstance", foundIds, ContactpointElement.class);
+        Map<String, List<OrganizationContactpoint>> orgContactpoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("contactpointInstance", foundIds, OrganizationContactpoint.class);
+        Map<String, List<PersonContactpoint>> personContactpoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("contactpointInstance", foundIds, PersonContactpoint.class);
+        
+        Set<String> allOrganizationIds = new HashSet<>();
+        Set<String> allPersonIds = new HashSet<>();
+        
+        orgContactpoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getOrganizationInstance() != null) allOrganizationIds.add(r.getOrganizationInstance().getInstanceId());
+        }));
+        personContactpoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getPersonInstance() != null) allPersonIds.add(r.getPersonInstance().getInstanceId());
+        }));
+        
+        Map<String, Organization> organizationMap = allOrganizationIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOrganizationIds), Organization.class);
+        Map<String, Person> personMap = allPersonIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allPersonIds), Person.class);
+        
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        List<org.epos.eposdatamodel.ContactPoint> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Contactpoint edmobj = contactpoints.get(instanceId);
+            if (edmobj != null) {
+                results.add(assembleContactPoint(instanceId, edmobj, elements, orgContactpoints, personContactpoints,
+                        organizationMap, personMap, versioningMap));
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.ContactPoint assembleContactPoint(
+            String instanceId, Contactpoint edmobj,
+            Map<String, List<ContactpointElement>> elements,
+            Map<String, List<OrganizationContactpoint>> orgContactpoints,
+            Map<String, List<PersonContactpoint>> personContactpoints,
+            Map<String, Organization> organizationMap,
+            Map<String, Person> personMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.ContactPoint o = new org.epos.eposdatamodel.ContactPoint();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setRole(edmobj.getRole());
+        
+        for (ContactpointElement item : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = item.getElementInstance();
+            if (el != null) {
+                if (ElementType.TELEPHONE.name().equals(el.getType())) o.addTelephone(el.getValue());
+                if (ElementType.EMAIL.name().equals(el.getType())) o.addEmail(el.getValue());
+                if (ElementType.LANGUAGE.name().equals(el.getType())) o.addLanguage(el.getValue());
+            }
+        }
+        
+        for (OrganizationContactpoint rel : orgContactpoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Organization target = organizationMap.get(rel.getOrganizationInstance().getInstanceId());
+            if (target != null) {
+                o.setOrganization(createLinkedEntity(target, EntityNames.ORGANIZATION.name()));
+            }
+        }
+        
+        for (PersonContactpoint rel : personContactpoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Person target = personMap.get(rel.getPersonInstance().getInstanceId());
+            if (target != null) {
+                o.setPerson(createLinkedEntity(target, EntityNames.PERSON.name()));
+            }
+        }
+        
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

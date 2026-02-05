@@ -292,7 +292,85 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     }
 
     private List<org.epos.eposdatamodel.Mapping> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    private List<org.epos.eposdatamodel.Mapping> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        java.util.Map<String, Mapping> mappings = getDbaccess().batchFetchByInstanceIds(instanceIds, Mapping.class);
+        if (mappings.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        
+        List<String> foundIds = new java.util.ArrayList<>(mappings.keySet());
+        
+        java.util.Map<String, List<MappingElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("mappingInstance", foundIds, MappingElement.class);
+        
+        java.util.Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        List<org.epos.eposdatamodel.Mapping> results = new java.util.ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Mapping edmobj = mappings.get(instanceId);
+            if (edmobj != null) {
+                results.add(assembleMapping(instanceId, edmobj, elements, versioningMap));
+            }
+        }
+        
+        return results;
+    }
+
+    private org.epos.eposdatamodel.Mapping assembleMapping(
+            String instanceId, Mapping edmobj,
+            java.util.Map<String, List<MappingElement>> elements,
+            java.util.Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Mapping o = new org.epos.eposdatamodel.Mapping();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setLabel(edmobj.getLabel());
+        o.setValuePattern(edmobj.getValuepattern());
+        o.setDefaultValue(edmobj.getDefaultvalue());
+        o.setMaxValue(edmobj.getMaxvalue());
+        o.setMinValue(edmobj.getMinvalue());
+        o.setMultipleValues(edmobj.getMultipleValues());
+        o.setReadOnlyValue(edmobj.getReadOnlyValue());
+        o.setRequired(edmobj.getRequired() != null ? Boolean.toString(edmobj.getRequired()) : null);
+        o.setRange(edmobj.getRange());
+        o.setProperty(edmobj.getProperty());
+        o.setVariable(edmobj.getVariable());
+        o.setHealthCheckVariable(edmobj.getHealthcheckvalue());
+        
+        for (MappingElement item : elements.getOrDefault(instanceId, java.util.Collections.emptyList())) {
+            Element el = item.getElementInstance();
+            if (el != null && ElementType.PARAMVALUE.name().equals(el.getType())) {
+                o.addParamValue(el.getValue());
+            }
+        }
+        
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
     }
 
     @Override

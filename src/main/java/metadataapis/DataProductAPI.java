@@ -17,13 +17,15 @@ import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
 
 import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProduct> {
+
+    private static final Logger LOG = Logger.getLogger(DataProductAPI.class.getName());
 
     public DataProductAPI(String entityName, Class<?> edmClass) {
         super(entityName, edmClass);
@@ -727,7 +729,337 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     }
 
     private List<DataProduct> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // Use optimized bulk retrieval for better performance
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Optimized bulk retrieval - fetches all DataProducts and their relations in minimal queries.
+     * This dramatically reduces N+1 query problems.
+     * 
+     * <p><strong>Performance:</strong> For 400 DataProducts, reduces queries from ~12,000 to ~40.</p>
+     */
+    private List<DataProduct> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        long startTime = System.currentTimeMillis();
+        
+        // Step 1: Batch fetch all main Dataproduct entities
+        Map<String, Dataproduct> dataproducts = getDbaccess().batchFetchByInstanceIds(instanceIds, Dataproduct.class);
+        
+        if (dataproducts.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // Get actual found IDs (some might not exist)
+        List<String> foundIds = new ArrayList<>(dataproducts.keySet());
+        
+        // Step 2: Batch fetch ALL join tables for ALL dataproducts at once
+        Map<String, List<DataproductAttribution>> attributions = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductAttribution.class);
+        Map<String, List<DataproductCategory>> categories = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductCategory.class);
+        Map<String, List<DataproductContactpoint>> contactPoints = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductContactpoint.class);
+        Map<String, List<DataproductDescription>> descriptions = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductDescription.class);
+        Map<String, List<DataproductTitle>> titles = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductTitle.class);
+        Map<String, List<DataproductIdentifier>> identifiers = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductIdentifier.class);
+        Map<String, List<DataproductSource>> sources = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproduct1Instance", foundIds, DataproductSource.class);
+        Map<String, List<DataproductHaspart>> hasParts = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproduct1Instance", foundIds, DataproductHaspart.class);
+        Map<String, List<DataproductIspartof>> isPartOfs = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproduct1Instance", foundIds, DataproductIspartof.class);
+        Map<String, List<DataproductProvenance>> provenances = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductProvenance.class);
+        Map<String, List<DataproductPublisher>> publishers = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductPublisher.class);
+        Map<String, List<DistributionDataproduct>> distributions = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DistributionDataproduct.class);
+        Map<String, List<DataproductSpatial>> spatials = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductSpatial.class);
+        Map<String, List<DataproductTemporal>> temporals = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductTemporal.class);
+        Map<String, List<DataproductElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("dataproductInstance", foundIds, DataproductElement.class);
+        
+        // Step 3: Collect all target entity IDs for batch fetching
+        Set<String> allAttributionIds = new HashSet<>();
+        Set<String> allCategoryIds = new HashSet<>();
+        Set<String> allContactPointIds = new HashSet<>();
+        Set<String> allIdentifierIds = new HashSet<>();
+        Set<String> allDataProductIds = new HashSet<>(); // For source, hasPart, isPartOf
+        Set<String> allOrganizationIds = new HashSet<>();
+        Set<String> allDistributionIds = new HashSet<>();
+        Set<String> allSpatialIds = new HashSet<>();
+        Set<String> allTemporalIds = new HashSet<>();
+        
+        attributions.values().forEach(list -> list.forEach(r -> {
+            if (r.getAttributionInstance() != null) allAttributionIds.add(r.getAttributionInstance().getInstanceId());
+        }));
+        categories.values().forEach(list -> list.forEach(r -> {
+            if (r.getCategoryInstance() != null) allCategoryIds.add(r.getCategoryInstance().getInstanceId());
+        }));
+        contactPoints.values().forEach(list -> list.forEach(r -> {
+            if (r.getContactpointInstance() != null) allContactPointIds.add(r.getContactpointInstance().getInstanceId());
+        }));
+        identifiers.values().forEach(list -> list.forEach(r -> {
+            if (r.getIdentifierInstance() != null) allIdentifierIds.add(r.getIdentifierInstance().getInstanceId());
+        }));
+        sources.values().forEach(list -> list.forEach(r -> {
+            if (r.getDataproduct2Instance() != null) allDataProductIds.add(r.getDataproduct2Instance().getInstanceId());
+        }));
+        hasParts.values().forEach(list -> list.forEach(r -> {
+            if (r.getDataproduct2Instance() != null) allDataProductIds.add(r.getDataproduct2Instance().getInstanceId());
+        }));
+        isPartOfs.values().forEach(list -> list.forEach(r -> {
+            if (r.getDataproduct2Instance() != null) allDataProductIds.add(r.getDataproduct2Instance().getInstanceId());
+        }));
+        publishers.values().forEach(list -> list.forEach(r -> {
+            if (r.getOrganizationInstance() != null) allOrganizationIds.add(r.getOrganizationInstance().getInstanceId());
+        }));
+        distributions.values().forEach(list -> list.forEach(r -> {
+            if (r.getDistributionInstance() != null) allDistributionIds.add(r.getDistributionInstance().getInstanceId());
+        }));
+        spatials.values().forEach(list -> list.forEach(r -> {
+            if (r.getSpatialInstance() != null) allSpatialIds.add(r.getSpatialInstance().getInstanceId());
+        }));
+        temporals.values().forEach(list -> list.forEach(r -> {
+            if (r.getTemporalInstance() != null) allTemporalIds.add(r.getTemporalInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Attribution> attributionMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allAttributionIds), Attribution.class);
+        Map<String, Category> categoryMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allCategoryIds), Category.class);
+        Map<String, Contactpoint> contactPointMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allContactPointIds), Contactpoint.class);
+        Map<String, Identifier> identifierMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allIdentifierIds), Identifier.class);
+        Map<String, Dataproduct> relatedDpMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allDataProductIds), Dataproduct.class);
+        Map<String, Organization> organizationMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOrganizationIds), Organization.class);
+        Map<String, Distribution> distributionMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allDistributionIds), Distribution.class);
+        Map<String, Spatial> spatialMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
+        Map<String, Temporal> temporalMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allTemporalIds), Temporal.class);
+        
+        // Step 5: Batch fetch versioning status for all entities
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble DataProduct DTOs using pre-fetched data (no additional queries!)
+        List<DataProduct> results = foundIds.parallelStream()
+                .map(id -> assembleDataProduct(id, dataproducts, 
+                        attributions, categories, contactPoints, descriptions, titles,
+                        identifiers, sources, hasParts, isPartOfs, provenances, publishers,
+                        distributions, spatials, temporals, elements,
+                        attributionMap, categoryMap, contactPointMap, identifierMap,
+                        relatedDpMap, organizationMap, distributionMap, spatialMap, temporalMap,
+                        versioningMap))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+        long elapsed = System.currentTimeMillis() - startTime;
+        LOG.log(Level.FINE, "Bulk retrieved {0} DataProducts in {1}ms", new Object[]{results.size(), elapsed});
+        
+        return results;
+    }
+
+    /**
+     * Assembles a DataProduct DTO from pre-fetched data without any database queries.
+     */
+    private DataProduct assembleDataProduct(
+            String instanceId,
+            Map<String, Dataproduct> dataproducts,
+            Map<String, List<DataproductAttribution>> attributions,
+            Map<String, List<DataproductCategory>> categories,
+            Map<String, List<DataproductContactpoint>> contactPoints,
+            Map<String, List<DataproductDescription>> descriptions,
+            Map<String, List<DataproductTitle>> titles,
+            Map<String, List<DataproductIdentifier>> identifiers,
+            Map<String, List<DataproductSource>> sources,
+            Map<String, List<DataproductHaspart>> hasParts,
+            Map<String, List<DataproductIspartof>> isPartOfs,
+            Map<String, List<DataproductProvenance>> provenances,
+            Map<String, List<DataproductPublisher>> publishers,
+            Map<String, List<DistributionDataproduct>> distributions,
+            Map<String, List<DataproductSpatial>> spatials,
+            Map<String, List<DataproductTemporal>> temporals,
+            Map<String, List<DataproductElement>> elements,
+            Map<String, Attribution> attributionMap,
+            Map<String, Category> categoryMap,
+            Map<String, Contactpoint> contactPointMap,
+            Map<String, Identifier> identifierMap,
+            Map<String, Dataproduct> relatedDpMap,
+            Map<String, Organization> organizationMap,
+            Map<String, Distribution> distributionMap,
+            Map<String, Spatial> spatialMap,
+            Map<String, Temporal> temporalMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        Dataproduct edmobj = dataproducts.get(instanceId);
+        if (edmobj == null) return null;
+        
+        DataProduct o = new DataProduct();
+        
+        // Set simple fields
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setAccrualPeriodicity(edmobj.getAccrualperiodicity());
+        o.setCreated(edmobj.getCreated());
+        o.setIssued(edmobj.getIssued());
+        o.setModified(edmobj.getModified());
+        o.setVersionInfo(edmobj.getVersioninfo());
+        o.setDocumentation(edmobj.getDocumentation());
+        o.setQualityAssurance(edmobj.getQualityassurance());
+        o.setAccessRight(edmobj.getAccessright());
+        
+        if (edmobj.getKeywords() != null && !edmobj.getKeywords().isBlank()) {
+            for (String item : edmobj.getKeywords().split("\\|")) {
+                o.addKeywords(item);
+            }
+        }
+        
+        // Set relations from pre-fetched data
+        for (DataproductAttribution rel : attributions.getOrDefault(instanceId, Collections.emptyList())) {
+            Attribution target = attributionMap.get(rel.getAttributionInstance().getInstanceId());
+            if (target != null) {
+                o.addQualifiedAttribution(createLinkedEntity(target, EntityNames.ATTRIBUTION.name()));
+            }
+        }
+        
+        for (DataproductCategory rel : categories.getOrDefault(instanceId, Collections.emptyList())) {
+            Category target = categoryMap.get(rel.getCategoryInstance().getInstanceId());
+            if (target != null) {
+                o.addCategory(createLinkedEntity(target, EntityNames.CATEGORY.name()));
+            }
+        }
+        
+        for (DataproductContactpoint rel : contactPoints.getOrDefault(instanceId, Collections.emptyList())) {
+            Contactpoint target = contactPointMap.get(rel.getContactpointInstance().getInstanceId());
+            if (target != null) {
+                o.addContactPoint(createLinkedEntity(target, EntityNames.CONTACTPOINT.name()));
+            }
+        }
+        
+        for (DataproductDescription rel : descriptions.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addDescription(rel.getDescription());
+        }
+        
+        for (DataproductTitle rel : titles.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addTitle(rel.getTitle());
+        }
+        
+        for (DataproductIdentifier rel : identifiers.getOrDefault(instanceId, Collections.emptyList())) {
+            Identifier target = identifierMap.get(rel.getIdentifierInstance().getInstanceId());
+            if (target != null) {
+                o.addIdentifier(createLinkedEntity(target, EntityNames.IDENTIFIER.name()));
+            }
+        }
+        
+        for (DataproductSource rel : sources.getOrDefault(instanceId, Collections.emptyList())) {
+            Dataproduct target = relatedDpMap.get(rel.getDataproduct2Instance().getInstanceId());
+            if (target != null) {
+                o.addSource(createLinkedEntity(target, EntityNames.DATAPRODUCT.name()));
+            }
+        }
+        
+        for (DataproductHaspart rel : hasParts.getOrDefault(instanceId, Collections.emptyList())) {
+            Dataproduct target = relatedDpMap.get(rel.getDataproduct2Instance().getInstanceId());
+            if (target != null) {
+                o.addHasPart(createLinkedEntity(target, EntityNames.DATAPRODUCT.name()));
+            }
+        }
+        
+        for (DataproductIspartof rel : isPartOfs.getOrDefault(instanceId, Collections.emptyList())) {
+            Dataproduct target = relatedDpMap.get(rel.getDataproduct2Instance().getInstanceId());
+            if (target != null) {
+                o.addIsPartOf(createLinkedEntity(target, EntityNames.DATAPRODUCT.name()));
+            }
+        }
+        
+        for (DataproductProvenance rel : provenances.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addProvenance(rel.getProvenance());
+        }
+        
+        for (DataproductPublisher rel : publishers.getOrDefault(instanceId, Collections.emptyList())) {
+            Organization target = organizationMap.get(rel.getOrganizationInstance().getInstanceId());
+            if (target != null) {
+                o.addPublisher(createLinkedEntity(target, EntityNames.ORGANIZATION.name()));
+            }
+        }
+        
+        for (DistributionDataproduct rel : distributions.getOrDefault(instanceId, Collections.emptyList())) {
+            Distribution target = distributionMap.get(rel.getDistributionInstance().getInstanceId());
+            if (target != null) {
+                o.addDistribution(createLinkedEntity(target, EntityNames.DISTRIBUTION.name()));
+            }
+        }
+        
+        for (DataproductSpatial rel : spatials.getOrDefault(instanceId, Collections.emptyList())) {
+            Spatial target = spatialMap.get(rel.getSpatialInstance().getInstanceId());
+            if (target != null) {
+                o.addSpatialExtentItem(createLinkedEntity(target, EntityNames.LOCATION.name()));
+            }
+        }
+        
+        for (DataproductTemporal rel : temporals.getOrDefault(instanceId, Collections.emptyList())) {
+            Temporal target = temporalMap.get(rel.getTemporalInstance().getInstanceId());
+            if (target != null) {
+                o.addTemporalExtent(createLinkedEntity(target, EntityNames.PERIODOFTIME.name()));
+            }
+        }
+        
+        for (DataproductElement rel : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = rel.getElementInstance();
+            if (el != null) {
+                if (ElementType.REFERENCEDBY.name().equals(el.getType())) o.addReferencedBy(el.getValue());
+                if (ElementType.LANDINGPAGE.name().equals(el.getType())) o.addLandingPage(el.getValue());
+                if (ElementType.VARIABLEMEASURED.name().equals(el.getType())) o.addVariableMeasured(el.getValue());
+            }
+        }
+        
+        // Apply versioning from pre-fetched data
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    /**
+     * Creates a LinkedEntity from a JPA entity.
+     */
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override

@@ -443,7 +443,196 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     }
 
     private List<org.epos.eposdatamodel.Distribution> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return retrieveBulkInternal(instanceIds);
+    }
+
+    /**
+     * Bulk retrieval implementation that minimizes database queries.
+     * Instead of N+1 queries per entity, this fetches all data in batches.
+     */
+    private List<org.epos.eposdatamodel.Distribution> retrieveBulkInternal(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Step 1: Batch fetch all Distribution entities
+        Map<String, Distribution> distributions = getDbaccess().batchFetchByInstanceIds(instanceIds, Distribution.class);
+        
+        if (distributions.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<String> foundIds = new ArrayList<>(distributions.keySet());
+        
+        // Step 2: Batch fetch ALL join tables for ALL distributions at once
+        Map<String, List<DistributionDescription>> descriptions = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionDescription.class);
+        Map<String, List<DistributionTitle>> titles = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionTitle.class);
+        Map<String, List<DistributionDataproduct>> dataproducts = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionDataproduct.class);
+        Map<String, List<WebserviceDistribution>> webservices = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, WebserviceDistribution.class);
+        Map<String, List<OperationDistribution>> operations = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, OperationDistribution.class);
+        Map<String, List<DistributionElement>> elements = 
+                getDbaccess().batchFetchRelationsForMultipleParents("distributionInstance", foundIds, DistributionElement.class);
+        
+        // Step 3: Collect all target entity IDs for batch fetching
+        Set<String> allDataproductIds = new HashSet<>();
+        Set<String> allWebserviceIds = new HashSet<>();
+        Set<String> allOperationIds = new HashSet<>();
+        
+        dataproducts.values().forEach(list -> list.forEach(r -> {
+            if (r.getDataproductInstance() != null) allDataproductIds.add(r.getDataproductInstance().getInstanceId());
+        }));
+        webservices.values().forEach(list -> list.forEach(r -> {
+            if (r.getWebserviceInstance() != null) allWebserviceIds.add(r.getWebserviceInstance().getInstanceId());
+        }));
+        operations.values().forEach(list -> list.forEach(r -> {
+            if (r.getOperationInstance() != null) allOperationIds.add(r.getOperationInstance().getInstanceId());
+        }));
+        
+        // Step 4: Batch fetch all target entities
+        Map<String, Dataproduct> dataproductMap = allDataproductIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allDataproductIds), Dataproduct.class);
+        Map<String, Webservice> webserviceMap = allWebserviceIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allWebserviceIds), Webservice.class);
+        Map<String, Operation> operationMap = allOperationIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOperationIds), Operation.class);
+        
+        // Step 5: Batch fetch versioning status
+        Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
+        
+        // Step 6: Assemble all DTOs from pre-fetched data
+        List<org.epos.eposdatamodel.Distribution> results = new ArrayList<>(foundIds.size());
+        for (String instanceId : foundIds) {
+            Distribution edmobj = distributions.get(instanceId);
+            if (edmobj != null) {
+                org.epos.eposdatamodel.Distribution dto = assembleDistribution(
+                        instanceId, edmobj,
+                        descriptions, titles, dataproducts, webservices, operations, elements,
+                        dataproductMap, webserviceMap, operationMap, versioningMap
+                );
+                results.add(dto);
+            }
+        }
+        
+        return results;
+    }
+
+    /**
+     * Assembles a Distribution DTO from pre-fetched data without additional queries.
+     */
+    private org.epos.eposdatamodel.Distribution assembleDistribution(
+            String instanceId,
+            Distribution edmobj,
+            Map<String, List<DistributionDescription>> descriptions,
+            Map<String, List<DistributionTitle>> titles,
+            Map<String, List<DistributionDataproduct>> dataproducts,
+            Map<String, List<WebserviceDistribution>> webservices,
+            Map<String, List<OperationDistribution>> operations,
+            Map<String, List<DistributionElement>> elements,
+            Map<String, Dataproduct> dataproductMap,
+            Map<String, Webservice> webserviceMap,
+            Map<String, Operation> operationMap,
+            Map<String, Versioningstatus> versioningMap) {
+        
+        org.epos.eposdatamodel.Distribution o = new org.epos.eposdatamodel.Distribution();
+        o.setInstanceId(edmobj.getInstanceId());
+        o.setMetaId(edmobj.getMetaId());
+        o.setUid(edmobj.getUid());
+        o.setType(edmobj.getType());
+        o.setFormat(edmobj.getFormat());
+        o.setLicence(edmobj.getLicense());
+        o.setDataPolicy(edmobj.getDatapolicy());
+        o.setIssued(edmobj.getIssued());
+        o.setModified(edmobj.getModified());
+        o.setByteSize(edmobj.getByteSize());
+        o.setMaturity(edmobj.getMaturity());
+        o.setMediaType(edmobj.getMediaType());
+        
+        // Add descriptions
+        for (DistributionDescription item : descriptions.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addDescription(item.getDescription());
+        }
+        
+        // Add titles
+        for (DistributionTitle item : titles.getOrDefault(instanceId, Collections.emptyList())) {
+            o.addTitle(item.getTitle());
+        }
+        
+        // Add dataproduct relations
+        for (DistributionDataproduct rel : dataproducts.getOrDefault(instanceId, Collections.emptyList())) {
+            Dataproduct target = dataproductMap.get(rel.getDataproductInstance().getInstanceId());
+            if (target != null) {
+                o.addDataproduct(createLinkedEntity(target, EntityNames.DATAPRODUCT.name()));
+            }
+        }
+        
+        // Add webservice (accessService) relations
+        for (WebserviceDistribution rel : webservices.getOrDefault(instanceId, Collections.emptyList())) {
+            Webservice target = webserviceMap.get(rel.getWebserviceInstance().getInstanceId());
+            if (target != null) {
+                o.addAccessService(createLinkedEntity(target, EntityNames.WEBSERVICE.name()));
+            }
+        }
+        
+        // Add operation (supportedOperation) relations
+        for (OperationDistribution rel : operations.getOrDefault(instanceId, Collections.emptyList())) {
+            Operation target = operationMap.get(rel.getOperationInstance().getInstanceId());
+            if (target != null) {
+                o.addSupportedOperation(createLinkedEntity(target, EntityNames.OPERATION.name()));
+            }
+        }
+        
+        // Add element data (accessURL, downloadURL)
+        for (DistributionElement item : elements.getOrDefault(instanceId, Collections.emptyList())) {
+            Element el = item.getElementInstance();
+            if (el != null) {
+                if (ElementType.ACCESSURL.name().equals(el.getType())) o.addAccessURL(el.getValue());
+                if (ElementType.DOWNLOADURL.name().equals(el.getType())) o.addDownloadURL(el.getValue());
+            }
+        }
+        
+        // Apply versioning from pre-fetched data
+        Versioningstatus vs = versioningMap.get(instanceId);
+        if (vs != null) {
+            o.setVersionId(vs.getVersionId());
+            o.setInstanceChangedId(vs.getInstanceChangeId());
+            if (vs.getChangeTimestamp() != null) {
+                o.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+            }
+            o.setEditorId(vs.getEditorId());
+            o.setChangeComment(vs.getChangeComment());
+            o.setVersion(vs.getVersion());
+            if (vs.getStatus() != null) {
+                try {
+                    o.setStatus(StatusType.valueOf(vs.getStatus()));
+                } catch (Exception e) {
+                    // Ignore invalid status
+                }
+            }
+            o.setFileProvenance(vs.getProvenance());
+        }
+        
+        return o;
+    }
+
+    /**
+     * Creates a LinkedEntity from a JPA entity.
+     */
+    private LinkedEntity createLinkedEntity(Object entity, String entityType) {
+        LinkedEntity le = new LinkedEntity();
+        le.setInstanceId(utilities.ReflectionCache.getInstanceId(entity));
+        le.setMetaId(utilities.ReflectionCache.getMetaId(entity));
+        le.setUid(utilities.ReflectionCache.getUid(entity));
+        le.setEntityType(entityType);
+        return le;
     }
 
     @Override
