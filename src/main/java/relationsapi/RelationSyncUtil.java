@@ -68,6 +68,68 @@ public class RelationSyncUtil {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
+    /*
+     * Fine-grained locks for join entity creation to prevent race conditions.
+     * Keyed by joinClass+parentId+targetId to allow maximum concurrency while
+     * preventing duplicate key violations from concurrent inserts of the same join.
+     */
+    private static final ConcurrentHashMap<String, Object> JOIN_LOCKS = new ConcurrentHashMap<>();
+    private static final int MAX_JOIN_LOCKS = 10000;
+
+    private static Object getJoinLock(String joinClassName, String parentId, String targetId) {
+        String key = joinClassName + ":" + parentId + ":" + targetId;
+        return JOIN_LOCKS.computeIfAbsent(key, k -> new Object());
+    }
+
+    private static void cleanupJoinLocksIfNeeded() {
+        if (JOIN_LOCKS.size() > MAX_JOIN_LOCKS) {
+            JOIN_LOCKS.clear();  // Simple reset - locks are transient
+        }
+    }
+
+    // ===== ThreadLocal Cleanup =====
+
+    /**
+     * Explicitly clears all ThreadLocal state. Call this at the end of a request/operation
+     * in pooled thread environments (servlet containers, thread pools) to prevent memory leaks.
+     * 
+     * <p>This method is safe to call even if no ThreadLocal state exists.</p>
+     */
+    public static void clearThreadLocalState() {
+        cascadeInProgress.remove();
+        cascadeCreatedVersions.remove();
+    }
+
+    /**
+     * Execute an operation with guaranteed ThreadLocal cleanup.
+     * Use this at API boundaries to ensure thread pool safety.
+     *
+     * @param operation the operation to execute
+     * @param <T> the return type
+     * @return the result of the operation
+     */
+    public static <T> T executeWithCleanup(java.util.function.Supplier<T> operation) {
+        try {
+            return operation.get();
+        } finally {
+            clearThreadLocalState();
+        }
+    }
+
+    /**
+     * Execute a void operation with guaranteed ThreadLocal cleanup.
+     * Use this at API boundaries to ensure thread pool safety.
+     *
+     * @param operation the operation to execute
+     */
+    public static void executeWithCleanup(Runnable operation) {
+        try {
+            operation.run();
+        } finally {
+            clearThreadLocalState();
+        }
+    }
+
     // ===== Reference Entity Checks =====
 
     private static boolean isReferenceEntity(Class<?> targetClass) {
@@ -597,50 +659,88 @@ public class RelationSyncUtil {
 
     // ===== Join Entity Creation =====
 
+    /**
+     * Creates a join entity with fine-grained locking to prevent race conditions.
+     * Uses double-check pattern: check existence, acquire lock, re-check, then insert.
+     * Duplicate key exceptions are handled gracefully as they indicate concurrent success.
+     */
     private static <P, J, T> boolean createJoinEntity(Class<J> joinClass, P parentDbObject, T targetEntity,
                                                       BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter,
                                                       String parentFieldName) {
-        try {
-            String parentId = getModelId(parentDbObject);
-            String targetId = getModelId(targetEntity);
+        String parentId = getModelId(parentDbObject);
+        String targetId = getModelId(targetEntity);
 
-            // Final self-reference guard
-            if (parentId != null && parentId.equals(targetId)) {
-                LOG.log(Level.WARNING, "Self-reference blocked in join creation: {0}", parentId);
-                return true;
-            }
-
-            if (joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
-                return true;
-            }
-
-            J newJoin = joinClass.getDeclaredConstructor().newInstance();
-            initializeEmbeddedIdWithFieldName(newJoin, parentDbObject, targetEntity, parentFieldName);
-
-            if (parentSetter != null) {
-                parentSetter.accept(newJoin, parentDbObject);
-            }
-            if (targetSetter != null) {
-                targetSetter.accept(newJoin, targetEntity);
-            }
-
-            if (!verifyEmbeddedIdNotSelfReference(newJoin)) {
-                LOG.log(Level.SEVERE, "Embedded ID self-reference detected - aborting");
-                return true;
-            }
-
-            EposDataModelDAO.getInstance().updateObject(newJoin);
+        // Final self-reference guard
+        if (parentId != null && parentId.equals(targetId)) {
+            LOG.log(Level.WARNING, "Self-reference blocked in join creation: {0}", parentId);
             return true;
+        }
 
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (msg != null && (msg.contains("duplicate key") || msg.contains("already exists")
-                    || msg.contains("unique constraint"))) {
+        // Quick check without lock - optimization for common case where join exists
+        if (joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+            return true;
+        }
+
+        // Fine-grained lock per join table + key combination
+        Object lock = getJoinLock(joinClass.getName(), parentId, targetId);
+        synchronized (lock) {
+            try {
+                // Re-check inside synchronized block (double-check pattern)
+                if (joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+                    return true;
+                }
+
+                J newJoin = joinClass.getDeclaredConstructor().newInstance();
+                initializeEmbeddedIdWithFieldName(newJoin, parentDbObject, targetEntity, parentFieldName);
+
+                if (parentSetter != null) {
+                    parentSetter.accept(newJoin, parentDbObject);
+                }
+                if (targetSetter != null) {
+                    targetSetter.accept(newJoin, targetEntity);
+                }
+
+                if (!verifyEmbeddedIdNotSelfReference(newJoin)) {
+                    LOG.log(Level.SEVERE, "Embedded ID self-reference detected - aborting");
+                    return true;
+                }
+
+                EposDataModelDAO.getInstance().updateObject(newJoin);
+                cleanupJoinLocksIfNeeded();
+                return true;
+
+            } catch (Exception e) {
+                // Check both exception message and cause for duplicate key indicators
+                if (isDuplicateKeyException(e)) {
+                    // Benign - join was created by concurrent operation (different JVM/process)
+                    LOG.log(Level.FINE, "Join {0} already exists for parent={1}, target={2} (concurrent insert)",
+                            new Object[]{joinClass.getSimpleName(), parentId, targetId});
+                    return true;
+                }
+                LOG.log(Level.WARNING, "Join creation failed for {0}: {1}",
+                        new Object[]{joinClass.getSimpleName(), e.getMessage()});
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Checks if an exception indicates a duplicate key/unique constraint violation.
+     * Examines both the exception message and its cause chain.
+     */
+    private static boolean isDuplicateKeyException(Exception e) {
+        Throwable current = e;
+        while (current != null) {
+            String msg = current.getMessage();
+            if (msg != null && (msg.contains("duplicate key") ||
+                                msg.contains("already exists") ||
+                                msg.contains("unique constraint") ||
+                                msg.contains("violates unique"))) {
                 return true;
             }
-            LOG.log(Level.WARNING, "Join creation failed: {0}", msg);
-            return false;
+            current = current.getCause();
         }
+        return false;
     }
 
     private static boolean verifyEmbeddedIdNotSelfReference(Object joinEntity) {
@@ -978,6 +1078,10 @@ public class RelationSyncUtil {
         }
     }
 
+    /**
+     * Resolves a single pending relation with fine-grained locking to prevent race conditions.
+     * Supports both standard join tables and polymorphic relations (e.g., softwareapplication_creator).
+     */
     private static void resolveSinglePendingRelation(Versioningstatus pending, Object targetEntity) throws Exception {
         String sourceInstanceId = pending.getReviewComment();
         if (sourceInstanceId == null) {
@@ -985,6 +1089,9 @@ public class RelationSyncUtil {
         }
         String sourceEntityType = pending.getProvenance();
         String joinClassName = pending.getMetaId();
+        // For polymorphic relations, changeComment stores the target entity type (e.g., "ORGANIZATION", "PERSON")
+        String targetEntityType = pending.getChangeComment();
+        
         if (sourceEntityType == null) {
             return;
         }
@@ -1010,17 +1117,31 @@ public class RelationSyncUtil {
             return;
         }
 
-        Object newJoin = joinClass.getDeclaredConstructor().newInstance();
-        initializeEmbeddedIdLegacy(newJoin, sourceEntity, targetEntity);
-        setJoinRelationship(newJoin, sourceEntity);
-        setJoinRelationship(newJoin, targetEntity);
+        // Fine-grained lock to prevent duplicate join creation
+        Object lock = getJoinLock(joinClass.getName(), sourceId, targetId);
+        synchronized (lock) {
+            Object newJoin = joinClass.getDeclaredConstructor().newInstance();
+            
+            // Check if this is a polymorphic relation (e.g., creator, author, etc.)
+            if (isPolymorphicJoinClass(joinClass) && targetEntityType != null) {
+                // Handle polymorphic relations that store entity reference via entityInstanceId + resourceEntity
+                setPolymorphicJoinRelationship(newJoin, sourceEntity, targetEntity, targetEntityType);
+            } else {
+                // Standard join table handling
+                initializeEmbeddedIdLegacy(newJoin, sourceEntity, targetEntity);
+                setJoinRelationship(newJoin, sourceEntity);
+                setJoinRelationship(newJoin, targetEntity);
+            }
 
-        try {
-            EposDataModelDAO.getInstance().updateObject(newJoin);
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (msg == null || (!msg.contains("duplicate key") && !msg.contains("already exists"))) {
-                throw e;
+            try {
+                EposDataModelDAO.getInstance().updateObject(newJoin);
+                cleanupJoinLocksIfNeeded();
+            } catch (Exception e) {
+                if (!isDuplicateKeyException(e)) {
+                    throw e;
+                }
+                // Duplicate key is benign - join already exists
+                LOG.log(Level.FINE, "Pending relation join already exists: {0}", joinClass.getSimpleName());
             }
         }
     }
@@ -1163,6 +1284,52 @@ public class RelationSyncUtil {
                 return;
             }
         }
+    }
+
+    /**
+     * Checks if a join class is a polymorphic relation (stores entity reference via entityInstanceId + resourceEntity).
+     * Polymorphic join classes have setEntityInstanceId and setResourceEntity methods instead of direct entity setters.
+     */
+    private static boolean isPolymorphicJoinClass(Class<?> joinClass) {
+        boolean hasEntityInstanceId = false;
+        boolean hasResourceEntity = false;
+        for (Method method : joinClass.getMethods()) {
+            String methodName = method.getName();
+            if ("setEntityInstanceId".equals(methodName) && method.getParameterCount() == 1 
+                    && method.getParameterTypes()[0] == String.class) {
+                hasEntityInstanceId = true;
+            } else if ("setResourceEntity".equals(methodName) && method.getParameterCount() == 1 
+                    && method.getParameterTypes()[0] == String.class) {
+                hasResourceEntity = true;
+            }
+        }
+        return hasEntityInstanceId && hasResourceEntity;
+    }
+
+    /**
+     * Sets up a polymorphic join relationship where the target entity (Organization/Person) is stored
+     * via entityInstanceId and resourceEntity fields rather than a direct entity reference.
+     * 
+     * @param joinEntity The join entity to populate
+     * @param sourceEntity The source entity (e.g., Softwareapplication)
+     * @param targetEntity The target entity (e.g., Organization or Person)
+     * @param targetEntityType The entity type string (e.g., "ORGANIZATION" or "PERSON")
+     */
+    private static void setPolymorphicJoinRelationship(Object joinEntity, Object sourceEntity, 
+            Object targetEntity, String targetEntityType) throws Exception {
+        // Set the source entity reference (e.g., setSoftwareapplication)
+        setJoinRelationship(joinEntity, sourceEntity);
+        
+        // Set the source instance ID (e.g., setSoftwareapplicationInstanceId)
+        String sourceId = getModelId(sourceEntity);
+        String sourceClassName = sourceEntity.getClass().getSimpleName();
+        String sourceIdSetterName = "set" + sourceClassName + "InstanceId";
+        invokeSetter(joinEntity, sourceIdSetterName, sourceId);
+        
+        // Set the polymorphic target fields
+        String targetId = getModelId(targetEntity);
+        invokeSetter(joinEntity, "setEntityInstanceId", targetId);
+        invokeSetter(joinEntity, "setResourceEntity", targetEntityType);
     }
 
     private static void invokeSetter(Object obj, String methodName, String value) {

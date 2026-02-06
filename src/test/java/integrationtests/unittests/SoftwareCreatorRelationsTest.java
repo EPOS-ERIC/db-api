@@ -453,4 +453,122 @@ public class SoftwareCreatorRelationsTest extends TestcontainersLifecycle {
         assertEquals(person2LE.getInstanceId(), updated.getCreator().get(0).getInstanceId());
         assertEquals("Updated description", updated.getDescription());
     }
+
+    // ==================== Pending Relation Resolution Tests ====================
+
+    /**
+     * Tests the scenario where a SoftwareApplication is created with a creator reference
+     * to an Organization that doesn't exist yet. The Organization is then created,
+     * which should trigger resolution of the pending relation.
+     */
+    @Test
+    @Order(10)
+    public void testSoftwareApplicationWithPendingOrganizationCreator() {
+        String orgUid = "https://ror.org/pending-org-" + UUID.randomUUID();
+        
+        // Create a LinkedEntity referencing an Organization that doesn't exist yet (by UID only)
+        LinkedEntity creatorLink = new LinkedEntity();
+        creatorLink.setUid(orgUid);
+        creatorLink.setEntityType(EntityNames.ORGANIZATION.name());
+
+        AbstractAPI saApi = AbstractAPI.retrieveAPI(EntityNames.SOFTWAREAPPLICATION.name());
+
+        // Create SoftwareApplication with creator pointing to non-existent Organization
+        SoftwareApplication sa = new SoftwareApplication();
+        sa.setInstanceId(UUID.randomUUID().toString());
+        sa.setMetaId(UUID.randomUUID().toString());
+        sa.setUid("https://software.example.org/sa-pending-creator-" + UUID.randomUUID());
+        sa.setName("SA with Pending Organization Creator");
+        sa.setDescription("A test application with a pending organization creator");
+        sa.setSoftwareVersion("1.0.0");
+        sa.setCreator(List.of(creatorLink));
+
+        LinkedEntity saResult = saApi.create(sa, null, null, null);
+        assertNotNull(saResult, "SoftwareApplication creation should succeed");
+
+        // At this point, the creator relation should be pending (Organization doesn't exist)
+        SoftwareApplication retrievedBefore = (SoftwareApplication) saApi.retrieve(sa.getInstanceId());
+        LOG.info("SoftwareApplication before Organization creation - creator: " + retrievedBefore.getCreator());
+        // Creator may be null or empty since Organization doesn't exist yet
+        
+        // Now create the Organization with the same UID
+        AbstractAPI orgApi = AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name());
+        Organization org = new Organization();
+        org.setInstanceId(UUID.randomUUID().toString());
+        org.setMetaId(UUID.randomUUID().toString());
+        org.setUid(orgUid);
+        org.setAcronym("PENDING");
+        org.setLegalName(List.of("Pending Test Organization"));
+        
+        LinkedEntity orgResult = orgApi.create(org, null, null, null);
+        assertNotNull(orgResult, "Organization creation should succeed");
+        LOG.info("Created Organization with UID: " + orgUid + ", instanceId: " + orgResult.getInstanceId());
+
+        // Now retrieve the SoftwareApplication again - the pending relation should be resolved
+        SoftwareApplication retrievedAfter = (SoftwareApplication) saApi.retrieve(sa.getInstanceId());
+        LOG.info("SoftwareApplication after Organization creation - creator: " + retrievedAfter.getCreator());
+
+        // Verify the creator relation is now properly linked
+        assertNotNull(retrievedAfter.getCreator(), "Creator list should not be null after Organization creation");
+        assertEquals(1, retrievedAfter.getCreator().size(), "Should have exactly 1 creator");
+        assertEquals(EntityNames.ORGANIZATION.name(), retrievedAfter.getCreator().get(0).getEntityType());
+        assertEquals(orgResult.getInstanceId(), retrievedAfter.getCreator().get(0).getInstanceId());
+    }
+
+    /**
+     * Tests the same pending relation scenario for SoftwareSourceCode with Person creator.
+     */
+    @Test
+    @Order(11)
+    public void testSoftwareSourceCodeWithPendingPersonCreator() {
+        String personUid = "https://orcid.org/pending-person-" + UUID.randomUUID();
+        
+        // Create a LinkedEntity referencing a Person that doesn't exist yet (by UID only)
+        LinkedEntity creatorLink = new LinkedEntity();
+        creatorLink.setUid(personUid);
+        creatorLink.setEntityType(EntityNames.PERSON.name());
+
+        AbstractAPI sscApi = AbstractAPI.retrieveAPI(EntityNames.SOFTWARESOURCECODE.name());
+
+        // Create SoftwareSourceCode with creator pointing to non-existent Person
+        SoftwareSourceCode ssc = new SoftwareSourceCode();
+        ssc.setInstanceId(UUID.randomUUID().toString());
+        ssc.setMetaId(UUID.randomUUID().toString());
+        ssc.setUid("https://github.com/epos-eu/ssc-pending-creator-" + UUID.randomUUID());
+        ssc.setName("SSC with Pending Person Creator");
+        ssc.setDescription("A test source code with a pending person creator");
+        ssc.setSoftwareVersion("1.0.0");
+        ssc.setCodeRepository("https://github.com/test/pending");
+        ssc.setCreator(List.of(creatorLink));
+
+        LinkedEntity sscResult = sscApi.create(ssc, null, null, null);
+        assertNotNull(sscResult, "SoftwareSourceCode creation should succeed");
+
+        // At this point, the creator relation should be pending (Person doesn't exist)
+        SoftwareSourceCode retrievedBefore = (SoftwareSourceCode) sscApi.retrieve(ssc.getInstanceId());
+        LOG.info("SoftwareSourceCode before Person creation - creator: " + retrievedBefore.getCreator());
+        
+        // Now create the Person with the same UID
+        AbstractAPI personApi = AbstractAPI.retrieveAPI(EntityNames.PERSON.name());
+        Person person = new Person();
+        person.setInstanceId(UUID.randomUUID().toString());
+        person.setMetaId(UUID.randomUUID().toString());
+        person.setUid(personUid);
+        person.setFamilyName("Pending");
+        person.setGivenName("Creator");
+        
+        LinkedEntity personResult = personApi.create(person, null, null, null);
+        assertNotNull(personResult, "Person creation should succeed");
+        LOG.info("Created Person with UID: " + personUid + ", instanceId: " + personResult.getInstanceId());
+
+        // Now retrieve the SoftwareSourceCode again - the pending relation should be resolved
+        SoftwareSourceCode retrievedAfter = (SoftwareSourceCode) sscApi.retrieve(ssc.getInstanceId());
+        LOG.info("SoftwareSourceCode after Person creation - creator: " + retrievedAfter.getCreator());
+
+        // Verify the creator relation is now properly linked
+        assertNotNull(retrievedAfter.getCreator(), "Creator list should not be null after Person creation");
+        assertEquals(1, retrievedAfter.getCreator().size(), "Should have exactly 1 creator");
+        assertEquals(EntityNames.PERSON.name(), retrievedAfter.getCreator().get(0).getEntityType());
+        assertEquals(personResult.getInstanceId(), retrievedAfter.getCreator().get(0).getInstanceId());
+    }
 }
