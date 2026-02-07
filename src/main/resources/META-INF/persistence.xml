@@ -313,6 +313,16 @@
 			<!-- Payload joins -->
 			<property name="eclipselink.cache.shared.model.PayloadOutputMapping" value="false"/>
 
+			<!-- 
+			  User/Group Management entities - disable caching for consistent writes.
+			  These entities are frequently modified and must always reflect the latest
+			  state for role updates, request status changes, and group membership operations.
+			-->
+			<property name="eclipselink.cache.shared.model.MetadataGroupUser" value="false"/>
+			<property name="eclipselink.cache.shared.model.MetadataGroup" value="false"/>
+			<property name="eclipselink.cache.shared.model.MetadataUser" value="false"/>
+			<property name="eclipselink.cache.shared.model.AuthorizationGroup" value="false"/>
+
 			<!-- Query optimization -->
 			<property name="eclipselink.query-results-cache" value="true"/>
 			<property name="eclipselink.query-results-cache.size" value="500"/>
