@@ -25,7 +25,14 @@ public class UserGroupManagementAPI {
         user1.setFamilyname(user.getLastName());
         user1.setIsadmin(Boolean.toString(user.getIsAdmin().booleanValue()));
 
-        return getDbaccess().updateObject(user1);
+        Boolean result = getDbaccess().updateObject(user1);
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataUser");
+        }
+        
+        return result;
     }
 
     public static User retrieveUser(User user){
@@ -46,12 +53,12 @@ public class UserGroupManagementAPI {
                 Boolean.parseBoolean(retrievedUser.getIsadmin())
         );
 
-        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
+        // Optimized: Query only for this user's groups instead of loading ALL group-user relationships
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "authIdentifier.authIdentifier", retrievedUser.getAuthIdentifier(), MetadataGroupUser.class);
         for(MetadataGroupUser groupUser : metadataGroupUserList){
-            if(groupUser.getAuthIdentifier().getAuthIdentifier().equals(retrievedUser.getAuthIdentifier())) {
-                UserGroup userGroup = new UserGroup(RoleType.valueOf(groupUser.getRole()),groupUser.getGroup().getId());
-                user1.getGroups().add(userGroup);
-            }
+            UserGroup userGroup = new UserGroup(RoleType.valueOf(groupUser.getRole()),groupUser.getGroup().getId());
+            user1.getGroups().add(userGroup);
         }
 
         return user1 ;
@@ -70,13 +77,19 @@ public class UserGroupManagementAPI {
     }
 
     public static Boolean deleteUser(String authIdentfier){
-        List<MetadataUser> userList = getDbaccess().getAllFromDB(MetadataUser.class);
-        for(MetadataUser user : userList){
-            if(user.getAuthIdentifier().equals(authIdentfier)){
-                return getDbaccess().deleteObject(user);
-            }
+        // Optimized: Query directly by authIdentifier instead of loading all users
+        List<MetadataUser> userList = getDbaccess().getOneFromDBBySpecificKeySimple("authIdentifier", authIdentfier, MetadataUser.class);
+        if(userList.isEmpty()) return null;
+        
+        Boolean result = getDbaccess().deleteObject(userList.get(0));
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataUser");
+            getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
         }
-        return null;
+        
+        return result;
     }
 
 
@@ -91,79 +104,85 @@ public class UserGroupManagementAPI {
         group1.setId(group.getId()==null || group.getId().isBlank()? UUID.randomUUID().toString() : group.getId());
         group1.setName(group.getName());
         group1.setDescription(group.getDescription());
-        return getDbaccess().updateObject(group1);
+        
+        Boolean result = getDbaccess().updateObject(group1);
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataGroup");
+        }
+        
+        return result;
     }
 
     public static Group retrieveGroupById(String groupId){
-        List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-
+        // Optimized: Query directly by ID instead of loading all groups
+        List<MetadataGroup> metadataGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("id", groupId, MetadataGroup.class);
         if(metadataGroupList.isEmpty()) return null;
 
-        for(MetadataGroup metadataGroup : metadataGroupList){
-            if(metadataGroup.getId().equals(groupId)){
-                Group group1 = new Group(
-                        metadataGroup.getId(),
-                        metadataGroup.getName(),
-                        metadataGroup.getDescription()
-                );
-                for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-                    if(authorizationGroup.getGroup().getId().equals(groupId)){
-                        group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
-                    }
-                }
-                group1.setUsers(new ArrayList<>());
+        MetadataGroup metadataGroup = metadataGroupList.get(0);
+        Group group1 = new Group(
+                metadataGroup.getId(),
+                metadataGroup.getName(),
+                metadataGroup.getDescription()
+        );
 
-                for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                    if(metadataGroupUser.getGroup().getId().equals(metadataGroup.getId())){
-                        HashMap<String,String> items = new HashMap<>();
-                        items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
-                        items.put("role",metadataGroupUser.getRole());
-                        items.put("requestStatus",metadataGroupUser.getRequestStatus());
-                        group1.getUsers().add(items);
-                    }
-                }
-                return group1;
-            }
+        // Optimized: Query only authorization groups for this specific group
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "group.id", groupId, AuthorizationGroup.class);
+        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
+            group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
         }
-        return null;
+
+        group1.setUsers(new ArrayList<>());
+
+        // Optimized: Query only group-users for this specific group
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "group.id", groupId, MetadataGroupUser.class);
+        for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
+            HashMap<String,String> items = new HashMap<>();
+            items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+            items.put("role",metadataGroupUser.getRole());
+            items.put("requestStatus",metadataGroupUser.getRequestStatus());
+            group1.getUsers().add(items);
+        }
+
+        return group1;
     }
 
     public static Group retrieveGroupByName(String groupName){
-        List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-
+        // Optimized: Query directly by name instead of loading all groups
+        List<MetadataGroup> metadataGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("name", groupName, MetadataGroup.class);
         if(metadataGroupList.isEmpty()) return null;
 
-        for(MetadataGroup metadataGroup : metadataGroupList){
-            if(metadataGroup.getName().equals(groupName)){
-                Group group1 = new Group(
-                        metadataGroup.getId(),
-                        metadataGroup.getName(),
-                        metadataGroup.getDescription()
-                );
-                for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-                    if(authorizationGroup.getGroup().getName().equals(groupName)){
-                        group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
-                    }
-                }
-                group1.setUsers(new ArrayList<>());
+        MetadataGroup metadataGroup = metadataGroupList.get(0);
+        Group group1 = new Group(
+                metadataGroup.getId(),
+                metadataGroup.getName(),
+                metadataGroup.getDescription()
+        );
 
-                for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-                    if(metadataGroupUser.getGroup().getId().equals(metadataGroup.getId())){
-                        HashMap<String,String> items = new HashMap<>();
-                        items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
-                        items.put("role",metadataGroupUser.getRole());
-                        items.put("requestStatus",metadataGroupUser.getRequestStatus());
-                        group1.getUsers().add(items);
-                    }
-                }
-                return group1;
-            }
+        // Optimized: Query only authorization groups for this specific group
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "group.id", metadataGroup.getId(), AuthorizationGroup.class);
+        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
+            group1.getEntities().add(authorizationGroup.getMeta().getMetaId());
         }
-        return null;
+
+        group1.setUsers(new ArrayList<>());
+
+        // Optimized: Query only group-users for this specific group
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "group.id", metadataGroup.getId(), MetadataGroupUser.class);
+        for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
+            HashMap<String,String> items = new HashMap<>();
+            items.put("userId",metadataGroupUser.getAuthIdentifier().getAuthIdentifier());
+            items.put("role",metadataGroupUser.getRole());
+            items.put("requestStatus",metadataGroupUser.getRequestStatus());
+            group1.getUsers().add(items);
+        }
+
+        return group1;
     }
 
     public static Group retrieveGroup(Group group){
@@ -184,13 +203,20 @@ public class UserGroupManagementAPI {
     }
 
     public static Boolean deleteGroup(String groupId){
-        List<MetadataGroup> groupList = getDbaccess().getAllFromDB(MetadataGroup.class);
-        for(MetadataGroup group : groupList){
-            if(group.getId().equals(groupId)){
-                return getDbaccess().deleteObject(group);
-            }
+        // Optimized: Query directly by id instead of loading all groups
+        List<MetadataGroup> groupList = getDbaccess().getOneFromDBBySpecificKeySimple("id", groupId, MetadataGroup.class);
+        if(groupList.isEmpty()) return null;
+        
+        Boolean result = getDbaccess().deleteObject(groupList.get(0));
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataGroup");
+            getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
+            getDbaccess().invalidateAllCachesForClass("AuthorizationGroup");
         }
-        return null;
+        
+        return result;
     }
 
     /**
@@ -199,42 +225,110 @@ public class UserGroupManagementAPI {
      *
      */
 
+    /**
+     * Adds a user to a group with the specified role and request status.
+     * If the user is already in the group, this method will UPDATE the existing
+     * relationship with the new role and request status values.
+     *
+     * @param groupId the group ID
+     * @param userId the user's auth identifier
+     * @param role the role to assign
+     * @param requestStatusType the request status
+     * @return true if created/updated successfully, false if parameters are null or entities don't exist
+     */
     public static Boolean addUserToGroup(String groupId, String userId, RoleType role, RequestStatusType requestStatusType){
         if(groupId==null || userId==null || role==null || requestStatusType==null) return false;
+        
         Map<String, Object> filters = new HashMap<>();
         filters.put("group.id", groupId);
         filters.put("authIdentifier.authIdentifier", userId);
 
         List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getFromDBByUsingMultipleKeys(filters,MetadataGroupUser.class);
 
-        MetadataGroup group = (MetadataGroup) getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId,MetadataGroup.class).get(0);
-        MetadataUser user = (MetadataUser) getDbaccess().getOneFromDBBySpecificKeySimple("authIdentifier",userId,MetadataUser.class).get(0);
+        List<MetadataGroup> groupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId,MetadataGroup.class);
+        List<MetadataUser> userList = getDbaccess().getOneFromDBBySpecificKeySimple("authIdentifier",userId,MetadataUser.class);
+        
+        if(groupList.isEmpty() || userList.isEmpty()) return false;
+        
+        MetadataGroup group = groupList.get(0);
+        MetadataUser user = userList.get(0);
 
-
-        if(!metadataGroupUserList.isEmpty()) return true;
-
-        MetadataGroupUser metadataGroupUser = new MetadataGroupUser();
-        metadataGroupUser.setId(UUID.randomUUID().toString());
-        metadataGroupUser.setGroup(group);
-        metadataGroupUser.setAuthIdentifier(user);
+        MetadataGroupUser metadataGroupUser;
+        if(!metadataGroupUserList.isEmpty()) {
+            // UPDATE existing relationship instead of silently returning
+            metadataGroupUser = metadataGroupUserList.get(0);
+        } else {
+            // CREATE new relationship
+            metadataGroupUser = new MetadataGroupUser();
+            metadataGroupUser.setId(UUID.randomUUID().toString());
+            metadataGroupUser.setGroup(group);
+            metadataGroupUser.setAuthIdentifier(user);
+        }
+        
         metadataGroupUser.setRequestStatus(requestStatusType.name());
         metadataGroupUser.setRole(role.name());
 
-        return getDbaccess().updateObject(metadataGroupUser);
+        Boolean result = getDbaccess().updateObject(metadataGroupUser);
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
+        }
+        
+        return result;
+    }
+
+    /**
+     * Updates an existing user-group relationship with new role and request status.
+     * Use this method when you need to change the role or status of an existing membership.
+     *
+     * @param groupId the group ID
+     * @param userId the user's auth identifier
+     * @param role the new role to assign
+     * @param requestStatusType the new request status
+     * @return true if updated successfully, false if user is not in group or parameters are null
+     */
+    public static Boolean updateUserInGroup(String groupId, String userId, RoleType role, RequestStatusType requestStatusType){
+        if(groupId == null || userId == null || role == null || requestStatusType == null) return false;
+
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("group.id", groupId);
+        filters.put("authIdentifier.authIdentifier", userId);
+
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getFromDBByUsingMultipleKeys(filters, MetadataGroupUser.class);
+
+        if(metadataGroupUserList.isEmpty()) return false; // User not in group
+
+        MetadataGroupUser existing = metadataGroupUserList.get(0);
+        existing.setRole(role.name());
+        existing.setRequestStatus(requestStatusType.name());
+
+        Boolean result = getDbaccess().updateObject(existing);
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
+        }
+        
+        return result;
     }
 
     public static Boolean removeUserFromGroup(String groupId, String userId){
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("group.id", groupId);
+        filters.put("authIdentifier.authIdentifier", userId);
 
-        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getAllFromDB(MetadataGroupUser.class);
-        if(metadataGroupUserList.isEmpty()) return null;
+        List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getFromDBByUsingMultipleKeys(filters, MetadataGroupUser.class);
+        if(metadataGroupUserList.isEmpty()) return false;
 
-        for(MetadataGroupUser metadataGroupUser : metadataGroupUserList){
-            if(metadataGroupUser.getGroup().getId().equals(groupId) &&
-                    metadataGroupUser.getAuthIdentifier().getAuthIdentifier().equals(userId)){
-                return getDbaccess().deleteObject(metadataGroupUser);
-            }
+        Boolean result = getDbaccess().deleteObject(metadataGroupUserList.get(0));
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
         }
-        return false;
+        
+        return result;
     }
 
     public static Boolean addMetadataElementToGroup(String metaId, String groupId){
@@ -248,23 +342,35 @@ public class UserGroupManagementAPI {
 
         if(!authorizationGroupList.isEmpty()) return true;
 
+        List<MetadataGroup> groupList = getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class);
+        List<EdmEntityId> metaList = getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class);
+        
+        if(groupList.isEmpty() || metaList.isEmpty()) return false;
+
         AuthorizationGroup authorizationGroup = new AuthorizationGroup();
         authorizationGroup.setId(UUID.randomUUID().toString());
-        authorizationGroup.setGroup((MetadataGroup) getDbaccess().getOneFromDBBySpecificKeySimple("id",groupId, MetadataGroup.class).get(0));
-        authorizationGroup.setMeta((EdmEntityId) getDbaccess().getOneFromDBBySpecificKeySimple("metaId",metaId, EdmEntityId.class).get(0));
-        return getDbaccess().updateObject(authorizationGroup);
+        authorizationGroup.setGroup(groupList.get(0));
+        authorizationGroup.setMeta(metaList.get(0));
+        
+        Boolean result = getDbaccess().updateObject(authorizationGroup);
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("AuthorizationGroup");
+        }
+        
+        return result;
     }
 
     public static List<Group> retrieveGroupsFromMetaId(String metaId){
-
         List<Group> groups = new ArrayList<>();
 
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        // Optimized: Query only authorization groups for this specific metaId
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple(
+                "meta.metaId", metaId, AuthorizationGroup.class);
 
         for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-            if(authorizationGroup.getMeta().getMetaId().equals(metaId)){
-                groups.add(retrieveGroupById(authorizationGroup.getGroup().getId()));
-            }
+            groups.add(retrieveGroupById(authorizationGroup.getGroup().getId()));
         }
         return groups;
     }
@@ -278,31 +384,44 @@ public class UserGroupManagementAPI {
     }
 
     public static Boolean removeMetadataElementFromGroup(String metaId, String groupId){
+        if(metaId == null || groupId == null) return false;
 
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-        if(authorizationGroupList.isEmpty()) return null;
+        // Optimized: Query using multiple keys instead of loading all authorization groups
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("group.id", groupId);
+        filters.put("meta.metaId", metaId);
 
-        for(AuthorizationGroup authorizationGroup : authorizationGroupList){
-            if(authorizationGroup.getGroup().getId().equals(groupId) &&
-                    authorizationGroup.getMeta().getMetaId().equals(metaId)){
-                return getDbaccess().deleteObject(authorizationGroup);
-            }
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBByUsingMultipleKeys(filters, AuthorizationGroup.class);
+        if(authorizationGroupList.isEmpty()) return false;
+
+        Boolean result = getDbaccess().deleteObject(authorizationGroupList.get(0));
+        
+        // Invalidate caches to ensure fresh data on next retrieval
+        if(result) {
+            getDbaccess().invalidateAllCachesForClass("AuthorizationGroup");
         }
-        return false;
+        
+        return result;
     }
 
     public static List<String> retrieveMetaIdsFromGroups(){
         List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
         if(authorizationGroupList.isEmpty()) return new ArrayList<>();
 
-        List<String> returnList = new ArrayList<>();
-        for(AuthorizationGroup group : authorizationGroupList){
-            returnList.add(group.getMeta().getMetaId());
-        }
-
-        return returnList;
+        // Use stream to collect unique metaIds efficiently
+        return authorizationGroupList.stream()
+                .map(group -> group.getMeta().getMetaId())
+                .distinct()
+                .collect(Collectors.toList());
     }
-    //I NEED TO CHECK IF METAID GROUP IS IN USER AVAILABLE GROUPS
+    /**
+     * Checks if a metadata element and a user are in the same group.
+     * 
+     * @param metaId the metadata element's metaId
+     * @param userId the user's auth identifier
+     * @return true if they are NOT in the same group (no common groups), 
+     *         false if they ARE in at least one common group
+     */
     public static Boolean checkIfMetaIdAndUserIdAreInSameGroup(String metaId, String userId){
         Map<String, Object> filters = new HashMap<>();
         filters.put("meta.metaId", metaId);
@@ -314,15 +433,19 @@ public class UserGroupManagementAPI {
 
         List<MetadataGroupUser> metadataGroupUserList = getDbaccess().getFromDBByUsingMultipleKeys(filters,MetadataGroupUser.class);
 
-        List<MetadataGroup> groupList1 = authorizationGroupList.stream().map(AuthorizationGroup::getGroup).collect(Collectors.toList());
-        List<MetadataGroup> groupList2 = metadataGroupUserList.stream().map(MetadataGroupUser::getGroup).collect(Collectors.toList());
+        // Extract group IDs instead of comparing MetadataGroup objects (which lack equals/hashCode)
+        Set<String> metaGroupIds = authorizationGroupList.stream()
+                .map(ag -> ag.getGroup().getId())
+                .collect(Collectors.toSet());
+        
+        Set<String> userGroupIds = metadataGroupUserList.stream()
+                .map(mgu -> mgu.getGroup().getId())
+                .collect(Collectors.toSet());
 
-        Set<MetadataGroup> groupSet = new HashSet<>(groupList2);
-        List<MetadataGroup> commonGroups = groupList1.stream()
-                .filter(groupSet::contains)
-                .collect(Collectors.toList());
+        // Find common group IDs
+        metaGroupIds.retainAll(userGroupIds);
 
-        return commonGroups.isEmpty();
+        return metaGroupIds.isEmpty();
     }
 
 

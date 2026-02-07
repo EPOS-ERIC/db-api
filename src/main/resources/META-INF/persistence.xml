@@ -211,6 +211,118 @@
 			<property name="eclipselink.cache.type.default" value="SoftWeak"/>
 			<property name="eclipselink.cache.size.default" value="1000"/>
 
+			<!-- 
+			  Disable L2 cache for join tables to prevent IllegalMonitorStateException
+			  and cache contention under concurrent access. Join tables are frequently
+			  modified and benefit little from caching while causing thread safety issues.
+			-->
+			<!-- Category joins -->
+			<property name="eclipselink.cache.shared.model.CategoryHastopconcept" value="false"/>
+			<property name="eclipselink.cache.shared.model.CategoryIspartof" value="false"/>
+			
+			<!-- DataProduct joins -->
+			<property name="eclipselink.cache.shared.model.DataproductAttribution" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductHaspart" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductIdentifier" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductIspartof" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductPublisher" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductSource" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductSpatial" value="false"/>
+			<property name="eclipselink.cache.shared.model.DataproductTemporal" value="false"/>
+			
+			<!-- Distribution joins -->
+			<property name="eclipselink.cache.shared.model.DistributionDataproduct" value="false"/>
+			<property name="eclipselink.cache.shared.model.DistributionElement" value="false"/>
+			
+			<!-- Equipment joins -->
+			<property name="eclipselink.cache.shared.model.EquipmentCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.EquipmentContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.EquipmentElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.EquipmentSpatial" value="false"/>
+			<property name="eclipselink.cache.shared.model.EquipmentTemporal" value="false"/>
+			
+			<!-- Facility joins -->
+			<property name="eclipselink.cache.shared.model.FacilityAddress" value="false"/>
+			<property name="eclipselink.cache.shared.model.FacilityCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.FacilityContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.FacilityElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.FacilityIspartof" value="false"/>
+			<property name="eclipselink.cache.shared.model.FacilitySpatial" value="false"/>
+			
+			<!-- Mapping joins -->
+			<property name="eclipselink.cache.shared.model.MappingElement" value="false"/>
+			
+			<!-- Operation joins -->
+			<property name="eclipselink.cache.shared.model.OperationDistribution" value="false"/>
+			<property name="eclipselink.cache.shared.model.OperationElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.OperationMapping" value="false"/>
+			<property name="eclipselink.cache.shared.model.OperationWebservice" value="false"/>
+			
+			<!-- Organization joins -->
+			<property name="eclipselink.cache.shared.model.OrganizationAffiliation" value="false"/>
+			<property name="eclipselink.cache.shared.model.OrganizationContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.OrganizationElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.OrganizationIdentifier" value="false"/>
+			<property name="eclipselink.cache.shared.model.OrganizationMemberof" value="false"/>
+			
+			<!-- Person joins -->
+			<property name="eclipselink.cache.shared.model.PersonContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.PersonElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.PersonIdentifier" value="false"/>
+			
+			<!-- Publication joins -->
+			<property name="eclipselink.cache.shared.model.PublicationCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.PublicationContributor" value="false"/>
+			
+			<!-- Service joins -->
+			<property name="eclipselink.cache.shared.model.ServiceCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.ServiceContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.ServiceIdentifier" value="false"/>
+			<property name="eclipselink.cache.shared.model.ServiceSpatial" value="false"/>
+			<property name="eclipselink.cache.shared.model.ServiceTemporal" value="false"/>
+			
+			<!-- ContactPoint joins -->
+			<property name="eclipselink.cache.shared.model.ContactpointElement" value="false"/>
+			
+			<!-- Software Application joins -->
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationIdentifier" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationOperation" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwareapplicationParameter" value="false"/>
+			
+			<!-- Software Source Code joins -->
+			<property name="eclipselink.cache.shared.model.SoftwaresourcecodeCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwaresourcecodeContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwaresourcecodeElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.SoftwaresourcecodeIdentifier" value="false"/>
+			
+			<!-- Webservice joins -->
+			<property name="eclipselink.cache.shared.model.WebserviceCategory" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceContactpoint" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceDistribution" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceElement" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceIdentifier" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceSpatial" value="false"/>
+			<property name="eclipselink.cache.shared.model.WebserviceTemporal" value="false"/>
+			
+			<!-- Payload joins -->
+			<property name="eclipselink.cache.shared.model.PayloadOutputMapping" value="false"/>
+
+			<!-- 
+			  User/Group Management entities - disable caching for consistent writes.
+			  These entities are frequently modified and must always reflect the latest
+			  state for role updates, request status changes, and group membership operations.
+			-->
+			<property name="eclipselink.cache.shared.model.MetadataGroupUser" value="false"/>
+			<property name="eclipselink.cache.shared.model.MetadataGroup" value="false"/>
+			<property name="eclipselink.cache.shared.model.MetadataUser" value="false"/>
+			<property name="eclipselink.cache.shared.model.AuthorizationGroup" value="false"/>
+
 			<!-- Query optimization -->
 			<property name="eclipselink.query-results-cache" value="true"/>
 			<property name="eclipselink.query-results-cache.size" value="500"/>

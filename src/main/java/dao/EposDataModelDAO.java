@@ -1326,6 +1326,68 @@ public class EposDataModelDAO<T> {
 		LOG.info("All caches cleared - query: {}, entity: {}, count: {}", querySize, entitySize, countSize);
 	}
 
+	// =================== ECLIPSELINK L2 CACHE EVICTION ===================
+
+	/**
+	 * Evicts the EclipseLink L2 shared cache for a specific entity class.
+	 * Use this after mutations to entities that may be cached in the L2 cache.
+	 *
+	 * @param entityClass the entity class to evict from L2 cache
+	 */
+	public void evictL2Cache(Class<?> entityClass) {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			em.getEntityManagerFactory().getCache().evict(entityClass);
+			LOG.debug("Evicted L2 cache for: {}", entityClass.getSimpleName());
+		} catch (Exception e) {
+			LOG.warn("Failed to evict L2 cache for {}: {}", entityClass.getSimpleName(), e.getMessage());
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Evicts the EclipseLink L2 shared cache for all user-group management entities.
+	 * Call this after any mutation to user, group, or authorization entities to ensure
+	 * consistent data is returned on subsequent reads.
+	 */
+	public void evictL2CacheForUserGroupEntities() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			jakarta.persistence.Cache cache = em.getEntityManagerFactory().getCache();
+			
+			cache.evict(model.MetadataGroupUser.class);
+			cache.evict(model.MetadataGroup.class);
+			cache.evict(model.MetadataUser.class);
+			cache.evict(model.AuthorizationGroup.class);
+			
+			LOG.debug("Evicted L2 cache for all user-group entities");
+		} catch (Exception e) {
+			LOG.warn("Failed to evict L2 cache for user-group entities: {}", e.getMessage());
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Evicts the entire EclipseLink L2 shared cache.
+	 * Use sparingly as this affects all cached entities.
+	 */
+	public void evictAllL2Cache() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			em.getEntityManagerFactory().getCache().evictAll();
+			LOG.info("Evicted entire L2 cache");
+		} catch (Exception e) {
+			LOG.warn("Failed to evict all L2 cache: {}", e.getMessage());
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
 	// =================== MONITORING AND HEALTH CHECK ===================
 
 	public boolean isCacheHealthy() {

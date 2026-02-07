@@ -143,6 +143,59 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
 
     @Test
     @Order(7)
+    public void testUpdateUserRoleInGroup() {
+        // Update user role from EDITOR to ADMIN
+        UserGroupManagementAPI.updateUserInGroup(group.getId(), user.getAuthIdentifier(), RoleType.ADMIN, RequestStatusType.ACCEPTED);
+
+        Group retrieveGroup = UserGroupManagementAPI.retrieveGroupById(group.getId());
+        User retrieveUser = UserGroupManagementAPI.retrieveUser(user);
+
+        System.out.println("Updated group: " + retrieveGroup);
+        System.out.println("Updated user: " + retrieveUser);
+
+        assertAll(
+                () -> assertNotNull(retrieveGroup),
+                () -> assertEquals(1, retrieveGroup.getUsers().size()),
+                () -> assertEquals("ADMIN", retrieveGroup.getUsers().get(0).get("role")),
+                () -> assertEquals("ACCEPTED", retrieveGroup.getUsers().get(0).get("requestStatus")),
+                () -> assertEquals(1, retrieveUser.getGroups().size()),
+                () -> assertEquals(RoleType.ADMIN, retrieveUser.getGroups().get(0).getRole())
+        );
+    }
+
+    @Test
+    @Order(8)
+    public void testUpdateUserViaAddUserToGroup() {
+        // Test that addUserToGroup updates existing membership instead of silently returning
+        UserGroupManagementAPI.addUserToGroup(group.getId(), user.getAuthIdentifier(), RoleType.REVIEWER, RequestStatusType.PENDING);
+
+        Group retrieveGroup = UserGroupManagementAPI.retrieveGroupById(group.getId());
+        User retrieveUser = UserGroupManagementAPI.retrieveUser(user);
+
+        System.out.println("Re-added to group: " + retrieveGroup);
+        System.out.println("Re-added user: " + retrieveUser);
+
+        assertAll(
+                () -> assertNotNull(retrieveGroup),
+                () -> assertEquals(1, retrieveGroup.getUsers().size()), // Still only 1 user, not duplicated
+                () -> assertEquals("REVIEWER", retrieveGroup.getUsers().get(0).get("role")),
+                () -> assertEquals("PENDING", retrieveGroup.getUsers().get(0).get("requestStatus")),
+                () -> assertEquals(1, retrieveUser.getGroups().size()),
+                () -> assertEquals(RoleType.REVIEWER, retrieveUser.getGroups().get(0).getRole())
+        );
+    }
+
+    @Test
+    @Order(9)
+    public void testUpdateNonExistentUserInGroup() {
+        // Test that updateUserInGroup returns false for non-existent user-group relationship
+        Boolean result = UserGroupManagementAPI.updateUserInGroup(group.getId(), "non-existent-user", RoleType.VIEWER, RequestStatusType.NONE);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @Order(10)
     public void testDeleteUser() {
         UserGroupManagementAPI.deleteUser(user.getAuthIdentifier());
 
@@ -152,7 +205,7 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
     }
 
     @Test
-    @Order(8)
+    @Order(11)
     public void testDeleteGroup() {
 
         UserGroupManagementAPI.deleteGroup(group.getId());
@@ -164,7 +217,7 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
 
 
     @Test
-    @Order(9)
+    @Order(12)
     public void testCreateGroupWithoutName() {
         Group group = new Group(UUID.randomUUID().toString(), null, "Test Decription");
         UserGroupManagementAPI.createGroup(group);
@@ -178,7 +231,7 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
     }
 
     @Test
-    @Order(10)
+    @Order(13)
     public void testAddEntityToGroup() {
 
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.IDENTIFIER.name());
@@ -217,7 +270,7 @@ public class UserGroupManagementTest extends TestcontainersLifecycle {
     }
 
     @Test
-    @Order(11)
+    @Order(14)
     public void testAddSameEntityToGroup() {
 
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.IDENTIFIER.name());
