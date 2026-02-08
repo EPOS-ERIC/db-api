@@ -9,6 +9,7 @@ import model.Element;
 import model.Operation;
 import org.epos.eposdatamodel.*;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -508,6 +509,14 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         // Step 5: Batch fetch versioning status
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Step 5b: Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = distributions.values().stream()
+                .map(Distribution::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         // Step 6: Assemble all DTOs from pre-fetched data
         List<org.epos.eposdatamodel.Distribution> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
@@ -516,7 +525,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 org.epos.eposdatamodel.Distribution dto = assembleDistribution(
                         instanceId, edmobj,
                         descriptions, titles, dataproducts, webservices, operations, elements,
-                        dataproductMap, webserviceMap, operationMap, versioningMap
+                        dataproductMap, webserviceMap, operationMap, versioningMap, groupsMap
                 );
                 results.add(dto);
             }
@@ -540,7 +549,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             Map<String, Dataproduct> dataproductMap,
             Map<String, Webservice> webserviceMap,
             Map<String, Operation> operationMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Distribution o = new org.epos.eposdatamodel.Distribution();
         o.setInstanceId(edmobj.getInstanceId());
@@ -618,6 +628,12 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 }
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

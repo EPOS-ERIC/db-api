@@ -10,6 +10,7 @@ import org.epos.eposdatamodel.ContactPoint;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -340,12 +341,20 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = contactpoints.values().stream()
+                .map(Contactpoint::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         List<org.epos.eposdatamodel.ContactPoint> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
             Contactpoint edmobj = contactpoints.get(instanceId);
             if (edmobj != null) {
                 results.add(assembleContactPoint(instanceId, edmobj, elements, orgContactpoints, personContactpoints,
-                        organizationMap, personMap, versioningMap));
+                        organizationMap, personMap, versioningMap, groupsMap));
             }
         }
         
@@ -359,7 +368,8 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             Map<String, List<PersonContactpoint>> personContactpoints,
             Map<String, Organization> organizationMap,
             Map<String, Person> personMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.ContactPoint o = new org.epos.eposdatamodel.ContactPoint();
         o.setInstanceId(edmobj.getInstanceId());
@@ -402,6 +412,12 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

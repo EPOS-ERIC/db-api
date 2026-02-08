@@ -8,6 +8,7 @@ import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -399,11 +400,19 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = attributions.values().stream()
+                .map(Attribution::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         List<org.epos.eposdatamodel.Attribution> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
             Attribution edmobj = attributions.get(instanceId);
             if (edmobj != null) {
-                results.add(assembleAttribution(instanceId, edmobj, roles, organizationMap, versioningMap));
+                results.add(assembleAttribution(instanceId, edmobj, roles, organizationMap, versioningMap, groupsMap));
             }
         }
         
@@ -414,7 +423,8 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
             String instanceId, Attribution edmobj,
             Map<String, List<AttributionRole>> roles,
             Map<String, Organization> organizationMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Attribution o = new org.epos.eposdatamodel.Attribution();
         o.setInstanceId(edmobj.getInstanceId());
@@ -446,6 +456,12 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
                 try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

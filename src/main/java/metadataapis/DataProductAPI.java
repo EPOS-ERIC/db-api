@@ -15,6 +15,7 @@ import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -852,6 +853,14 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         // Step 5: Batch fetch versioning status for all entities
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Step 5b: Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = dataproducts.values().stream()
+                .map(Dataproduct::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         // Step 6: Assemble DataProduct DTOs using pre-fetched data (no additional queries!)
         List<DataProduct> results = foundIds.parallelStream()
                 .map(id -> assembleDataProduct(id, dataproducts, 
@@ -860,7 +869,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                         distributions, spatials, temporals, elements,
                         attributionMap, categoryMap, contactPointMap, identifierMap,
                         relatedDpMap, organizationMap, distributionMap, spatialMap, temporalMap,
-                        versioningMap))
+                        versioningMap, groupsMap))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         
@@ -900,7 +909,8 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             Map<String, Distribution> distributionMap,
             Map<String, Spatial> spatialMap,
             Map<String, Temporal> temporalMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         Dataproduct edmobj = dataproducts.get(instanceId);
         if (edmobj == null) return null;
@@ -1045,6 +1055,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
                 }
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

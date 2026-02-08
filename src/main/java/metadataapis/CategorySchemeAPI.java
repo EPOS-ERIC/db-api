@@ -8,6 +8,7 @@ import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -488,11 +489,19 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = schemes.values().stream()
+                .map(CategoryScheme::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         List<org.epos.eposdatamodel.CategoryScheme> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
             model.CategoryScheme edmobj = schemes.get(instanceId);
             if (edmobj != null) {
-                results.add(assembleCategoryScheme(instanceId, edmobj, topConcepts, categoryMap, versioningMap));
+                results.add(assembleCategoryScheme(instanceId, edmobj, topConcepts, categoryMap, versioningMap, groupsMap));
             }
         }
         
@@ -503,7 +512,8 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             String instanceId, model.CategoryScheme edmobj,
             Map<String, List<CategoryHastopconcept>> topConcepts,
             Map<String, Category> categoryMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.CategoryScheme o = new org.epos.eposdatamodel.CategoryScheme();
         o.setInstanceId(edmobj.getInstanceId());
@@ -536,6 +546,12 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
                 try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;
