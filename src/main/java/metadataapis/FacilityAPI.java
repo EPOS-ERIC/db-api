@@ -9,6 +9,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -481,6 +482,14 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         // Step 5: Batch fetch versioning status
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Step 5b: Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = facilities.values().stream()
+                .map(Facility::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         // Step 6: Assemble DTOs
         List<org.epos.eposdatamodel.Facility> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
@@ -488,7 +497,7 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             if (edmobj != null) {
                 org.epos.eposdatamodel.Facility dto = assembleFacility(
                         instanceId, edmobj, categories, contactPoints, addresses, isPartOfs, spatials, elements,
-                        categoryMap, contactPointMap, addressMap, parentFacilityMap, spatialMap, versioningMap
+                        categoryMap, contactPointMap, addressMap, parentFacilityMap, spatialMap, versioningMap, groupsMap
                 );
                 results.add(dto);
             }
@@ -511,7 +520,8 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
             Map<String, Address> addressMap,
             Map<String, Facility> parentFacilityMap,
             Map<String, Spatial> spatialMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Facility o = new org.epos.eposdatamodel.Facility();
         o.setInstanceId(edmobj.getInstanceId());
@@ -592,6 +602,12 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 }
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

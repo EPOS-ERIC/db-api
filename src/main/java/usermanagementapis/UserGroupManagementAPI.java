@@ -383,6 +383,37 @@ public class UserGroupManagementAPI {
         return groups;
     }
 
+    /**
+     * Batch retrieves groups for multiple metaIds in a single operation.
+     * This is optimized for bulk retrieval scenarios to avoid N+1 query problems.
+     *
+     * @param metaIds the list of metaIds to fetch groups for
+     * @return a map from metaId to list of group IDs
+     */
+    public static Map<String, List<String>> batchRetrieveGroupsFromMetaIds(List<String> metaIds) {
+        if (metaIds == null || metaIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // Fetch all AuthorizationGroup entries for all metaIds in one query
+        List<AuthorizationGroup> allAuthGroups = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+
+        // Build a map from metaId to group IDs
+        Map<String, List<String>> result = new HashMap<>();
+        for (String metaId : metaIds) {
+            result.put(metaId, new ArrayList<>());
+        }
+
+        for (AuthorizationGroup ag : allAuthGroups) {
+            String metaId = ag.getMeta().getMetaId();
+            if (result.containsKey(metaId)) {
+                result.get(metaId).add(ag.getGroup().getId());
+            }
+        }
+
+        return result;
+    }
+
     public static Boolean removeMetadataElementFromGroup(String metaId, String groupId){
         if(metaId == null || groupId == null) return false;
 

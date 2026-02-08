@@ -7,9 +7,11 @@ import dao.EposDataModelDAO;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -316,11 +318,19 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         
         java.util.Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = mappings.values().stream()
+                .map(Mapping::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        java.util.Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         List<org.epos.eposdatamodel.Mapping> results = new java.util.ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
             Mapping edmobj = mappings.get(instanceId);
             if (edmobj != null) {
-                results.add(assembleMapping(instanceId, edmobj, elements, versioningMap));
+                results.add(assembleMapping(instanceId, edmobj, elements, versioningMap, groupsMap));
             }
         }
         
@@ -330,7 +340,8 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     private org.epos.eposdatamodel.Mapping assembleMapping(
             String instanceId, Mapping edmobj,
             java.util.Map<String, List<MappingElement>> elements,
-            java.util.Map<String, Versioningstatus> versioningMap) {
+            java.util.Map<String, Versioningstatus> versioningMap,
+            java.util.Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Mapping o = new org.epos.eposdatamodel.Mapping();
         o.setInstanceId(edmobj.getInstanceId());
@@ -368,6 +379,12 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : java.util.Collections.emptyList());
         }
         
         return o;

@@ -10,6 +10,7 @@ import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationChecker;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 import utilities.ReflectionCache;
 
 import java.lang.reflect.Field;
@@ -567,6 +568,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         // Step 5: Batch fetch versioning status
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Step 5b: Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = equipments.values().stream()
+                .map(Equipment::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         // Step 6: Assemble DTOs
         List<org.epos.eposdatamodel.Equipment> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
@@ -574,7 +583,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             if (edmobj != null) {
                 org.epos.eposdatamodel.Equipment dto = assembleEquipment(
                         instanceId, edmobj, categories, contactPoints, isPartOfs, spatials, temporals, elements,
-                        categoryMap, contactPointMap, facilityMap, equipmentParentMap, spatialMap, temporalMap, versioningMap
+                        categoryMap, contactPointMap, facilityMap, equipmentParentMap, spatialMap, temporalMap, versioningMap, groupsMap
                 );
                 results.add(dto);
             }
@@ -598,7 +607,8 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
             Map<String, Equipment> equipmentParentMap,
             Map<String, Spatial> spatialMap,
             Map<String, Temporal> temporalMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Equipment o = new org.epos.eposdatamodel.Equipment();
         o.setInstanceId(edmobj.getInstanceId());
@@ -693,6 +703,12 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 }
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

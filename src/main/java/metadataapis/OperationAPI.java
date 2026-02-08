@@ -8,6 +8,7 @@ import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.IriTemplate;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -410,6 +411,14 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         // Step 5: Batch fetch versioning status
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Step 5b: Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = operations.values().stream()
+                .map(Operation::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         // Step 6: Assemble DTOs
         List<org.epos.eposdatamodel.Operation> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
@@ -417,7 +426,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             if (edmobj != null) {
                 org.epos.eposdatamodel.Operation dto = assembleOperation(
                         instanceId, edmobj, webservices, payloads, mappings, elements,
-                        webserviceMap, payloadMap, mappingMap, versioningMap
+                        webserviceMap, payloadMap, mappingMap, versioningMap, groupsMap
                 );
                 results.add(dto);
             }
@@ -436,7 +445,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             Map<String, Webservice> webserviceMap,
             Map<String, Payload> payloadMap,
             Map<String, Mapping> mappingMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Operation o = new org.epos.eposdatamodel.Operation();
         o.setInstanceId(edmobj.getInstanceId());
@@ -502,6 +512,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 }
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;

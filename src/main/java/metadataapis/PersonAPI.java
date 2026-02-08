@@ -7,6 +7,7 @@ import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -409,12 +410,20 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         
         Map<String, Versioningstatus> versioningMap = getDbaccess().batchFetchVersioningStatus(foundIds);
         
+        // Batch fetch groups for all entities (by metaId)
+        List<String> allMetaIds = persons.values().stream()
+                .map(Person::getMetaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, List<String>> groupsMap = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(allMetaIds);
+        
         List<org.epos.eposdatamodel.Person> results = new ArrayList<>(foundIds.size());
         for (String instanceId : foundIds) {
             Person edmobj = persons.get(instanceId);
             if (edmobj != null) {
                 results.add(assemblePerson(instanceId, edmobj, identifiers, elements, affiliations, contactPoints,
-                        identifierMap, organizationMap, contactPointMap, addressMap, versioningMap));
+                        identifierMap, organizationMap, contactPointMap, addressMap, versioningMap, groupsMap));
             }
         }
         
@@ -431,7 +440,8 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
             Map<String, Organization> organizationMap,
             Map<String, Contactpoint> contactPointMap,
             Map<String, Address> addressMap,
-            Map<String, Versioningstatus> versioningMap) {
+            Map<String, Versioningstatus> versioningMap,
+            Map<String, List<String>> groupsMap) {
         
         org.epos.eposdatamodel.Person o = new org.epos.eposdatamodel.Person();
         o.setInstanceId(edmobj.getInstanceId());
@@ -492,6 +502,12 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 try { o.setStatus(StatusType.valueOf(vs.getStatus())); } catch (Exception e) {}
             }
             o.setFileProvenance(vs.getProvenance());
+        }
+        
+        // Apply groups from pre-fetched data
+        if (o.getMetaId() != null && groupsMap != null) {
+            List<String> groups = groupsMap.get(o.getMetaId());
+            o.setGroups(groups != null ? groups : Collections.emptyList());
         }
         
         return o;
