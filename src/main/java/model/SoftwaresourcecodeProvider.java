@@ -1,62 +1,49 @@
 package model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "softwaresourcecode_provider", schema = "metadata_catalogue")
 public class SoftwaresourcecodeProvider {
-    @Id
-    @Size(max = 100)
-    @Column(name = "softwaresourcecode_instance_id", nullable = false, length = 100)
-    private String softwaresourcecodeInstanceId;
+    @EmbeddedId
+    private SoftwaresourcecodeProviderId id;
 
-    @MapsId
-    @OneToOne(fetch = FetchType.EAGER, optional = false)
+    @MapsId("softwaresourcecodeInstanceId")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
     private Softwaresourcecode softwaresourcecode;
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "entity_instance_id", nullable = false, length = 100)
-    private String entityInstanceId;
+    public SoftwaresourcecodeProvider() {
+        this.id = new SoftwaresourcecodeProviderId();
+    }
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "resource_entity", nullable = false, length = 100)
-    private String resourceEntity;
+    public SoftwaresourcecodeProviderId getId() { return id; }
+    public void setId(SoftwaresourcecodeProviderId id) { this.id = id; }
 
     public String getSoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeInstanceId;
+        return id != null ? id.getSoftwaresourcecodeInstanceId() : null;
+    }
+    public void setSoftwaresourcecodeInstanceId(String s) {
+        if (id == null) id = new SoftwaresourcecodeProviderId();
+        id.setSoftwaresourcecodeInstanceId(s);
     }
 
-    public void setSoftwaresourcecodeInstanceId(String softwaresourcecodeInstanceId) {
-        this.softwaresourcecodeInstanceId = softwaresourcecodeInstanceId;
-    }
-
-    public Softwaresourcecode getSoftwaresourcecode() {
-        return softwaresourcecode;
-    }
-
-    public void setSoftwaresourcecode(Softwaresourcecode softwaresourcecode) {
-        this.softwaresourcecode = softwaresourcecode;
-    }
+    public Softwaresourcecode getSoftwaresourcecode() { return softwaresourcecode; }
+    public void setSoftwaresourcecode(Softwaresourcecode s) { this.softwaresourcecode = s; }
 
     public String getEntityInstanceId() {
-        return entityInstanceId;
+        return id != null ? id.getEntityInstanceId() : null;
     }
-
-    public void setEntityInstanceId(String entityInstanceId) {
-        this.entityInstanceId = entityInstanceId;
+    public void setEntityInstanceId(String s) {
+        if (id == null) id = new SoftwaresourcecodeProviderId();
+        id.setEntityInstanceId(s);
     }
 
     public String getResourceEntity() {
-        return resourceEntity;
+        return id != null ? id.getResourceEntity() : null;
     }
-
-    public void setResourceEntity(String resourceEntity) {
-        this.resourceEntity = resourceEntity;
+    public void setResourceEntity(String s) {
+        if (id == null) id = new SoftwaresourcecodeProviderId();
+        id.setResourceEntity(s);
     }
-
 }

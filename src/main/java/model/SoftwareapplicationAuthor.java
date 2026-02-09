@@ -1,38 +1,37 @@
 package model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "softwareapplication_author", schema = "metadata_catalogue")
 public class SoftwareapplicationAuthor {
-    @Id
-    @Size(max = 100)
-    @Column(name = "softwareapplication_instance_id", nullable = false, length = 100)
-    private String softwareapplicationInstanceId;
+    @EmbeddedId
+    private SoftwareapplicationAuthorId id;
 
-    @MapsId
-    @OneToOne(fetch = FetchType.EAGER, optional = false)
+    @MapsId("softwareapplicationInstanceId")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwareapplication_instance_id", nullable = false)
     private Softwareapplication softwareapplication;
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "entity_instance_id", nullable = false, length = 100)
-    private String entityInstanceId;
+    public SoftwareapplicationAuthor() {
+        this.id = new SoftwareapplicationAuthorId();
+    }
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "resource_entity", nullable = false, length = 100)
-    private String resourceEntity;
+    public SoftwareapplicationAuthorId getId() {
+        return id;
+    }
+
+    public void setId(SoftwareapplicationAuthorId id) {
+        this.id = id;
+    }
 
     public String getSoftwareapplicationInstanceId() {
-        return softwareapplicationInstanceId;
+        return id != null ? id.getSoftwareapplicationInstanceId() : null;
     }
 
     public void setSoftwareapplicationInstanceId(String softwareapplicationInstanceId) {
-        this.softwareapplicationInstanceId = softwareapplicationInstanceId;
+        if (id == null) id = new SoftwareapplicationAuthorId();
+        id.setSoftwareapplicationInstanceId(softwareapplicationInstanceId);
     }
 
     public Softwareapplication getSoftwareapplication() {
@@ -44,19 +43,20 @@ public class SoftwareapplicationAuthor {
     }
 
     public String getEntityInstanceId() {
-        return entityInstanceId;
+        return id != null ? id.getEntityInstanceId() : null;
     }
 
     public void setEntityInstanceId(String entityInstanceId) {
-        this.entityInstanceId = entityInstanceId;
+        if (id == null) id = new SoftwareapplicationAuthorId();
+        id.setEntityInstanceId(entityInstanceId);
     }
 
     public String getResourceEntity() {
-        return resourceEntity;
+        return id != null ? id.getResourceEntity() : null;
     }
 
     public void setResourceEntity(String resourceEntity) {
-        this.resourceEntity = resourceEntity;
+        if (id == null) id = new SoftwareapplicationAuthorId();
+        id.setResourceEntity(resourceEntity);
     }
-
 }

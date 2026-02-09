@@ -140,6 +140,7 @@
 		<class>model.ServiceTemporalId</class>
 		<class>model.Softwareapplication</class>
 		<class>model.SoftwareapplicationAuthor</class>
+		<class>model.SoftwareapplicationAuthorId</class>
 		<class>model.SoftwareapplicationCategory</class>
 		<class>model.SoftwareapplicationCategoryId</class>
 		<class>model.SoftwareapplicationElement</class>
@@ -147,33 +148,46 @@
 		<class>model.SoftwareapplicationContactpoint</class>
 		<class>model.SoftwareapplicationContactpointId</class>
 		<class>model.SoftwareapplicationContributor</class>
+		<class>model.SoftwareapplicationContributorId</class>
 		<class>model.SoftwareapplicationCreator</class>
+		<class>model.SoftwareapplicationCreatorId</class>
 		<class>model.SoftwareapplicationFunder</class>
+		<class>model.SoftwareapplicationFunderId</class>
 		<class>model.SoftwareapplicationIdentifier</class>
 		<class>model.SoftwareapplicationIdentifierId</class>
 		<class>model.SoftwareapplicationMaintainer</class>
+		<class>model.SoftwareapplicationMaintainerId</class>
 		<class>model.SoftwareapplicationOperation</class>
 		<class>model.SoftwareapplicationOperationId</class>
 		<class>model.SoftwareapplicationParameter</class>
 		<class>model.SoftwareapplicationParameterId</class>
 		<class>model.SoftwareapplicationProvider</class>
+		<class>model.SoftwareapplicationProviderId</class>
 		<class>model.SoftwareapplicationPublisher</class>
+		<class>model.SoftwareapplicationPublisherId</class>
 		<class>model.Softwaresourcecode</class>
 		<class>model.SoftwaresourcecodeAuthor</class>
+		<class>model.SoftwaresourcecodeAuthorId</class>
 		<class>model.SoftwaresourcecodeCategory</class>
 		<class>model.SoftwaresourcecodeCategoryId</class>
 		<class>model.SoftwaresourcecodeContactpoint</class>
 		<class>model.SoftwaresourcecodeContactpointId</class>
 		<class>model.SoftwaresourcecodeContributor</class>
+		<class>model.SoftwaresourcecodeContributorId</class>
 		<class>model.SoftwaresourcecodeCreator</class>
+		<class>model.SoftwaresourcecodeCreatorId</class>
 		<class>model.SoftwaresourcecodeElement</class>
 		<class>model.SoftwaresourcecodeElementId</class>
 		<class>model.SoftwaresourcecodeFunder</class>
+		<class>model.SoftwaresourcecodeFunderId</class>
 		<class>model.SoftwaresourcecodeIdentifier</class>
 		<class>model.SoftwaresourcecodeIdentifierId</class>
 		<class>model.SoftwaresourcecodeMaintainer</class>
+		<class>model.SoftwaresourcecodeMaintainerId</class>
 		<class>model.SoftwaresourcecodeProvider</class>
+		<class>model.SoftwaresourcecodeProviderId</class>
 		<class>model.SoftwaresourcecodePublisher</class>
+		<class>model.SoftwaresourcecodePublisherId</class>
 		<class>model.Spatial</class>
 		<class>model.Temporal</class>
 		<class>model.Versioningstatus</class>
