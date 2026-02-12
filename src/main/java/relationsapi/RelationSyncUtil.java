@@ -515,7 +515,7 @@ public class RelationSyncUtil {
                                     }
                                 }
                             } else {
-                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus);
+                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus, mainEntity.getEditorId());
                                 if (newVersionTarget != null) {
                                     targetForJoin = newVersionTarget;
                                     targetIdForJoin = getModelId(newVersionTarget);
@@ -874,7 +874,7 @@ public class RelationSyncUtil {
                                 targetForJoin = publishedVersion;
                             }
                         } else {
-                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus);
+                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus, mainEntity.getEditorId());
                             if (newVersionTarget != null) {
                                 targetForJoin = newVersionTarget;
                             }
@@ -899,7 +899,7 @@ public class RelationSyncUtil {
     // ===== Cascade Version Creation =====
 
     @SuppressWarnings("unchecked")
-    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus) {
+    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus, String editorId) {
         String originalInstanceId = getModelId(originalEntity);
         if (originalInstanceId == null) {
             return null;
@@ -943,6 +943,9 @@ public class RelationSyncUtil {
             dto.setInstanceChangedId(originalInstanceId);
             dto.setInstanceId(null);
             dto.setStatus(newStatus);
+            if (editorId != null) {
+                dto.setEditorId(editorId);
+            }
 
             LinkedEntity result = api.create(dto, newStatus, null, null);
             if (result != null && result.getInstanceId() != null) {
