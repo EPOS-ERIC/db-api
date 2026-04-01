@@ -18,12 +18,15 @@ public class UserGroupManagementAPI {
      */
 
     public static Boolean createUser(User user){
+        Boolean isFirstUser = getDbaccess().countAll(MetadataUser.class) == 0;
+        Boolean isAdmin = isFirstUser || user.getIsAdmin();
+
         MetadataUser user1 = new MetadataUser();
         user1.setAuthIdentifier(user.getAuthIdentifier());
         user1.setEmail(user.getEmail());
         user1.setGivenname(user.getFirstName());
         user1.setFamilyname(user.getLastName());
-        user1.setIsadmin(Boolean.toString(user.getIsAdmin().booleanValue()));
+        user1.setIsadmin(Boolean.toString(isAdmin));
 
         Boolean result = getDbaccess().updateObject(user1);
         

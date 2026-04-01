@@ -96,7 +96,7 @@ public class UserGroupManagementComprehensiveTest extends TestcontainersLifecycl
         assertEquals(user1.getLastName(), retrieved.getLastName());
         assertEquals(user1.getFirstName(), retrieved.getFirstName());
         assertEquals(user1.getEmail(), retrieved.getEmail());
-        assertEquals(user1.getIsAdmin(), retrieved.getIsAdmin());
+        assertTrue(retrieved.getIsAdmin(), "First created user should be admin");
     }
 
     @Test
@@ -127,6 +127,7 @@ public class UserGroupManagementComprehensiveTest extends TestcontainersLifecycl
         assertNull(retrieved.getLastName());
         assertNull(retrieved.getFirstName());
         assertNull(retrieved.getEmail());
+        assertFalse(retrieved.getIsAdmin(), "Non-first user should keep requested non-admin role");
     }
 
     @Test
