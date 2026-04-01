@@ -515,7 +515,7 @@ public class RelationSyncUtil {
                                     }
                                 }
                             } else {
-                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus);
+                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus, mainEntity.getEditorId());
                                 if (newVersionTarget != null) {
                                     targetForJoin = newVersionTarget;
                                     targetIdForJoin = getModelId(newVersionTarget);
@@ -874,7 +874,7 @@ public class RelationSyncUtil {
                                 targetForJoin = publishedVersion;
                             }
                         } else {
-                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus);
+                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus, mainEntity.getEditorId());
                             if (newVersionTarget != null) {
                                 targetForJoin = newVersionTarget;
                             }
@@ -899,7 +899,7 @@ public class RelationSyncUtil {
     // ===== Cascade Version Creation =====
 
     @SuppressWarnings("unchecked")
-    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus) {
+    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus, String editorId) {
         String originalInstanceId = getModelId(originalEntity);
         if (originalInstanceId == null) {
             return null;
@@ -943,6 +943,9 @@ public class RelationSyncUtil {
             dto.setInstanceChangedId(originalInstanceId);
             dto.setInstanceId(null);
             dto.setStatus(newStatus);
+            if (editorId != null) {
+                dto.setEditorId(editorId);
+            }
 
             LinkedEntity result = api.create(dto, newStatus, null, null);
             if (result != null && result.getInstanceId() != null) {
@@ -1019,6 +1022,21 @@ public class RelationSyncUtil {
     }
 
     // ===== Pending Relations =====
+
+    /**
+     * Creates a pending relation when the target entity doesn't exist yet.
+     * The relation will be resolved when the target entity is created.
+     *
+     * @param sourceInstanceId the instanceId of the source entity
+     * @param sourceEntityType the entity type of the source (e.g., "WEBSERVICE")
+     * @param targetUid the UID of the target entity that doesn't exist yet
+     * @param targetEntityType the entity type of the target (e.g., "WEBSERVICE")
+     * @param joinClassName the fully qualified class name of the join table (e.g., "model.WebserviceRelation")
+     */
+    public static void createPendingWebserviceRelation(String sourceInstanceId, String sourceEntityType,
+                                                       String targetUid, String targetEntityType, String joinClassName) {
+        createPendingRelation(sourceInstanceId, sourceEntityType, targetUid, targetEntityType, joinClassName);
+    }
 
     private static void createPendingRelation(String sourceInstanceId, String sourceEntityType,
                                               String targetUid, String targetEntityType, String joinClassName) {
@@ -1122,8 +1140,13 @@ public class RelationSyncUtil {
         synchronized (lock) {
             Object newJoin = joinClass.getDeclaredConstructor().newInstance();
             
+            // Check if this is a WebserviceRelation (special case with embedded ID + resourceEntity)
+            if (isWebserviceRelationJoinClass(joinClass)) {
+                // Handle WebserviceRelation which has embedded ID and resourceEntity
+                setWebserviceRelationJoinship(newJoin, sourceEntity, targetEntity, targetEntityType);
+            }
             // Check if this is a polymorphic relation (e.g., creator, author, etc.)
-            if (isPolymorphicJoinClass(joinClass) && targetEntityType != null) {
+            else if (isPolymorphicJoinClass(joinClass) && targetEntityType != null) {
                 // Handle polymorphic relations that store entity reference via entityInstanceId + resourceEntity
                 setPolymorphicJoinRelationship(newJoin, sourceEntity, targetEntity, targetEntityType);
             } else {
@@ -1144,6 +1167,43 @@ public class RelationSyncUtil {
                 LOG.log(Level.FINE, "Pending relation join already exists: {0}", joinClass.getSimpleName());
             }
         }
+    }
+
+    /**
+     * Checks if a join class is a WebserviceRelation (has embedded ID with webserviceInstanceId/entityInstanceId + resourceEntity).
+     */
+    private static boolean isWebserviceRelationJoinClass(Class<?> joinClass) {
+        return "WebserviceRelation".equals(joinClass.getSimpleName());
+    }
+
+    /**
+     * Sets up a WebserviceRelation join entity with its embedded ID and resourceEntity.
+     */
+    private static void setWebserviceRelationJoinship(Object joinEntity, Object sourceEntity, 
+            Object targetEntity, String targetEntityType) throws Exception {
+        String sourceId = getModelId(sourceEntity);
+        String targetId = getModelId(targetEntity);
+        
+        // Create and set the embedded ID
+        Class<?> idClass = Class.forName("model.WebserviceRelationId");
+        Object idInstance = idClass.getDeclaredConstructor().newInstance();
+        
+        Method setWebserviceInstanceId = idClass.getMethod("setWebserviceInstanceId", String.class);
+        Method setEntityInstanceId = idClass.getMethod("setEntityInstanceId", String.class);
+        setWebserviceInstanceId.invoke(idInstance, sourceId);
+        setEntityInstanceId.invoke(idInstance, targetId);
+        
+        Method setId = joinEntity.getClass().getMethod("setId", idClass);
+        setId.invoke(joinEntity, idInstance);
+        
+        // Set the webservice instance reference
+        Method setWebserviceInstance = joinEntity.getClass().getMethod("setWebserviceInstance", sourceEntity.getClass());
+        setWebserviceInstance.invoke(joinEntity, sourceEntity);
+        
+        // Set the resource entity type
+        String entityType = targetEntityType != null ? targetEntityType : "WEBSERVICE";
+        Method setResourceEntity = joinEntity.getClass().getMethod("setResourceEntity", String.class);
+        setResourceEntity.invoke(joinEntity, entityType);
     }
 
     // Legacy embedded ID init for pending relations (alphabetical ordering for same-class)

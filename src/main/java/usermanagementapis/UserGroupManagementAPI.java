@@ -314,6 +314,14 @@ public class UserGroupManagementAPI {
     }
 
     public static Boolean removeUserFromGroup(String groupId, String userId){
+        if(groupId == null || userId == null) return false;
+        
+        // Invalidate ALL caches (application + L2) BEFORE querying to ensure we get fresh data
+        // This is critical because the user-group relationship may have been 
+        // added after a previous query returned an empty (cached) result
+        getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
+        getDbaccess().evictL2CacheForUserGroupEntities();
+        
         Map<String, Object> filters = new HashMap<>();
         filters.put("group.id", groupId);
         filters.put("authIdentifier.authIdentifier", userId);
@@ -323,9 +331,10 @@ public class UserGroupManagementAPI {
 
         Boolean result = getDbaccess().deleteObject(metadataGroupUserList.get(0));
         
-        // Invalidate caches to ensure fresh data on next retrieval
+        // Invalidate caches AFTER deletion to ensure fresh data on next retrieval
         if(result) {
             getDbaccess().invalidateAllCachesForClass("MetadataGroupUser");
+            getDbaccess().evictL2CacheForUserGroupEntities();
         }
         
         return result;

@@ -306,7 +306,22 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
                         getDbaccess().updateObject(wsr);
                     } else {
-                        System.out.println("WARNING: Could not find related Webservice for relation: " + le.getUid());
+                        // Target webservice doesn't exist yet - create a pending relation
+                        // This will be resolved when the target webservice is created
+                        if (le.getUid() != null) {
+                            String targetEntityType = le.getEntityType() != null ? le.getEntityType() : EntityNames.WEBSERVICE.name();
+                            RelationSyncUtil.createPendingWebserviceRelation(
+                                    edmobj.getInstanceId(),
+                                    EntityNames.WEBSERVICE.name(),
+                                    le.getUid(),
+                                    targetEntityType,
+                                    WebserviceRelation.class.getName()
+                            );
+                            System.out.println("INFO: Created pending relation for Webservice: " + le.getUid() + 
+                                    " (will be resolved when target is created)");
+                        } else {
+                            System.out.println("WARNING: Could not find related Webservice for relation and no UID provided");
+                        }
                     }
                 }
             }

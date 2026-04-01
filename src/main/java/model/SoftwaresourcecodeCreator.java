@@ -1,38 +1,37 @@
 package model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "softwaresourcecode_creator", schema = "metadata_catalogue")
 public class SoftwaresourcecodeCreator {
-    @Id
-    @Size(max = 100)
-    @Column(name = "softwaresourcecode_instance_id", nullable = false, length = 100)
-    private String softwaresourcecodeInstanceId;
+    @EmbeddedId
+    private SoftwaresourcecodeCreatorId id;
 
-    @MapsId
-    @OneToOne(fetch = FetchType.EAGER, optional = false)
+    @MapsId("softwaresourcecodeInstanceId")
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "softwaresourcecode_instance_id", nullable = false)
     private Softwaresourcecode softwaresourcecode;
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "entity_instance_id", nullable = false, length = 100)
-    private String entityInstanceId;
+    public SoftwaresourcecodeCreator() {
+        this.id = new SoftwaresourcecodeCreatorId();
+    }
 
-    @Size(max = 100)
-    @NotNull
-    @Column(name = "resource_entity", nullable = false, length = 100)
-    private String resourceEntity;
+    public SoftwaresourcecodeCreatorId getId() {
+        return id;
+    }
+
+    public void setId(SoftwaresourcecodeCreatorId id) {
+        this.id = id;
+    }
 
     public String getSoftwaresourcecodeInstanceId() {
-        return softwaresourcecodeInstanceId;
+        return id != null ? id.getSoftwaresourcecodeInstanceId() : null;
     }
 
     public void setSoftwaresourcecodeInstanceId(String softwaresourcecodeInstanceId) {
-        this.softwaresourcecodeInstanceId = softwaresourcecodeInstanceId;
+        if (id == null) id = new SoftwaresourcecodeCreatorId();
+        id.setSoftwaresourcecodeInstanceId(softwaresourcecodeInstanceId);
     }
 
     public Softwaresourcecode getSoftwaresourcecode() {
@@ -44,19 +43,20 @@ public class SoftwaresourcecodeCreator {
     }
 
     public String getEntityInstanceId() {
-        return entityInstanceId;
+        return id != null ? id.getEntityInstanceId() : null;
     }
 
     public void setEntityInstanceId(String entityInstanceId) {
-        this.entityInstanceId = entityInstanceId;
+        if (id == null) id = new SoftwaresourcecodeCreatorId();
+        id.setEntityInstanceId(entityInstanceId);
     }
 
     public String getResourceEntity() {
-        return resourceEntity;
+        return id != null ? id.getResourceEntity() : null;
     }
 
     public void setResourceEntity(String resourceEntity) {
-        this.resourceEntity = resourceEntity;
+        if (id == null) id = new SoftwaresourcecodeCreatorId();
+        id.setResourceEntity(resourceEntity);
     }
-
 }
