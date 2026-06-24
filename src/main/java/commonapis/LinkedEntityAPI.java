@@ -108,12 +108,17 @@ public class LinkedEntityAPI {
     }
 
     public static LinkedEntity createFromLinkedEntity(LinkedEntity obj, StatusType overrideStatus, Versioningstatus parentVersioningstatus, String provenance) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[LINKED ENTITY RESOLUTION] Resolving LinkedEntity: type={0}, instanceId={1}, uid={2}, metaId={3}",
+                    new Object[]{obj.getEntityType(), obj.getInstanceId(), obj.getUid(), obj.getMetaId()});
+        }
 
         AbstractAPI api = apiMap.get(obj.getEntityType().toUpperCase());
         Class<?> edmClass = edmClassMap.get(obj.getEntityType().toUpperCase());
         Class<?> modelClass = modelClassMap.get(obj.getEntityType().toUpperCase());
 
         if (api == null || edmClass == null) {
+            LOG.log(java.util.logging.Level.WARNING, "[LINKED ENTITY ERROR] No API or EDM class found for type: {0}", obj.getEntityType());
             return null;
         }
 
@@ -122,7 +127,12 @@ public class LinkedEntityAPI {
                     obj.getInstanceId(), null, null, null, Versioningstatus.class);
             if (!existing.isEmpty()) {
                 Versioningstatus vs = existing.get(0);
-                return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                LinkedEntity le = createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                    LOG.log(java.util.logging.Level.FINE, "[LINKED ENTITY] Resolved via instanceId to LinkedEntity: instanceId={0}, status={1}", 
+                            new Object[]{le.getInstanceId(), vs.getStatus()});
+                }
+                return le;
             }
         }
 
@@ -132,7 +142,11 @@ public class LinkedEntityAPI {
                 // Find the version with matching status (if specified) or the latest
                 Object bestMatch = findBestMatchingVersion(existingByUid, overrideStatus);
                 if (bestMatch != null) {
-                    return extractLinkedEntityFromModel(bestMatch, obj.getEntityType());
+                    LinkedEntity le = extractLinkedEntityFromModel(bestMatch, obj.getEntityType());
+                    if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                        LOG.log(java.util.logging.Level.FINE, "[LINKED ENTITY] Resolved via uid to LinkedEntity: instanceId={0}", le.getInstanceId());
+                    }
+                    return le;
                 }
             }
         }
@@ -145,14 +159,25 @@ public class LinkedEntityAPI {
                 for (Versioningstatus vs : existingByMeta) {
                     if (overrideStatus == null ||
                             (vs.getStatus() != null && vs.getStatus().toString().equals(overrideStatus.toString()))) {
-                        return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                        LinkedEntity le = createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                            LOG.log(java.util.logging.Level.FINE, "[LINKED ENTITY] Resolved via metaId + status match to: instanceId={0}", le.getInstanceId());
+                        }
+                        return le;
                     }
                 }
                 // If no status match, return the first one
                 Versioningstatus vs = existingByMeta.get(0);
-                return createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                LinkedEntity le = createLinkedEntityFromVersioningstatus(vs, obj.getEntityType());
+                if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                    LOG.log(java.util.logging.Level.FINE, "[LINKED ENTITY] Resolved via metaId first match default to: instanceId={0}", le.getInstanceId());
+                }
+                return le;
             }
         }
+        
+        LOG.log(java.util.logging.Level.WARNING, "[LINKED ENTITY WARNING] Resolution failed! Could not find entity for LinkedEntity: type={0}, uid={1}, instanceId={2}", 
+                new Object[]{obj.getEntityType(), obj.getUid(), obj.getInstanceId()});
         return null;
     }
 

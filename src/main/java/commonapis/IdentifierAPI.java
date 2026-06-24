@@ -21,6 +21,9 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Identifier obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -73,10 +76,17 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.IDENTIFIER.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     @Override

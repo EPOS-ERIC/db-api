@@ -25,6 +25,9 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
     @Override
     public LinkedEntity create(ContactPoint obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         boolean languageExplicitlySet = isFieldExplicitlySet(obj, "language");
         boolean telephoneExplicitlySet = isFieldExplicitlySet(obj, "telephone");
@@ -125,10 +128,17 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.CONTACTPOINT.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void deleteExistingElements(String contactpointInstanceId) {
@@ -178,29 +188,9 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             EposDataModelDAO.getInstance().updateObject(ce);
         }
     }
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(obj);
-                return value != null;
-            }
-        } catch (Exception e) {
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

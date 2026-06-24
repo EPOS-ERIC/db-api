@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 public class UserGroupManagementAPI {
 
+    private static final java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(UserGroupManagementAPI.class.getName());
+
     /**
      *
      * USER OPERATIONS
@@ -18,6 +20,9 @@ public class UserGroupManagementAPI {
      */
 
     public static Boolean createUser(User user){
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[USER] Creating user with authIdentifier: {0}", user.getAuthIdentifier());
+        }
         Boolean isFirstUser = getDbaccess().countAll(MetadataUser.class) == 0;
         Boolean isAdmin = isFirstUser || user.getIsAdmin();
 
@@ -388,10 +393,15 @@ public class UserGroupManagementAPI {
     }
 
     public static List<String> retrieveShortGroupsFromMetaId(String metaId){
-
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[USER GROUPS] Retrieving groups for metaId: {0}", metaId);
+        }
         List<String> groups = new ArrayList<>();
         List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class);
         authorizationGroupList.forEach(authorizationGroup -> groups.add(authorizationGroup.getGroup().getId()));
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[USER GROUPS] Found {0} groups for metaId: {1}", new Object[]{groups.size(), metaId});
+        }
         return groups;
     }
 
@@ -403,6 +413,9 @@ public class UserGroupManagementAPI {
      * @return a map from metaId to list of group IDs
      */
     public static Map<String, List<String>> batchRetrieveGroupsFromMetaIds(List<String> metaIds) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[USER GROUPS] Batch retrieving groups for {0} metaIds", metaIds.size());
+        }
         if (metaIds == null || metaIds.isEmpty()) {
             return Collections.emptyMap();
         }

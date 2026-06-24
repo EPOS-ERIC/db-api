@@ -4,14 +4,21 @@ import abstractapis.AbstractRelationsAPI;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import relationsapi.RelationSyncUtil;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ContactPointRelationsAPI extends AbstractRelationsAPI {
+
+    private static final Logger LOG = Logger.getLogger(ContactPointRelationsAPI.class.getName());
 
     /**
      * Equipment - ContactPoint relation
      * @param previousObj The previous version of the entity (for versioning support)
      */
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Equipment instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -29,6 +36,9 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
      * Facility - ContactPoint relation
      */
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Facility instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -46,6 +56,9 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
      * DataProduct - ContactPoint relation
      */
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Dataproduct instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -63,6 +76,9 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
      * WebService - ContactPoint relation
      */
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Webservice instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -80,6 +96,9 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
      * SoftwareSourceCode - ContactPoint relation
      */
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Softwaresourcecode instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
@@ -97,6 +116,9 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
      * SoftwareApplication - ContactPoint relation
      */
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Softwareapplication instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getContactPoint() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,

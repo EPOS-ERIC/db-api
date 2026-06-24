@@ -22,6 +22,9 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.OutputMapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -93,10 +96,17 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.OUTPUTMAPPING.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void setFieldsFromInput(OutputMapping edmobj, org.epos.eposdatamodel.OutputMapping obj) {

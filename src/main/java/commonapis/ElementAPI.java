@@ -25,6 +25,9 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Element obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -77,10 +80,17 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ELEMENT.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     @Override

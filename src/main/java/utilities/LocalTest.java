@@ -7,9 +7,9 @@ public class LocalTest {
 
     public static void main(String[] args){
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.FACILITY.name());
-        System.out.println("api.retrieveAll() ->  call");
+        // System.out.println("api.retrieveAll() ->  call");
         api.retrieveAll().forEach(item -> {
-            System.out.println(item);
+            // System.out.println(item);
         });
     }
 

@@ -34,6 +34,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
     @Override
     public LinkedEntity create(DataProduct obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Capture if fields were explicitly set BEFORE any processing
         boolean titleExplicitlySet = isFieldExplicitlySet(obj, "title");
@@ -437,10 +440,17 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DATAPRODUCT.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void handleElementRelations(DataProduct obj, Dataproduct edmobj, StatusType overrideStatus, boolean isNewVersion, String oldInstanceId) {
@@ -543,30 +553,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(obj);
-                return value != null;
-            }
-        } catch (Exception e) {
-            // Fallback: assume not explicitly set
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

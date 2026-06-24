@@ -158,18 +158,27 @@ public class EposDataModelDAO<T> {
 
 	private void putInQueryCache(String key, Object value) {
 		if (value != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Putting query result in cache. Key: {}", key);
+			}
 			queryCache.put(key, value);
 		}
 	}
 
 	private void putInEntityCache(String key, Object value) {
 		if (value != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Putting entity in cache. Key: {}", key);
+			}
 			entityCache.put(key, value);
 		}
 	}
 
 	private void putInCountCache(String key, Long value) {
 		if (value != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Putting count in cache. Key: {}", key);
+			}
 			countCache.put(key, value);
 		}
 	}
@@ -177,21 +186,53 @@ public class EposDataModelDAO<T> {
 	@SuppressWarnings("unchecked")
 	private <R> R getFromQueryCache(String key) {
 		Object cached = queryCache.getIfPresent(key);
-		if (cached instanceof List) {
-			// Return unmodifiable view instead of defensive copy for performance
-			// Callers should NOT modify the returned list - use new ArrayList<>() if mutation needed
-			return (R) java.util.Collections.unmodifiableList((List<?>) cached);
+		if (cached != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Query cache hit for key: {}", key);
+			}
+			if (cached instanceof List) {
+				// Return unmodifiable view instead of defensive copy for performance
+				// Callers should NOT modify the returned list - use new ArrayList<>() if mutation needed
+				return (R) java.util.Collections.unmodifiableList((List<?>) cached);
+			}
+			return (R) cached;
+		} else {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Query cache miss for key: {}", key);
+			}
 		}
-		return (R) cached;
+		return null;
 	}
 
 	@SuppressWarnings("unchecked")
 	private <R> R getFromEntityCache(String key) {
-		return (R) entityCache.getIfPresent(key);
+		Object cached = entityCache.getIfPresent(key);
+		if (cached != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Entity cache hit for key: {}", key);
+			}
+			return (R) cached;
+		} else {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Entity cache miss for key: {}", key);
+			}
+		}
+		return null;
 	}
 
 	private Long getFromCountCache(String key) {
-		return countCache.getIfPresent(key);
+		Long cached = countCache.getIfPresent(key);
+		if (cached != null) {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Count cache hit for key: {}", key);
+			}
+			return cached;
+		} else {
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Count cache miss for key: {}", key);
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -1513,6 +1554,7 @@ public class EposDataModelDAO<T> {
 	private void rollbackQuietly(EntityTransaction tx) {
 		if (tx != null && tx.isActive()) {
 			try {
+				LOG.warn("Initiating transaction rollback due to active transaction failure");
 				tx.rollback();
 			} catch (Exception e) {
 				LOG.warn("Rollback failed", e);

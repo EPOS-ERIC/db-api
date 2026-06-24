@@ -9,8 +9,14 @@ import org.epos.eposdatamodel.LinkedEntity;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class AbstractAPI<T> {
+
+    protected final Logger LOG = Logger.getLogger(getClass().getName());
 
     protected Class<?> edmClass;
     protected String entityName;
@@ -43,6 +49,134 @@ public abstract class AbstractAPI<T> {
     }
 
     public abstract LinkedEntity create(T obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate);
+
+    protected void logCreateStart(T obj, StatusType overrideStatus) {
+        if (LOG.isLoggable(Level.INFO)) {
+            LOG.log(Level.INFO, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}", 
+                    new Object[]{entityName, edmClass != null ? edmClass.getSimpleName() : "null"});
+        }
+        
+        Runtime runtime = Runtime.getRuntime();
+        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[MEMORY STATE] Used: {0}MB, Free: {1}MB, Total: {2}MB, Max: {3}MB", 
+                    new Object[]{usedMemory / (1024 * 1024), runtime.freeMemory() / (1024 * 1024), runtime.totalMemory() / (1024 * 1024), runtime.maxMemory() / (1024 * 1024)});
+        }
+
+        if (obj == null) {
+            LOG.log(Level.WARNING, "[VALIDATION WARNING] Incoming object for {0} is NULL!", entityName);
+            return;
+        }
+
+        try {
+            List<String> emptyFields = new java.util.ArrayList<>();
+            List<String> populatedFields = new java.util.ArrayList<>();
+            
+            for (Method method : obj.getClass().getMethods()) {
+                if (method.getName().startsWith("get") && method.getParameterCount() == 0 && !method.getName().equals("getClass")) {
+                    String fieldName = method.getName().substring(3);
+                    fieldName = Character.toLowerCase(fieldName.charAt(0)) + fieldName.substring(1);
+                    try {
+                        Object val = method.invoke(obj);
+                        if (val == null) {
+                            emptyFields.add(fieldName);
+                        } else if (val instanceof String && ((String) val).trim().isEmpty()) {
+                            emptyFields.add(fieldName);
+                        } else if (val instanceof java.util.Collection && ((java.util.Collection<?>) val).isEmpty()) {
+                            emptyFields.add(fieldName);
+                        } else {
+                            populatedFields.add(fieldName + "=" + truncateString(val.toString(), 120));
+                        }
+                    } catch (Exception e) {
+                        // ignore reflection errors during logging
+                    }
+                }
+            }
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "[VALIDATION] Populated fields for {0}: {1}", new Object[]{entityName, populatedFields});
+                LOG.log(Level.FINE, "[VALIDATION] Null/Empty fields for {0}: {1}", new Object[]{entityName, emptyFields});
+            }
+            
+            // Highlight missing key identifiers which could lead to empty or broken draft creations
+            if (emptyFields.contains("instanceId") && emptyFields.contains("uid") && emptyFields.contains("metaId")) {
+                LOG.log(Level.WARNING, "[VALIDATION WARNING] {0} object has NO identifiers set! (instanceId, uid, and metaId are all null or empty)", entityName);
+            }
+            
+            // Check for other entity-specific crucial empty fields
+            if ("Operation".equalsIgnoreCase(entityName) || "metadataapis.OperationAPI".contains(getClass().getSimpleName())) {
+                if (emptyFields.contains("method") || emptyFields.contains("template")) {
+                    LOG.log(Level.WARNING, "[VALIDATION WARNING] Operation has missing method/template! Method empty: {0}, Template empty: {1}", 
+                            new Object[]{emptyFields.contains("method"), emptyFields.contains("template")});
+                }
+            } else if ("Mapping".equalsIgnoreCase(entityName) || "metadataapis.MappingAPI".contains(getClass().getSimpleName())) {
+                if (emptyFields.contains("variable") || emptyFields.contains("property")) {
+                    LOG.log(Level.WARNING, "[VALIDATION WARNING] Mapping has missing variable/property! Variable empty: {0}, Property empty: {1}", 
+                            new Object[]{emptyFields.contains("variable"), emptyFields.contains("property")});
+                }
+            } else if ("Distribution".equalsIgnoreCase(entityName) || "metadataapis.DistributionAPI".contains(getClass().getSimpleName())) {
+                if (emptyFields.contains("format") || emptyFields.contains("licence") || emptyFields.contains("title")) {
+                    LOG.log(Level.WARNING, "[VALIDATION WARNING] Distribution has missing details! Format empty: {0}, Licence empty: {1}, Title empty: {2}", 
+                            new Object[]{emptyFields.contains("format"), emptyFields.contains("licence"), emptyFields.contains("title")});
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "[LOGGING ERROR] Reflection-based field inspection failed", e);
+        }
+    }
+
+    private String truncateString(String s, int limit) {
+        if (s == null) return "null";
+        if (s.length() <= limit) return s;
+        return s.substring(0, limit) + "...";
+    }
+
+    protected void logCreateEnd(LinkedEntity result, Throwable error) {
+        if (error != null) {
+            LOG.log(Level.SEVERE, "<== [CREATE ERROR] Entity Type: " + entityName + " creation failed with exception", error);
+        } else if (result != null) {
+            if (LOG.isLoggable(Level.INFO)) {
+                LOG.log(Level.INFO, "<== [CREATE SUCCESS] Entity Type: {0}, LinkedEntity Result -> instanceId: {1}, metaId: {2}, uid: {3}", 
+                        new Object[]{entityName, result.getInstanceId(), result.getMetaId(), result.getUid()});
+            }
+        } else {
+            LOG.log(Level.WARNING, "<== [CREATE WARNING] Entity Type: " + entityName + " returned a null LinkedEntity!");
+        }
+    }
+
+    protected boolean isFieldExplicitlySet(Object obj, String fieldName) {
+        try {
+            Field field = findField(obj.getClass(), fieldName);
+            if (field != null) {
+                field.setAccessible(true);
+                Object value = field.get(obj);
+                boolean isSet = value != null;
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "[DEPENDENCY CHECK] Field: {0} in {1}, explicitlySet={2}, value={3}", 
+                            new Object[]{fieldName, obj.getClass().getSimpleName(), isSet, value != null ? truncateString(value.toString(), 100) : "null"});
+                }
+                return isSet;
+            } else {
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "[DEPENDENCY CHECK] Field {0} not found in class {1}", 
+                            new Object[]{fieldName, obj.getClass().getName()});
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[DEPENDENCY CHECK ERROR] Error checking field: " + fieldName + " on " + obj.getClass().getSimpleName(), e);
+        }
+        return false;
+    }
+
+    private Field findField(Class<?> clazz, String fieldName) {
+        while (clazz != null) {
+            try {
+                return clazz.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        return null;
+    }
 
     public abstract T retrieve(String instanceId);
 

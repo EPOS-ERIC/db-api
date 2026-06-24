@@ -485,6 +485,11 @@ public class RelationSyncUtil {
                     rawTarget = createStubEntity(targetClass, link.getUid(), effectiveStatus);
                 }
 
+                if (rawTarget == null) {
+                    LOG.log(Level.WARNING, "[RELATION SYNC WARNING] Relation could not be resolved! Link: instanceId={0}, uid={1}, entityType={2} on parent: parentId={3}, parentType={4}", 
+                            new Object[]{link.getInstanceId(), link.getUid(), link.getEntityType(), parentId, sourceEntityType});
+                }
+
                 if (rawTarget != null) {
                     T targetEntity = targetClass.cast(rawTarget);
                     String targetId = getModelId(targetEntity);

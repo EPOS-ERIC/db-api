@@ -4,14 +4,21 @@ import abstractapis.AbstractRelationsAPI;
 import model.*;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
 import relationsapi.RelationSyncUtil;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CategoryRelationsAPI extends AbstractRelationsAPI {
+
+    private static final Logger LOG = Logger.getLogger(CategoryRelationsAPI.class.getName());
 
     /**
      * Equipment - Category relation
      * @param previousObj The previous version of the entity (for versioning support)
      */
     public static void createRelation(Equipment edmobj, org.epos.eposdatamodel.Equipment obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Equipment instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,
@@ -29,6 +36,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
      * Facility - Category relation
      */
     public static void createRelation(Facility edmobj, org.epos.eposdatamodel.Facility obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Facility instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,
@@ -46,6 +56,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
      * DataProduct - Category relation
      */
     public static void createRelation(Dataproduct edmobj, org.epos.eposdatamodel.DataProduct obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Dataproduct instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,
@@ -63,6 +76,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
      * WebService - Category relation
      */
     public static void createRelation(Webservice edmobj, org.epos.eposdatamodel.WebService obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Webservice instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,
@@ -80,6 +96,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
      * SoftwareSourceCode - Category relation
      */
     public static void createRelation(Softwaresourcecode edmobj, org.epos.eposdatamodel.SoftwareSourceCode obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Softwaresourcecode instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,
@@ -97,6 +116,9 @@ public class CategoryRelationsAPI extends AbstractRelationsAPI {
      * SoftwareApplication - Category relation
      */
     public static void createRelation(Softwareapplication edmobj, org.epos.eposdatamodel.SoftwareApplication obj, StatusType overrideStatus, EPOSDataModelEntity previousObj) {
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "[CategoryRelationsAPI] Creating Category relation for Softwareapplication instanceId: {0}", edmobj.getInstanceId());
+        }
         if (obj.getCategory() != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), obj.getCategory(), null, null,

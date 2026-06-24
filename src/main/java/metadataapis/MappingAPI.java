@@ -25,6 +25,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Mapping obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Capture if fields were explicitly set BEFORE any processing
         boolean paramValueExplicitlySet = isFieldExplicitlySet(obj, "paramValue");
@@ -120,10 +123,17 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.MAPPING.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void deleteExistingElements(String mappingInstanceId) {
@@ -195,30 +205,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(obj);
-                return value != null;
-            }
-        } catch (Exception e) {
-            // Fallback: assume not explicitly set
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

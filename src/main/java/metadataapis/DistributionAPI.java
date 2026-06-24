@@ -28,6 +28,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Distribution obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         boolean accessServiceExplicitlySet = isFieldExplicitlySet(obj, "accessService");
         boolean supportedOperationExplicitlySet = isFieldExplicitlySet(obj, "supportedOperation");
@@ -169,8 +172,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         if (accessServiceExplicitlySet || !isNewVersion) {
             List<LinkedEntity> accessServices = obj.getAccessService();
             if (accessServices != null && !accessServices.isEmpty()) {
-                System.out.println("AccessService: " + accessServices);
-                System.out.println(overrideStatus);
+                // System.out.println("AccessService: " + accessServices);
+                // System.out.println(overrideStatus);
                 RelationSyncUtil.syncComplexRelation(
                         edmobj, edmobj.getInstanceId(), accessServices, relationFromUpdate, relationToUpdate,
                         WebserviceDistribution.class, Webservice.class,
@@ -247,11 +250,18 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DISTRIBUTION.name(), edmobj);
 
-        return new LinkedEntity()
+        
+            LinkedEntity result = new LinkedEntity()
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.DISTRIBUTION.name());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void deleteExistingElements(String instanceId) {
@@ -320,27 +330,9 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                return field.get(obj) != null;
-            }
-        } catch (Exception e) {
-            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
-                    new Object[]{fieldName, e.getMessage()});
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try { return clazz.getDeclaredField(fieldName); }
-            catch (NoSuchFieldException e) { clazz = clazz.getSuperclass(); }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

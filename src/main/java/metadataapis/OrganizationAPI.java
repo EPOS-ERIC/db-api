@@ -35,6 +35,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         boolean addressExplicitlySet = isFieldExplicitlySet(obj, "address");
         boolean contactPointExplicitlySet = isFieldExplicitlySet(obj, "contactPoint");
@@ -245,10 +248,17 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ORGANIZATION.name(), edmobj);
         AttributionAPI.resolvePendingAgentRelations(edmobj.getUid(), edmobj.getInstanceId());
 
-        return new LinkedEntity().instanceId(edmobj.getInstanceId())
+        
+            LinkedEntity result = new LinkedEntity().instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.ORGANIZATION.name());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     // =========================================================================
@@ -482,27 +492,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                return field.get(obj) != null;
-            }
-        } catch (Exception e) {
-            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
-                    new Object[]{fieldName, e.getMessage()});
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try { return clazz.getDeclaredField(fieldName); }
-            catch (NoSuchFieldException e) { clazz = clazz.getSuperclass(); }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

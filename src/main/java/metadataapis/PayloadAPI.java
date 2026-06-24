@@ -28,6 +28,9 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Payload obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
@@ -121,10 +124,17 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.PAYLOAD.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     /**

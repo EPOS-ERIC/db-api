@@ -25,6 +25,9 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public LinkedEntity create(Location obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         String searchInstanceId = obj.getInstanceId();
 
@@ -76,10 +79,17 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.LOCATION.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     @Override

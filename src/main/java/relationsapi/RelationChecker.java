@@ -151,8 +151,17 @@ public class RelationChecker {
 
         try {
             processing.add(entityKey);
-            return processRelation(mainEntity, oldMainEntity, mainEntityClazz,
+            Object result = processRelation(mainEntity, oldMainEntity, mainEntityClazz,
                     linkedEntity, overrideStatus, clazz, enableStore);
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "[RELATION CHECK] Resolved linkedEntity {0} to: {1}", 
+                        new Object[]{entityKey, result != null ? result.getClass().getSimpleName() + " (instanceId=" + utilities.ReflectionCache.getInstanceId(result) + ")" : "null"});
+            }
+            if (result == null) {
+                LOG.log(Level.WARNING, "[RELATION CHECK WARNING] Could not resolve linkedEntity {0} for mainEntity {1} ({2})", 
+                        new Object[]{entityKey, mainEntity != null ? mainEntity.getInstanceId() : "null", mainEntity != null ? mainEntity.getClass().getSimpleName() : "null"});
+            }
+            return result;
         } finally {
             processing.remove(entityKey);
             if (processing.isEmpty()) {

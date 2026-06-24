@@ -20,6 +20,10 @@ public class VersioningStatusAPI {
     static Logger LOG = Logger.getLogger(VersioningStatusAPI.class.getName());
 
     public static EPOSDataModelEntity checkVersion(EPOSDataModelEntity obj, StatusType overrideStatus) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK START] Checking version for entity: uid={0}, instanceId={1}, metaId={2}, status={3}, overrideStatus={4}",
+                    new Object[]{obj.getUid(), obj.getInstanceId(), obj.getMetaId(), obj.getStatus(), overrideStatus});
+        }
 
         Versioningstatus edmobj = null;
 
@@ -49,6 +53,11 @@ public class VersioningStatusAPI {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
 
+            if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}",
+                        new Object[]{currentDbStatus, targetStatus});
+            }
+
             if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
                 createNewVersion(obj, edmobj, targetStatus);
             }
@@ -66,6 +75,10 @@ public class VersioningStatusAPI {
         } else {
             StatusType initialStatus = overrideStatus != null ? overrideStatus :
                     (obj.getStatus() != null ? obj.getStatus() : DRAFT);
+
+            if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] No existing version found. Creating first version with status {0}", initialStatus);
+            }
 
             createFirstVersion(obj, initialStatus);
             return obj;
@@ -117,6 +130,10 @@ public class VersioningStatusAPI {
     }
 
     private static void createNewVersion(EPOSDataModelEntity obj, Versioningstatus previousVer, StatusType newStatus) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSIONING] Creating new version from previousVer instanceId: {0}, newStatus={1}",
+                    new Object[]{previousVer.getInstanceId(), newStatus});
+        }
         Versioningstatus newVersionEntity = new Versioningstatus();
         newVersionEntity.setStatus(newStatus.toString());
 
@@ -141,9 +158,17 @@ public class VersioningStatusAPI {
         newVersionEntity.setVersion(obj.getVersion());
 
         getDbaccess().createObject(newVersionEntity);
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSIONING] Created new version entity successfully: instanceId={0}, versionId={1}",
+                    new Object[]{newInstanceId, newVersionId});
+        }
     }
 
     private static void updateExistingVersion(EPOSDataModelEntity obj, Versioningstatus currentVer, StatusType newStatus) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSIONING] Updating existing version instanceId: {0} to status={1}",
+                    new Object[]{currentVer.getInstanceId(), newStatus});
+        }
         currentVer.setStatus(newStatus.toString());
 
         obj.setInstanceChangedId(currentVer.getInstanceChangeId());
@@ -160,6 +185,10 @@ public class VersioningStatusAPI {
     }
 
     private static void createFirstVersion(EPOSDataModelEntity obj, StatusType status) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSIONING] Creating first version for uid={0} with status={1}",
+                    new Object[]{obj.getUid(), status});
+        }
         Versioningstatus edmobj = new Versioningstatus();
         edmobj.setStatus(status.toString());
 
@@ -181,6 +210,10 @@ public class VersioningStatusAPI {
         edmobj.setVersion(obj.getVersion());
 
         getDbaccess().createObject(edmobj);
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.log(java.util.logging.Level.FINE, "[VERSIONING] Created first version entity successfully: instanceId={0}, metaId={1}, versionId={2}",
+                    new Object[]{edmobj.getInstanceId(), edmobj.getMetaId(), edmobj.getVersionId()});
+        }
     }
 
     public static EPOSDataModelEntity retrieveVersion(EPOSDataModelEntity obj) {

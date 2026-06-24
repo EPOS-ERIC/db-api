@@ -33,6 +33,9 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Attribution obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
         boolean roleExplicitlySet = isFieldExplicitlySet(obj, "role");
         boolean agentExplicitlySet = isFieldExplicitlySet(obj, "agent");
 
@@ -111,7 +114,14 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         getDbaccess().updateObject(edmobj);
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ATTRIBUTION.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     // =========================================================================
@@ -293,27 +303,9 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                return field.get(obj) != null;
-            }
-        } catch (Exception e) {
-            LOG.log(Level.FINEST, "Field access failed for {0}: {1}", 
-                    new Object[]{fieldName, e.getMessage()});
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try { return clazz.getDeclaredField(fieldName); }
-            catch (NoSuchFieldException e) { clazz = clazz.getSuperclass(); }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {

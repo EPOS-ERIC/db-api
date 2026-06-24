@@ -27,6 +27,9 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
     @Override
     public LinkedEntity create(SoftwareSourceCode obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
@@ -126,7 +129,14 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.SOFTWARESOURCECODE.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private <T> void syncPolymorphicRelation(List<LinkedEntity> links, Softwaresourcecode parent, Class<T> joinClass,

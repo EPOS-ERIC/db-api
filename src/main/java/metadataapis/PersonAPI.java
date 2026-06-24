@@ -26,6 +26,9 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.Person obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
@@ -136,10 +139,17 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.PERSON.name(), edmobj);
         resolvePendingAddressRelationsForAddress(edmobj.getUid(), edmobj.getInstanceId());
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     private void createPendingAddressRelation(String personInstanceId, LinkedEntity addressLink) {

@@ -32,6 +32,9 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public LinkedEntity create(org.epos.eposdatamodel.CategoryScheme obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
+        logCreateStart(obj, overrideStatus);
+        try {
+
 
         // Capture if fields were explicitly set BEFORE any processing
         boolean topConceptsExplicitlySet = isFieldExplicitlySet(obj, "topConcepts");
@@ -119,10 +122,17 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.CATEGORYSCHEME.name(), edmobj);
 
-        return new LinkedEntity().entityType(entityName)
+        
+            LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            logCreateEnd(result, null);
+            return result;
+        } catch (Throwable t) {
+            logCreateEnd(null, t);
+            throw t;
+        }
     }
 
     /**
@@ -357,30 +367,9 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         }
     }
 
-    private boolean isFieldExplicitlySet(Object obj, String fieldName) {
-        try {
-            Field field = findField(obj.getClass(), fieldName);
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(obj);
-                return value != null;
-            }
-        } catch (Exception e) {
-            // Fallback: assume not explicitly set
-        }
-        return false;
-    }
+    
 
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
+    
 
     @Override
     public Boolean delete(String instanceId) {
