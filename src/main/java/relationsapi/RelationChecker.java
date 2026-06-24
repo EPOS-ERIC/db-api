@@ -267,7 +267,7 @@ public class RelationChecker {
                 boolean isSharedReference = isSharedReferenceEntity(linkedEntityType);
 
                 // For shared reference entities, don't propagate status changes
-                if (statusMismatch && !isReference && !isSharedReference) {
+                if (statusMismatch && isReference && !isSharedReference) {
                     relationEntity.setStatus(mainEntity.getStatus());
 
                     if (Boolean.TRUE.equals(enableStore)) {

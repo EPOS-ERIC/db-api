@@ -128,13 +128,13 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
                 .stream()
                 .filter(item -> ((FacilityAddress) item).getAddressInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(facilityAddresses));
+        EposDataModelDAO.getInstance().deleteListOfObjects(facilityAddresses);
 
         List<Address> addressesToDelete = (List<Address>) getDbaccess().getAllFromDB(Address.class)
                 .stream()
                 .filter(item -> ((Address)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(addressesToDelete));
+        EposDataModelDAO.getInstance().deleteListOfObjects(addressesToDelete);
 
         return true;
     }

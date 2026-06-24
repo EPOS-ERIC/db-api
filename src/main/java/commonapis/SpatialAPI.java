@@ -122,7 +122,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         List<Spatial> spatialItems = (List<Spatial>) getDbaccess().getAllFromDB(Spatial.class).stream()
                 .filter(item -> ((Spatial)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(spatialItems));
+        EposDataModelDAO.getInstance().deleteListOfObjects(spatialItems);
 
         return true;
     }

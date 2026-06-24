@@ -128,12 +128,12 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
         List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
                 .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterItemsToDelete));
+        EposDataModelDAO.getInstance().deleteListOfObjects(parameterItemsToDelete);
 
         List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
                 .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(parameterListToDelete));
+        EposDataModelDAO.getInstance().deleteListOfObjects(parameterListToDelete);
 
         return true;
     }

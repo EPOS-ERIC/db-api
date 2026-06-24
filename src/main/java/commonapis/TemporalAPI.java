@@ -118,7 +118,7 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
         List<Temporal> temporalItems = (List<Temporal>) getDbaccess().getAllFromDB(Temporal.class).stream()
                 .filter(item -> ((Temporal)item).getInstanceId().equals(instanceId))
                 .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(Collections.singletonList(temporalItems));
+        EposDataModelDAO.getInstance().deleteListOfObjects(temporalItems);
 
         return true;
     }
