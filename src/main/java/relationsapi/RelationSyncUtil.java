@@ -572,7 +572,7 @@ public class RelationSyncUtil {
     @SuppressWarnings("unchecked")
     private static <T> T createStubEntity(Class<T> targetClass, String uid, StatusType status) {
         try {
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 LOG.log(Level.WARNING, "No API for stub creation: {0}", entityName);
@@ -933,7 +933,7 @@ public class RelationSyncUtil {
 
         try {
             inProgress.add(metaId);
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 return null;
@@ -977,7 +977,7 @@ public class RelationSyncUtil {
         }
 
         try {
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 return null;
@@ -1024,6 +1024,15 @@ public class RelationSyncUtil {
             LOG.log(Level.FINE, "Published version lookup failed: {0}", e.getMessage());
         }
         return null;
+    }
+
+    private static String getApiEntityName(Class<?> targetClass) {
+        String modelName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+        return switch (modelName) {
+            case "SPATIAL" -> "LOCATION";
+            case "TEMPORAL" -> "PERIODOFTIME";
+            default -> modelName;
+        };
     }
 
     // ===== Pending Relations =====
