@@ -1,26 +1,48 @@
 package integrationtests.unittests;
 
-import abstractapis.AbstractAPI;
-import commonapis.*;
-import dao.EposDataModelDAO;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+
+import org.epos.eposdatamodel.ContactPoint;
+import org.epos.eposdatamodel.DataProduct;
+import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.WebService;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
 import integrationtests.TestcontainersLifecycle;
-import metadataapis.*;
-import model.*;
+import metadataapis.CategoryAPI;
+import metadataapis.CategorySchemeAPI;
+import metadataapis.ContactPointAPI;
+import metadataapis.DataProductAPI;
+import metadataapis.DistributionAPI;
+import metadataapis.EntityNames;
+import metadataapis.OrganizationAPI;
+import metadataapis.PersonAPI;
+import metadataapis.WebServiceAPI;
 import model.Category;
 import model.CategoryScheme;
+import model.Contactpoint;
+import model.Dataproduct;
 import model.Distribution;
 import model.Organization;
 import model.Person;
-import org.epos.eposdatamodel.*;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import model.StatusType;
+import model.Webservice;
 
 /**
  * Specific tests to verify the bug fixes:
@@ -233,6 +255,55 @@ public class BugFixVerificationTest extends TestcontainersLifecycle {
         }
 
         System.out.println("✓ BUG1-3 PASSED: Multiple references to same future entity resolved correctly");
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("BUG1-4: Draft DataProduct keeps editorId on Distribution clone")
+    void testBug1_DraftDataProductKeepsDistributionEditorId() {
+        String sourceEditor = "source-editor-" + UUID.randomUUID();
+        String draftEditor = "draft-editor-" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution distribution = new org.epos.eposdatamodel.Distribution();
+        distribution.setUid("distribution:bug1draft:" + UUID.randomUUID());
+        distribution.addTitle("Bug1 Draft Distribution");
+        distribution.addDescription("Bug1 Draft Distribution description");
+        distribution.setFormat("application/json");
+        distribution.setStatus(StatusType.PUBLISHED);
+        distribution.setEditorId(sourceEditor);
+
+        LinkedEntity publishedDistribution = distributionAPI.create(distribution, StatusType.PUBLISHED, null, null);
+        assertNotNull(publishedDistribution);
+
+        DataProduct publishedDataProduct = new DataProduct();
+        publishedDataProduct.setUid("dataproduct:bug1draft:" + UUID.randomUUID());
+        publishedDataProduct.addTitle("Bug1 Draft DataProduct");
+        publishedDataProduct.addDescription("Bug1 Draft DataProduct description");
+        publishedDataProduct.setStatus(StatusType.PUBLISHED);
+        publishedDataProduct.setEditorId(sourceEditor);
+        publishedDataProduct.addDistribution(publishedDistribution);
+
+        LinkedEntity publishedDataProductResult = dataProductAPI.create(publishedDataProduct, StatusType.PUBLISHED, null, null);
+        assertNotNull(publishedDataProductResult);
+
+        DataProduct draftRequest = dataProductAPI.retrieve(publishedDataProductResult.getInstanceId());
+        assertNotNull(draftRequest);
+        draftRequest.setStatus(StatusType.DRAFT);
+        draftRequest.setEditorId(draftEditor);
+
+        LinkedEntity draftResult = dataProductAPI.create(draftRequest, StatusType.DRAFT, null, null);
+        assertNotNull(draftResult);
+
+        DataProduct draftDataProduct = dataProductAPI.retrieve(draftResult.getInstanceId());
+        assertNotNull(draftDataProduct);
+        assertNotNull(draftDataProduct.getDistribution());
+        assertFalse(draftDataProduct.getDistribution().isEmpty());
+
+        org.epos.eposdatamodel.Distribution draftDistribution = distributionAPI.retrieve(draftDataProduct.getDistribution().get(0).getInstanceId());
+        assertNotNull(draftDistribution);
+        assertEquals(StatusType.DRAFT, draftDistribution.getStatus());
+        assertEquals(draftEditor, draftDistribution.getEditorId(),
+                "BUG1 VERIFICATION: Draft Distribution must keep draft creator editorId");
     }
 
     // =========================================================================
