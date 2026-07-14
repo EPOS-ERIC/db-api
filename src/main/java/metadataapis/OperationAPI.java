@@ -27,9 +27,6 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         try {
 
 
-        // Capture if fields were explicitly set BEFORE any processing
-        boolean returnsExplicitlySet = isFieldExplicitlySet(obj, "returns");
-
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
@@ -93,58 +90,31 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         // MAPPING
-        if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OperationMapping.class, Mapping.class,
-                    "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        } else {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getMapping(), relationFromUpdate, relationToUpdate,
-                    OperationMapping.class, Mapping.class,
-                    "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getMapping(), relationFromUpdate, relationToUpdate,
+                OperationMapping.class, Mapping.class,
+                "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         // WEBSERVICE
-        if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OperationWebservice.class, Webservice.class,
-                    "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        } else {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
-                    OperationWebservice.class, Webservice.class,
-                    "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
+                OperationWebservice.class, Webservice.class,
+                "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         // PAYLOAD
-        if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OperationPayload.class, Payload.class,
-                    "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        } else {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getPayload(), relationFromUpdate, relationToUpdate,
-                    OperationPayload.class, Payload.class,
-                    "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getPayload(), relationFromUpdate, relationToUpdate,
+                OperationPayload.class, Payload.class,
+                "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         // RETURNS (Elements)
-        if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null && (obj.getReturns() == null || obj.getReturns().isEmpty())) {
             copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.RETURNS, overrideStatus);
         } else {
             replaceInnerElements(edmobj, obj.getReturns(), ElementType.RETURNS, overrideStatus);
