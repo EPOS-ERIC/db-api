@@ -83,33 +83,22 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
         // FIX: Determine if REFERENCE_ENTITY logic should be applied
         boolean useReferenceEntityLogic = shouldApplyReferenceEntityLogic(obj);
 
-        if (agentExplicitlySet || !isNewVersion) {
-            if (obj.getAgent() != null) {
-                // FIX: Use REFERENCE_ENTITY logic for Organization (agent)
-                Organization existingOrg = findOrganizationByLinkedEntity(obj.getAgent(), overrideStatus, useReferenceEntityLogic);
-                if (existingOrg != null) {
-                    edmobj.setAgentId(existingOrg.getInstanceId());
-                    edmobj.setAgentType(obj.getAgent().getEntityType());
-                } else {
-                    // FIX: When creating pending relation, use PUBLISHED status for reference entities
-                    createPendingAgentRelation(edmobj.getInstanceId(), obj.getAgent(), useReferenceEntityLogic);
-                }
+        if (obj.getAgent() != null) {
+            Organization existingOrg = findOrganizationByLinkedEntity(obj.getAgent(), overrideStatus, useReferenceEntityLogic);
+            if (existingOrg != null) {
+                edmobj.setAgentId(existingOrg.getInstanceId());
+                edmobj.setAgentType(obj.getAgent().getEntityType());
+            } else {
+                createPendingAgentRelation(edmobj.getInstanceId(), obj.getAgent(), useReferenceEntityLogic);
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyAgentFromPreviousVersion(oldInstanceId, edmobj);
+        } else {
+            edmobj.setAgentId(null);
+            edmobj.setAgentType(null);
         }
 
-        if (roleExplicitlySet || !isNewVersion) {
-            if (obj.getRole() != null && !obj.getRole().isEmpty()) {
-                RelationSyncUtil.syncSimpleOneToMany(edmobj, edmobj.getInstanceId(), obj.getRole(), model.AttributionRole.class,
-                        "attributionInstance", "Role",
-                        model.AttributionRole::getRoletype, model.AttributionRole::setRoletype, model.AttributionRole::setAttributionInstance);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(oldInstanceId, edmobj, newInstanceId, model.AttributionRole.class,
-                    "attributionInstance", "Role",
-                    model.AttributionRole::getRoletype, model.AttributionRole::setRoletype, model.AttributionRole::setAttributionInstance);
-        }
+        RelationSyncUtil.syncSimpleOneToMany(edmobj, edmobj.getInstanceId(), obj.getRole(), model.AttributionRole.class,
+                "attributionInstance", "Role",
+                model.AttributionRole::getRoletype, model.AttributionRole::setRoletype, model.AttributionRole::setAttributionInstance);
 
         getDbaccess().updateObject(edmobj);
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.ATTRIBUTION.name(), edmobj);

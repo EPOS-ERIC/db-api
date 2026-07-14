@@ -33,6 +33,7 @@ public class Distribution extends EPOSDataModelEntity {
             "    \"uid\": \"an UUID\"\n" +
             "  }]", required = false)
     private List<LinkedEntity> accessService;
+    private transient boolean accessServiceSet;
 
     /**
      * This property refers to the Operation which supports selection of an extract, sub-set, or combination of data
@@ -394,7 +395,12 @@ public class Distribution extends EPOSDataModelEntity {
 
     public Distribution setAccessService(List<LinkedEntity> accessService) {
         this.accessService = accessService;
+        this.accessServiceSet = true;
         return this;
+    }
+
+    public boolean hasAccessServiceSet() {
+        return accessServiceSet;
     }
 
     public void addAccessService(LinkedEntity accessService) {

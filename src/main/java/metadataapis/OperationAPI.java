@@ -28,9 +28,6 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
 
         // Capture if fields were explicitly set BEFORE any processing
-        boolean mappingExplicitlySet = isFieldExplicitlySet(obj, "mapping");
-        boolean webserviceExplicitlySet = isFieldExplicitlySet(obj, "webservice");
-        boolean payloadExplicitlySet = isFieldExplicitlySet(obj, "payload");
         boolean returnsExplicitlySet = isFieldExplicitlySet(obj, "returns");
 
         // Performance: Single retrieve call instead of potentially calling twice
@@ -96,18 +93,16 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         // MAPPING
-        if (mappingExplicitlySet || !isNewVersion) {
-            if (obj.getMapping() != null && !obj.getMapping().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getMapping(), relationFromUpdate, relationToUpdate,
-                        OperationMapping.class, Mapping.class,
-                        "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    OperationMapping.class, Mapping.class,
+                    "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
+                    obj, previousObj, overrideStatus, false
+            );
+        } else {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getMapping(), relationFromUpdate, relationToUpdate,
                     OperationMapping.class, Mapping.class,
                     "operationInstance", OperationMapping::getMappingInstance, OperationMapping::setOperationInstance, OperationMapping::setMappingInstance,
                     obj, previousObj, overrideStatus, false
@@ -115,18 +110,16 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         // WEBSERVICE
-        if (webserviceExplicitlySet || !isNewVersion) {
-            if (obj.getWebservice() != null && !obj.getWebservice().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
-                        OperationWebservice.class, Webservice.class,
-                        "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    OperationWebservice.class, Webservice.class,
+                    "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
+                    obj, previousObj, overrideStatus, true
+            );
+        } else {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
                     OperationWebservice.class, Webservice.class,
                     "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
                     obj, previousObj, overrideStatus, true
@@ -134,18 +127,16 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         // PAYLOAD
-        if (payloadExplicitlySet || !isNewVersion) {
-            if (obj.getPayload() != null && !obj.getPayload().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getPayload(), relationFromUpdate, relationToUpdate,
-                        OperationPayload.class, Payload.class,
-                        "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             RelationSyncUtil.syncComplexRelation(
                     edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    OperationPayload.class, Payload.class,
+                    "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
+                    obj, previousObj, overrideStatus, true
+            );
+        } else {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), obj.getPayload(), relationFromUpdate, relationToUpdate,
                     OperationPayload.class, Payload.class,
                     "operationInstance", OperationPayload::getPayloadInstance, OperationPayload::setOperationInstance, OperationPayload::setPayloadInstance,
                     obj, previousObj, overrideStatus, true
@@ -153,14 +144,10 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         }
 
         // RETURNS (Elements)
-        if (returnsExplicitlySet || !isNewVersion) {
-            if (obj.getReturns() != null && !obj.getReturns().isEmpty()) {
-                for (String returns : obj.getReturns()) {
-                    createInnerElement(ElementType.RETURNS, returns, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.RETURNS, overrideStatus);
+        } else {
+            replaceInnerElements(edmobj, obj.getReturns(), ElementType.RETURNS, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
@@ -205,6 +192,29 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             Element oldElement = oldRelation.getElementInstance();
             if (oldElement != null && oldElement.getType().equals(elementType.name())) {
                 createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void replaceInnerElements(Operation edmobj, List<String> values, ElementType type, StatusType overrideStatus) {
+        deleteInnerElementsByType(edmobj.getInstanceId(), type);
+        if (values != null && !values.isEmpty()) {
+            for (String value : values) {
+                createInnerElement(type, value, edmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void deleteInnerElementsByType(String operationInstanceId, ElementType type) {
+        List<OperationElement> existingRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
+        if (existingRelations != null) {
+            for (OperationElement relation : existingRelations) {
+                Element element = relation.getElementInstance();
+                if (element != null && type.name().equals(element.getType())) {
+                    EposDataModelDAO.getInstance().deleteObject(relation);
+                    EposDataModelDAO.getInstance().deleteObject(element);
+                }
             }
         }
     }

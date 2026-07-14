@@ -107,68 +107,40 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         if (isUpdate && !isNewVersion) deleteExistingElements(oldInstanceId);
 
         // ADDRESS (Single) - with pending relation support for out-of-order creation
-        if (addressExplicitlySet || !isNewVersion) {
-            if (obj.getAddress() != null) {
-                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
-                if (le != null && le.getInstanceId() != null) {
-                    List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
-                    if (!addressList.isEmpty()) {
-                        edmobj.setAddress(addressList.get(0));
-                    } else {
-                        // Address entity not found - create pending relation
-                        createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
-                    }
+        if (obj.getAddress() != null) {
+            LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(obj.getAddress(), overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
+            if (le != null && le.getInstanceId() != null) {
+                List<Address> addressList = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(le.getInstanceId(), Address.class);
+                if (!addressList.isEmpty()) {
+                    edmobj.setAddress(addressList.get(0));
                 } else {
-                    // LinkedEntity couldn't be resolved - create pending relation
                     createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
                 }
+            } else {
+                createPendingAddressRelation(edmobj.getInstanceId(), obj.getAddress());
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyAddressFromPreviousVersion(oldInstanceId, edmobj);
+        } else {
+            edmobj.setAddress(null);
         }
 
         // CONTACTPOINT - Uses RelationSyncUtil which already has REFERENCE_ENTITY logic
-        if (contactPointExplicitlySet || !isNewVersion) {
-            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
-                        OrganizationContactpoint.class, Contactpoint.class, "organizationInstance",
-                        OrganizationContactpoint::getContactpointInstance, OrganizationContactpoint::setOrganizationInstance,
-                        OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OrganizationContactpoint.class, Contactpoint.class, "organizationInstance",
-                    OrganizationContactpoint::getContactpointInstance, OrganizationContactpoint::setOrganizationInstance,
-                    OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
-        }
+        RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
+                OrganizationContactpoint.class, Contactpoint.class, "organizationInstance",
+                OrganizationContactpoint::getContactpointInstance, OrganizationContactpoint::setOrganizationInstance,
+                OrganizationContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
 
         // IDENTIFIER
-        if (identifierExplicitlySet || !isNewVersion) {
-            if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
-                        OrganizationIdentifier.class, Identifier.class, "organizationInstance",
-                        OrganizationIdentifier::getIdentifierInstance, OrganizationIdentifier::setOrganizationInstance,
-                        OrganizationIdentifier::setIdentifierInstance, obj, previousObj, overrideStatus, false);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OrganizationIdentifier.class, Identifier.class, "organizationInstance",
-                    OrganizationIdentifier::getIdentifierInstance, OrganizationIdentifier::setOrganizationInstance,
-                    OrganizationIdentifier::setIdentifierInstance, obj, previousObj, overrideStatus, false);
-        }
+        RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
+                OrganizationIdentifier.class, Identifier.class, "organizationInstance",
+                OrganizationIdentifier::getIdentifierInstance, OrganizationIdentifier::setOrganizationInstance,
+                OrganizationIdentifier::setIdentifierInstance, obj, previousObj, overrideStatus, false);
 
         // FIX: MEMBER OF - Now uses REFERENCE_ENTITY logic for Organization-to-Organization relations
-        if (memberOfExplicitlySet || !isNewVersion) {
-            if (obj.getMemberOf() != null && !obj.getMemberOf().isEmpty()) {
-                // Clear existing memberOf relations for this entity
-                List<Object> existingMemberOf = getDbaccess().getOneFromDBBySpecificKey("organization2Instance", edmobj.getInstanceId(), OrganizationMemberof.class);
-                if (existingMemberOf != null) {
-                    for (Object o : existingMemberOf) {
-                        getDbaccess().deleteObject(o);
-                    }
-                }
-
-                for (LinkedEntity rel : obj.getMemberOf()) {
+        if (obj.getMemberOf() == null || obj.getMemberOf().isEmpty()) {
+            deleteRelations("organization2Instance", edmobj.getInstanceId(), OrganizationMemberof.class);
+        } else {
+            deleteRelations("organization2Instance", edmobj.getInstanceId(), OrganizationMemberof.class);
+            for (LinkedEntity rel : obj.getMemberOf()) {
                     // FIX: Use findOrCreateOrganizationForRelation instead of LinkedEntityAPI.createFromLinkedEntity
                     Organization parentOrg = findOrCreateOrganizationForRelation(rel, overrideStatus, useReferenceEntityLogic);
                     if (parentOrg != null) {
@@ -196,52 +168,32 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                             }
                         }
                     }
-                }
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyMemberOfFromPreviousVersion(oldInstanceId, edmobj);
         }
 
         // OWNS (polymorphic - can be Facility or Equipment) - Not reference entities, no changes needed
-        if (ownsExplicitlySet || !isNewVersion) {
-            if (obj.getOwns() != null && !obj.getOwns().isEmpty()) {
-                for (LinkedEntity rel : obj.getOwns()) {
-                    LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(rel, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
-                    if (le != null && le.getInstanceId() != null && le.getEntityType() != null) {
-                        OrganizationOwn oo = new OrganizationOwn();
-                        oo.setOrganization(edmobj);
-                        oo.setOrganizationInstanceId(edmobj.getInstanceId());
-                        oo.setEntityInstanceId(le.getInstanceId());
-                        oo.setResourceEntity(le.getEntityType());
-                        EposDataModelDAO.getInstance().updateObject(oo);
-                    }
+        if (obj.getOwns() == null || obj.getOwns().isEmpty()) {
+            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+        } else {
+            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+            for (LinkedEntity rel : obj.getOwns()) {
+                LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(rel, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
+                if (le != null && le.getInstanceId() != null && le.getEntityType() != null) {
+                    OrganizationOwn oo = new OrganizationOwn();
+                    oo.setOrganization(edmobj);
+                    oo.setOrganizationInstanceId(edmobj.getInstanceId());
+                    oo.setEntityInstanceId(le.getInstanceId());
+                    oo.setResourceEntity(le.getEntityType());
+                    EposDataModelDAO.getInstance().updateObject(oo);
                 }
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyOwnsFromPreviousVersion(oldInstanceId, edmobj);
         }
 
         // TELEPHONE (elements)
-        if (telephoneExplicitlySet || !isNewVersion) {
-            if (obj.getTelephone() != null && !obj.getTelephone().isEmpty()) {
-                for (String tel : obj.getTelephone()) {
-                    createInnerElement(ElementType.TELEPHONE, tel, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.TELEPHONE, overrideStatus);
-        }
+        syncOrganizationElements(edmobj, obj.getTelephone(), ElementType.TELEPHONE, overrideStatus);
 
         // EMAIL (elements)
-        if (emailExplicitlySet || !isNewVersion) {
-            if (obj.getEmail() != null && !obj.getEmail().isEmpty()) {
-                for (String email : obj.getEmail()) {
-                    createInnerElement(ElementType.EMAIL, email, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.EMAIL, overrideStatus);
-        }
+        syncOrganizationElements(edmobj, obj.getEmail(), ElementType.EMAIL, overrideStatus);
 
         getDbaccess().updateObject(edmobj);
 
@@ -489,6 +441,26 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
             ce.setOrganizationInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
+        }
+    }
+
+    private void syncOrganizationElements(Organization edmobj, List<String> values, ElementType type, StatusType overrideStatus) {
+        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("organizationInstance", edmobj.getInstanceId(), OrganizationElement.class);
+        if (existing != null) {
+            for (Object object : existing) {
+                OrganizationElement item = (OrganizationElement) object;
+                Element el = item.getElementInstance();
+                if (el != null && type.name().equals(el.getType())) {
+                    EposDataModelDAO.getInstance().deleteObject(item);
+                    EposDataModelDAO.getInstance().deleteObject(el);
+                }
+            }
+        }
+
+        if (values != null && !values.isEmpty()) {
+            for (String value : values) {
+                createInnerElement(type, value, edmobj, overrideStatus);
+            }
         }
     }
 

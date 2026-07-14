@@ -106,16 +106,10 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
         boolean useReferenceEntityLogic = shouldApplyReferenceEntityLogic(obj);
 
         // TOP CONCEPTS (relation to Category - which is a REFERENCE_ENTITY)
-        if (topConceptsExplicitlySet || !isNewVersion) {
-            if (Objects.nonNull(obj.getTopConcepts()) && !obj.getTopConcepts().isEmpty()) {
-                syncTopConceptsRelations(edmobj, obj.getTopConcepts(), overrideStatus, useReferenceEntityLogic);
-            } else if (!isNewVersion) {
-                // Empty list explicitly set - clear relations
-                clearTopConceptsRelations(edmobj.getInstanceId());
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            // New version without explicit topConcepts - copy from previous
-            copyTopConceptsFromPrevious(oldInstanceId, edmobj, useReferenceEntityLogic);
+        if (Objects.nonNull(obj.getTopConcepts()) && !obj.getTopConcepts().isEmpty()) {
+            syncTopConceptsRelations(edmobj, obj.getTopConcepts(), overrideStatus, useReferenceEntityLogic);
+        } else {
+            clearTopConceptsRelations(edmobj.getInstanceId());
         }
 
         getDbaccess().updateObject(edmobj);

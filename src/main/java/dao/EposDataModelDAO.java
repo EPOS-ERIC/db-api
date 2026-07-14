@@ -23,6 +23,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import utilities.MemoryMonitor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -745,18 +746,18 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	public List<T> getAllIDsFromDB(Class<T> obj) {
+	public List<String> getAllIDsFromDB(Class<T> obj) {
 		String cacheKey = generateCacheKey("allIDsFromDB", obj.getSimpleName());
 
-		List<T> cached = getFromQueryCache(cacheKey);
+		List<String> cached = getFromQueryCache(cacheKey);
 		if (cached != null) return cached;
 
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			TypedQuery<T> query = em.createQuery(
-					"SELECT c.instanceId FROM " + obj.getSimpleName() + " c", obj);
-			List<T> result = query.getResultList();
+			TypedQuery<String> query = em.createQuery(
+					"SELECT c.instanceId FROM " + obj.getSimpleName() + " c", String.class);
+			List<String> result = query.getResultList();
 			putInQueryCache(cacheKey, result);
 			return result;
 
@@ -1192,23 +1193,23 @@ public class EposDataModelDAO<T> {
 				obj);
 	}
 
-	public List<T> getAllIDsFromDBWithStatus(Class<T> obj, StatusType status) {
-		if (status == null) return getAllFromDB(obj);
+	public List<String> getAllIDsFromDBWithStatus(Class<T> obj, StatusType status) {
+		if (status == null) return getAllIDsFromDB(obj);
 
 		String cacheKey = generateCacheKey("allIDsFromDBWithStatus", obj.getSimpleName(), status.name());
 
-		List<T> cached = getFromQueryCache(cacheKey);
+		List<String> cached = getFromQueryCache(cacheKey);
 		if (cached != null) return cached;
 
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			TypedQuery<T> query = em.createQuery(
+			TypedQuery<String> query = em.createQuery(
 					"SELECT c.instanceId FROM " + obj.getSimpleName() + " c " +
 							"JOIN Versioningstatus v ON c.instanceId = v.instanceId " +
-							"WHERE v.status = :status", obj);
+							"WHERE v.status = :status", String.class);
 			query.setParameter("status", status.name());
-			List<T> result = query.getResultList();
+			List<String> result = query.getResultList();
 			putInQueryCache(cacheKey, result);
 			return result;
 
@@ -1450,15 +1451,16 @@ public class EposDataModelDAO<T> {
 	 * Outputs cache performance report to logger at INFO level.
 	 */
 	@SuppressWarnings("unchecked")
-	public void printCacheReport() {
-		Map<String, Object> stats = getDetailedCacheStats();
+    public void printCacheReport() {
+        Map<String, Object> stats = getDetailedCacheStats();
 
-		LOG.info("=== CAFFEINE CACHE PERFORMANCE REPORT ===");
+        LOG.info("=== CAFFEINE CACHE PERFORMANCE REPORT ===");
+        LOG.info("Runtime Snapshot: {}", MemoryMonitor.snapshot());
 
-		Map<String, Object> queryStats = (Map<String, Object>) stats.get("queryCache");
-		LOG.info("Query Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-				queryStats.get("hitRate"), queryStats.get("hitCount"), queryStats.get("missCount"),
-				stats.get("queryCacheSize"), queryStats.get("evictionCount"), queryStats.get("averageLoadPenalty"));
+        Map<String, Object> queryStats = (Map<String, Object>) stats.get("queryCache");
+        LOG.info("Query Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
+                queryStats.get("hitRate"), queryStats.get("hitCount"), queryStats.get("missCount"),
+                stats.get("queryCacheSize"), queryStats.get("evictionCount"), queryStats.get("averageLoadPenalty"));
 
 		Map<String, Object> entityStats = (Map<String, Object>) stats.get("entityCache");
 		LOG.info("Entity Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",

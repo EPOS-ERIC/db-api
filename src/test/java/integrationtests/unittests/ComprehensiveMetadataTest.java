@@ -379,6 +379,137 @@ public class ComprehensiveMetadataTest extends TestcontainersLifecycle  {
         createdEntityIds.put("dp_versioning_003", draftResult.getInstanceId());
     }
 
+    @Test
+    @Order(13)
+    @DisplayName("2.4 WebService ARCHIVED -> DRAFT keeps Spatial and Temporal")
+    void testWebServiceArchivedToDraftKeepsSpatialAndTemporal() {
+        Documentation documentation = new Documentation();
+        documentation.setUid("documentation:webservice:001");
+        documentation.setTitle("WebService documentation");
+        documentation.setDescription("Documentation used in the versioning test");
+        documentation.setUri("https://example.org/docs/webservice-001");
+        documentation.setStatus(StatusType.PUBLISHED);
+        documentation.setEditorId("old-editor");
+        LinkedEntity documentationLE = AbstractAPI.retrieveAPI(EntityNames.DOCUMENTATION.name())
+                .create(documentation, StatusType.PUBLISHED, null, null);
+        assertNotNull(documentationLE);
+
+        Location location = new Location();
+        location.setUid("location:webservice:001");
+        location.setLocation("POINT(10 20)");
+        location.setStatus(StatusType.PUBLISHED);
+        location.setEditorId("old-editor");
+        LinkedEntity locationLE = spatialAPI.create(location, StatusType.PUBLISHED, null, null);
+        assertNotNull(locationLE);
+
+        PeriodOfTime periodOfTime = new PeriodOfTime();
+        periodOfTime.setUid("period:webservice:001");
+        periodOfTime.setStartDate(LocalDateTime.of(2024, 1, 1, 0, 0));
+        periodOfTime.setEndDate(LocalDateTime.of(2024, 12, 31, 23, 59));
+        periodOfTime.setStatus(StatusType.PUBLISHED);
+        periodOfTime.setEditorId("old-editor");
+        LinkedEntity temporalLE = temporalAPI.create(periodOfTime, StatusType.PUBLISHED, null, null);
+        assertNotNull(temporalLE);
+
+        WebService webService = new WebService();
+        webService.setUid("webservice:versioning:archived-draft:001");
+        webService.setName("WebService for archive/draft test");
+        webService.setDescription("Initial published version");
+        webService.setStatus(StatusType.PUBLISHED);
+        webService.setEditorId("old-editor");
+        webService.addDocumentation(documentationLE);
+        webService.addSpatialExtentItem(locationLE);
+        webService.addTemporalExtent(temporalLE);
+
+        LinkedEntity publishedLE = webServiceAPI.create(webService, StatusType.PUBLISHED, null, null);
+        assertNotNull(publishedLE);
+
+        WebService archivedRequest = webServiceAPI.retrieve(publishedLE.getInstanceId());
+        archivedRequest.setStatus(StatusType.ARCHIVED);
+        archivedRequest.setEditorId("old-editor");
+        LinkedEntity archivedLE = webServiceAPI.create(archivedRequest, StatusType.ARCHIVED, null, null);
+        assertNotNull(archivedLE);
+
+        WebService draftRequest = webServiceAPI.retrieve(archivedLE.getInstanceId());
+        draftRequest.setStatus(StatusType.DRAFT);
+        draftRequest.setEditorId("new-editor");
+        LinkedEntity draftLE = webServiceAPI.create(draftRequest, StatusType.DRAFT, null, null);
+        assertNotNull(draftLE);
+
+        WebService draft = webServiceAPI.retrieve(draftLE.getInstanceId());
+        assertNotNull(draft.getDocumentation());
+        assertFalse(draft.getDocumentation().isEmpty());
+        assertNotNull(draft.getSpatialExtent());
+        assertFalse(draft.getSpatialExtent().isEmpty());
+        assertNotNull(draft.getTemporalExtent());
+        assertFalse(draft.getTemporalExtent().isEmpty());
+
+        org.epos.eposdatamodel.Documentation draftDocumentation = (org.epos.eposdatamodel.Documentation)
+                AbstractAPI.retrieveAPI(EntityNames.DOCUMENTATION.name())
+                        .retrieve(draft.getDocumentation().get(0).getInstanceId());
+        org.epos.eposdatamodel.Location draftSpatial = spatialAPI.retrieve(draft.getSpatialExtent().get(0).getInstanceId());
+        org.epos.eposdatamodel.PeriodOfTime draftTemporal = temporalAPI.retrieve(draft.getTemporalExtent().get(0).getInstanceId());
+
+        assertNotNull(draftDocumentation);
+        assertNotNull(draftSpatial);
+        assertNotNull(draftTemporal);
+
+        model.Versioningstatus documentationVersion = (model.Versioningstatus) EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceId(draftDocumentation.getInstanceId(), model.Versioningstatus.class)
+                .stream().findFirst().orElse(null);
+        model.Versioningstatus spatialVersion = (model.Versioningstatus) EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceId(draftSpatial.getInstanceId(), model.Versioningstatus.class)
+                .stream().findFirst().orElse(null);
+        model.Versioningstatus temporalVersion = (model.Versioningstatus) EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceId(draftTemporal.getInstanceId(), model.Versioningstatus.class)
+                .stream().findFirst().orElse(null);
+
+        assertNotNull(documentationVersion);
+        assertNotNull(spatialVersion);
+        assertNotNull(temporalVersion);
+        assertEquals("new-editor", documentationVersion.getEditorId());
+        assertEquals("new-editor", spatialVersion.getEditorId());
+        assertEquals("new-editor", temporalVersion.getEditorId());
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("2.5 WebService PUBLISHED -> DRAFT is visible in status listing")
+    void testWebServicePublishedToDraftIsListed() {
+        String uid = "webservice:versioning:published-draft:001";
+
+        WebService published = new WebService();
+        published.setUid(uid);
+        published.setName("WebService for published/draft test");
+        published.setDescription("Initial published version");
+        published.setStatus(StatusType.PUBLISHED);
+        published.setEditorId("pub-editor");
+
+        LinkedEntity publishedLE = webServiceAPI.create(published, StatusType.PUBLISHED, null, null);
+        assertNotNull(publishedLE);
+
+        WebService draftRequest = webServiceAPI.retrieve(publishedLE.getInstanceId());
+        assertNotNull(draftRequest);
+        draftRequest.setStatus(StatusType.DRAFT);
+        draftRequest.setEditorId("draft-editor");
+
+        LinkedEntity draftLE = webServiceAPI.create(draftRequest, StatusType.DRAFT, null, null);
+        assertNotNull(draftLE);
+
+        WebService draft = webServiceAPI.retrieve(draftLE.getInstanceId());
+        assertNotNull(draft);
+        assertEquals(StatusType.DRAFT, draft.getStatus());
+        assertEquals(uid, draft.getUid());
+
+        List<org.epos.eposdatamodel.WebService> drafts = webServiceAPI.retrieveAllWithStatus(StatusType.DRAFT);
+        assertNotNull(drafts);
+        assertTrue(drafts.stream().anyMatch(ws -> uid.equals(ws.getUid()) && StatusType.DRAFT.equals(ws.getStatus())),
+                "Draft webservice should be visible in retrieveAllWithStatus(DRAFT)");
+
+        WebService publishedAgain = webServiceAPI.retrieve(publishedLE.getInstanceId());
+        assertEquals(StatusType.PUBLISHED, publishedAgain.getStatus());
+    }
+
     // =========================================================================
     // SECTION 3: DEFERRED/PENDING RELATIONS (CRITICAL BUG FIX TEST)
     // =========================================================================

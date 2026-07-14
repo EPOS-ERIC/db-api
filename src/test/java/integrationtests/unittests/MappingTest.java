@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -139,6 +140,25 @@ public class MappingTest extends TestcontainersLifecycle {
         assertAll(
                 () -> assertEquals(2,operations.size()),
                 () -> assertEquals(2,mappings.size())
+        );
+    }
+
+    @Test
+    @Order(5)
+    public void testDeduplicateParameterMappingValues() {
+        Mapping mapping = new Mapping();
+        mapping.setUid(UUID.randomUUID().toString());
+        mapping.setStatus(StatusType.DRAFT);
+        mapping.setLabel("dedupe");
+        mapping.setVariable("dedupe");
+        mapping.setParamValue(List.of("alpha", "beta", "alpha", "gamma", "beta"));
+
+        LinkedEntity linkedEntity = AbstractAPI.retrieveAPI(EntityNames.MAPPING.name()).create(mapping, null, null, null);
+        Mapping stored = (Mapping) AbstractAPI.retrieveAPI(EntityNames.MAPPING.name()).retrieve(linkedEntity.getInstanceId());
+
+        assertAll(
+                () -> assertEquals(3, stored.getParamValue().size()),
+                () -> assertEquals(3, new HashSet<>(stored.getParamValue()).size())
         );
     }
 

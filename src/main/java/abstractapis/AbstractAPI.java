@@ -5,6 +5,7 @@ import dao.EposDataModelDAO;
 import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import utilities.MemoryMonitor;
 
 import java.util.HashMap;
 import java.util.List;
@@ -54,13 +55,7 @@ public abstract class AbstractAPI<T> {
         if (LOG.isLoggable(Level.INFO)) {
             LOG.log(Level.INFO, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}", 
                     new Object[]{entityName, edmClass != null ? edmClass.getSimpleName() : "null"});
-        }
-        
-        Runtime runtime = Runtime.getRuntime();
-        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
-        if (LOG.isLoggable(Level.FINE)) {
-            LOG.log(Level.FINE, "[MEMORY STATE] Used: {0}MB, Free: {1}MB, Total: {2}MB, Max: {3}MB", 
-                    new Object[]{usedMemory / (1024 * 1024), runtime.freeMemory() / (1024 * 1024), runtime.totalMemory() / (1024 * 1024), runtime.maxMemory() / (1024 * 1024)});
+            LOG.log(Level.INFO, "[RUNTIME SNAPSHOT] {0}", MemoryMonitor.snapshot());
         }
 
         if (obj == null) {

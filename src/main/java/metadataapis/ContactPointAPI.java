@@ -29,10 +29,6 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
         try {
 
 
-        boolean languageExplicitlySet = isFieldExplicitlySet(obj, "language");
-        boolean telephoneExplicitlySet = isFieldExplicitlySet(obj, "telephone");
-        boolean emailExplicitlySet = isFieldExplicitlySet(obj, "email");
-
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
@@ -94,35 +90,9 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             deleteExistingElements(oldInstanceId);
         }
 
-        if (languageExplicitlySet || !isNewVersion) {
-            if (obj.getLanguage() != null && !obj.getLanguage().isEmpty()) {
-                for (String lang : obj.getLanguage()) {
-                    createInnerElement(ElementType.LANGUAGE, lang, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.LANGUAGE, overrideStatus);
-        }
-
-        if (telephoneExplicitlySet || !isNewVersion) {
-            if (obj.getTelephone() != null && !obj.getTelephone().isEmpty()) {
-                for (String tel : obj.getTelephone()) {
-                    createInnerElement(ElementType.TELEPHONE, tel, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.TELEPHONE, overrideStatus);
-        }
-
-        if (emailExplicitlySet || !isNewVersion) {
-            if (obj.getEmail() != null && !obj.getEmail().isEmpty()) {
-                for (String email : obj.getEmail()) {
-                    createInnerElement(ElementType.EMAIL, email, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.EMAIL, overrideStatus);
-        }
+        syncElementValues(edmobj, obj.getLanguage(), ElementType.LANGUAGE, isNewVersion, oldInstanceId, overrideStatus);
+        syncElementValues(edmobj, obj.getTelephone(), ElementType.TELEPHONE, isNewVersion, oldInstanceId, overrideStatus);
+        syncElementValues(edmobj, obj.getEmail(), ElementType.EMAIL, isNewVersion, oldInstanceId, overrideStatus);
 
         getDbaccess().updateObject(edmobj);
 
@@ -186,6 +156,36 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
             ce.setContactpointInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
+        }
+    }
+
+    private void syncElementValues(Contactpoint edmobj, List<String> values, ElementType type, boolean isNewVersion,
+                                   String oldInstanceId, StatusType overrideStatus) {
+        if (isNewVersion && oldInstanceId != null && (values == null || values.isEmpty())) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, type, overrideStatus);
+            return;
+        }
+
+        deleteElementsByType(edmobj.getInstanceId(), type);
+        if (values != null && !values.isEmpty()) {
+            for (String value : values) {
+                createInnerElement(type, value, edmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void deleteElementsByType(String contactpointInstanceId, ElementType type) {
+        List<ContactpointElement> existingRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("contactpointInstance", contactpointInstanceId, ContactpointElement.class);
+
+        if (existingRelations != null) {
+            for (ContactpointElement relation : existingRelations) {
+                Element element = relation.getElementInstance();
+                if (element != null && type.name().equals(element.getType())) {
+                    EposDataModelDAO.getInstance().deleteObject(relation);
+                    EposDataModelDAO.getInstance().deleteObject(element);
+                }
+            }
         }
     }
     

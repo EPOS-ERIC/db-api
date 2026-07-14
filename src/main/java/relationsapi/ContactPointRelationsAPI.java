@@ -19,17 +19,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Equipment instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    EquipmentContactpoint.class, Contactpoint.class,
-                    "equipmentInstance",
-                    EquipmentContactpoint::getContactpointInstance,
-                    EquipmentContactpoint::setEquipmentInstance,
-                    EquipmentContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                EquipmentContactpoint.class, Contactpoint.class,
+                "equipmentInstance",
+                EquipmentContactpoint::getContactpointInstance,
+                EquipmentContactpoint::setEquipmentInstance,
+                EquipmentContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**
@@ -39,17 +37,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Facility instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    FacilityContactpoint.class, Contactpoint.class,
-                    "facilityInstance",
-                    FacilityContactpoint::getContactpointInstance,
-                    FacilityContactpoint::setFacilityInstance,
-                    FacilityContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                FacilityContactpoint.class, Contactpoint.class,
+                "facilityInstance",
+                FacilityContactpoint::getContactpointInstance,
+                FacilityContactpoint::setFacilityInstance,
+                FacilityContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**
@@ -59,17 +55,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Dataproduct instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    DataproductContactpoint.class, Contactpoint.class,
-                    "dataproductInstance",
-                    DataproductContactpoint::getContactpointInstance,
-                    DataproductContactpoint::setDataproductInstance,
-                    DataproductContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                DataproductContactpoint.class, Contactpoint.class,
+                "dataproductInstance",
+                DataproductContactpoint::getContactpointInstance,
+                DataproductContactpoint::setDataproductInstance,
+                DataproductContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**
@@ -79,17 +73,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Webservice instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    WebserviceContactpoint.class, Contactpoint.class,
-                    "webserviceInstance",
-                    WebserviceContactpoint::getContactpointInstance,
-                    WebserviceContactpoint::setWebserviceInstance,
-                    WebserviceContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                WebserviceContactpoint.class, Contactpoint.class,
+                "webserviceInstance",
+                WebserviceContactpoint::getContactpointInstance,
+                WebserviceContactpoint::setWebserviceInstance,
+                WebserviceContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**
@@ -99,17 +91,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Softwaresourcecode instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    SoftwaresourcecodeContactpoint.class, Contactpoint.class,
-                    "softwaresourcecodeInstance",
-                    SoftwaresourcecodeContactpoint::getContactpointInstance,
-                    SoftwaresourcecodeContactpoint::setSoftwaresourcecodeInstance,
-                    SoftwaresourcecodeContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                SoftwaresourcecodeContactpoint.class, Contactpoint.class,
+                "softwaresourcecodeInstance",
+                SoftwaresourcecodeContactpoint::getContactpointInstance,
+                SoftwaresourcecodeContactpoint::setSoftwaresourcecodeInstance,
+                SoftwaresourcecodeContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**
@@ -119,17 +109,15 @@ public class ContactPointRelationsAPI extends AbstractRelationsAPI {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "[ContactPointRelationsAPI] Creating ContactPoint relation for Softwareapplication instanceId: {0}", edmobj.getInstanceId());
         }
-        if (obj.getContactPoint() != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
-                    SoftwareapplicationContactpoint.class, Contactpoint.class,
-                    "softwareapplicationInstance",
-                    SoftwareapplicationContactpoint::getContactpointInstance,
-                    SoftwareapplicationContactpoint::setSoftwareapplicationInstance,
-                    SoftwareapplicationContactpoint::setContactpointInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getContactPoint(), null, null,
+                SoftwareapplicationContactpoint.class, Contactpoint.class,
+                "softwareapplicationInstance",
+                SoftwareapplicationContactpoint::getContactpointInstance,
+                SoftwareapplicationContactpoint::setSoftwareapplicationInstance,
+                SoftwareapplicationContactpoint::setContactpointInstance,
+                obj, previousObj, overrideStatus, false
+        );
     }
 
     /**

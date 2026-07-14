@@ -127,311 +127,137 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         if (obj.getIssued() != null) edmobj.setIssued(obj.getIssued());
 
         // CATEGORY
-        if (categoryExplicitlySet || !isNewVersion) {
-            if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getCategory(), relationFromUpdate, relationToUpdate,
-                        DataproductCategory.class, Category.class, "dataproductInstance", DataproductCategory::getCategoryInstance,
-                        DataproductCategory::setDataproductInstance, DataproductCategory::setCategoryInstance, obj, previousObj, overrideStatus, true);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductCategory.class, Category.class,
-                    "dataproductInstance",
-                    DataproductCategory::getCategoryInstance,
-                    DataproductCategory::setDataproductInstance,
-                    DataproductCategory::setCategoryInstance,
-                    obj, previousObj, overrideStatus, true);
-        }
+        RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getCategory(), relationFromUpdate, relationToUpdate,
+                DataproductCategory.class, Category.class, "dataproductInstance", DataproductCategory::getCategoryInstance,
+                DataproductCategory::setDataproductInstance, DataproductCategory::setCategoryInstance, obj, previousObj, overrideStatus, true);
 
         // CONTACTPOINT
-        if (contactPointExplicitlySet || !isNewVersion) {
-            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
-                        DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
-                        DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
-                    DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
-        }
+        RelationSyncUtil.syncComplexRelation(edmobj, edmobj.getInstanceId(), obj.getContactPoint(), relationFromUpdate, relationToUpdate,
+                DataproductContactpoint.class, Contactpoint.class, "dataproductInstance", DataproductContactpoint::getContactpointInstance,
+                DataproductContactpoint::setDataproductInstance, DataproductContactpoint::setContactpointInstance, obj, previousObj, overrideStatus, true);
 
         /** TITLE **/
-        if (titleExplicitlySet || !isNewVersion) {
-            if (obj.getTitle() != null && !obj.getTitle().isEmpty()) {
-                RelationSyncUtil.syncSimpleOneToMany(
-                        edmobj, edmobj.getInstanceId(), obj.getTitle(), model.DataproductTitle.class,
-                        "dataproductInstance", "Title",
-                        model.DataproductTitle::getTitle, model.DataproductTitle::setTitle, model.DataproductTitle::setDataproductInstance
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(
-                    oldInstanceId, edmobj, newInstanceId, model.DataproductTitle.class,
-                    "dataproductInstance", "Title",
-                    model.DataproductTitle::getTitle, model.DataproductTitle::setTitle, model.DataproductTitle::setDataproductInstance
-            );
-        }
+        RelationSyncUtil.syncSimpleOneToManyWithVersionFallback(
+                edmobj, edmobj.getInstanceId(), obj.getTitle(), model.DataproductTitle.class,
+                "dataproductInstance", "Title",
+                model.DataproductTitle::getTitle, model.DataproductTitle::setTitle, model.DataproductTitle::setDataproductInstance,
+                obj, oldInstanceId
+        );
 
         /** DESCRIPTION **/
-        if (descriptionExplicitlySet || !isNewVersion) {
-            if (obj.getDescription() != null && !obj.getDescription().isEmpty()) {
-                RelationSyncUtil.syncSimpleOneToMany(
-                        edmobj, edmobj.getInstanceId(), obj.getDescription(), model.DataproductDescription.class,
-                        "dataproductInstance", "Description",
-                        model.DataproductDescription::getDescription, model.DataproductDescription::setDescription, model.DataproductDescription::setDataproductInstance
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(
-                    oldInstanceId, edmobj, newInstanceId, model.DataproductDescription.class,
-                    "dataproductInstance", "Description",
-                    model.DataproductDescription::getDescription, model.DataproductDescription::setDescription, model.DataproductDescription::setDataproductInstance
-            );
-        }
+        RelationSyncUtil.syncSimpleOneToManyWithVersionFallback(
+                edmobj, edmobj.getInstanceId(), obj.getDescription(), model.DataproductDescription.class,
+                "dataproductInstance", "Description",
+                model.DataproductDescription::getDescription, model.DataproductDescription::setDescription, model.DataproductDescription::setDataproductInstance,
+                obj, oldInstanceId
+        );
 
         /** PROVENANCE **/
-        if (provenanceExplicitlySet || !isNewVersion) {
-            if (obj.getProvenance() != null && !obj.getProvenance().isEmpty()) {
-                RelationSyncUtil.syncSimpleOneToMany(
-                        edmobj, edmobj.getInstanceId(), obj.getProvenance(), model.DataproductProvenance.class,
-                        "dataproductInstance", "Provenance",
-                        model.DataproductProvenance::getProvenance, model.DataproductProvenance::setProvenance, model.DataproductProvenance::setDataproductInstance
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(
-                    oldInstanceId, edmobj, newInstanceId, model.DataproductProvenance.class,
-                    "dataproductInstance", "Provenance",
-                    model.DataproductProvenance::getProvenance, model.DataproductProvenance::setProvenance, model.DataproductProvenance::setDataproductInstance
-            );
-        }
+        RelationSyncUtil.syncSimpleOneToManyWithVersionFallback(
+                edmobj, edmobj.getInstanceId(), obj.getProvenance(), model.DataproductProvenance.class,
+                "dataproductInstance", "Provenance",
+                model.DataproductProvenance::getProvenance, model.DataproductProvenance::setProvenance, model.DataproductProvenance::setDataproductInstance,
+                obj, oldInstanceId
+        );
 
         /** PUBLISHER (DataproductPublisher) **/
-        if (publisherExplicitlySet || !isNewVersion) {
-            if (obj.getPublisher() != null && !obj.getPublisher().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getPublisher(), relationFromUpdate, relationToUpdate,
-                        DataproductPublisher.class, Organization.class,
-                        "dataproductInstance",
-                        DataproductPublisher::getOrganizationInstance,
-                        DataproductPublisher::setDataproductInstance,
-                        DataproductPublisher::setOrganizationInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductPublisher.class, Organization.class,
-                    "dataproductInstance",
-                    DataproductPublisher::getOrganizationInstance,
-                    DataproductPublisher::setDataproductInstance,
-                    DataproductPublisher::setOrganizationInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getPublisher(), relationFromUpdate, relationToUpdate,
+                DataproductPublisher.class, Organization.class,
+                "dataproductInstance",
+                DataproductPublisher::getOrganizationInstance,
+                DataproductPublisher::setDataproductInstance,
+                DataproductPublisher::setOrganizationInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         /** DISTRIBUTION (DistributionDataproduct) **/
-        if (distributionExplicitlySet || !isNewVersion) {
-            if (obj.getDistribution() != null && !obj.getDistribution().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
-                        DistributionDataproduct.class, Distribution.class,
-                        "dataproductInstance",
-                        DistributionDataproduct::getDistributionInstance,
-                        DistributionDataproduct::setDataproductInstance,
-                        DistributionDataproduct::setDistributionInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DistributionDataproduct.class, Distribution.class,
-                    "dataproductInstance",
-                    DistributionDataproduct::getDistributionInstance,
-                    DistributionDataproduct::setDataproductInstance,
-                    DistributionDataproduct::setDistributionInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
+                DistributionDataproduct.class, Distribution.class,
+                "dataproductInstance",
+                DistributionDataproduct::getDistributionInstance,
+                DistributionDataproduct::setDataproductInstance,
+                DistributionDataproduct::setDistributionInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** QUALIFIED ATTRIBUTION (DataproductAttribution) **/
-        if (qualifiedAttributionExplicitlySet || !isNewVersion) {
-            if (obj.getQualifiedAttribution() != null && !obj.getQualifiedAttribution().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getQualifiedAttribution(), relationFromUpdate, relationToUpdate,
-                        DataproductAttribution.class, Attribution.class,
-                        "dataproductInstance",
-                        DataproductAttribution::getAttributionInstance,
-                        DataproductAttribution::setDataproductInstance,
-                        DataproductAttribution::setAttributionInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductAttribution.class, Attribution.class,
-                    "dataproductInstance",
-                    DataproductAttribution::getAttributionInstance,
-                    DataproductAttribution::setDataproductInstance,
-                    DataproductAttribution::setAttributionInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getQualifiedAttribution(), relationFromUpdate, relationToUpdate,
+                DataproductAttribution.class, Attribution.class,
+                "dataproductInstance",
+                DataproductAttribution::getAttributionInstance,
+                DataproductAttribution::setDataproductInstance,
+                DataproductAttribution::setAttributionInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         /** IDENTIFIER (DataproductIdentifier) **/
-        if (identifierExplicitlySet || !isNewVersion) {
-            if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
-                        DataproductIdentifier.class, Identifier.class,
-                        "dataproductInstance",
-                        DataproductIdentifier::getIdentifierInstance,
-                        DataproductIdentifier::setDataproductInstance,
-                        DataproductIdentifier::setIdentifierInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductIdentifier.class, Identifier.class,
-                    "dataproductInstance",
-                    DataproductIdentifier::getIdentifierInstance,
-                    DataproductIdentifier::setDataproductInstance,
-                    DataproductIdentifier::setIdentifierInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
+                DataproductIdentifier.class, Identifier.class,
+                "dataproductInstance",
+                DataproductIdentifier::getIdentifierInstance,
+                DataproductIdentifier::setDataproductInstance,
+                DataproductIdentifier::setIdentifierInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** SPATIAL (DataproductSpatial) **/
-        if (spatialExtentExplicitlySet || !isNewVersion) {
-            if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
-                        DataproductSpatial.class, Spatial.class,
-                        "dataproductInstance",
-                        DataproductSpatial::getSpatialInstance,
-                        DataproductSpatial::setDataproductInstance,
-                        DataproductSpatial::setSpatialInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductSpatial.class, Spatial.class,
-                    "dataproductInstance",
-                    DataproductSpatial::getSpatialInstance,
-                    DataproductSpatial::setDataproductInstance,
-                    DataproductSpatial::setSpatialInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                DataproductSpatial.class, Spatial.class,
+                "dataproductInstance",
+                DataproductSpatial::getSpatialInstance,
+                DataproductSpatial::setDataproductInstance,
+                DataproductSpatial::setSpatialInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** TEMPORAL (DataproductTemporal) **/
-        if (temporalExtentExplicitlySet || !isNewVersion) {
-            if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
-                        DataproductTemporal.class, Temporal.class,
-                        "dataproductInstance",
-                        DataproductTemporal::getTemporalInstance,
-                        DataproductTemporal::setDataproductInstance,
-                        DataproductTemporal::setTemporalInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductTemporal.class, Temporal.class,
-                    "dataproductInstance",
-                    DataproductTemporal::getTemporalInstance,
-                    DataproductTemporal::setDataproductInstance,
-                    DataproductTemporal::setTemporalInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
+                DataproductTemporal.class, Temporal.class,
+                "dataproductInstance",
+                DataproductTemporal::getTemporalInstance,
+                DataproductTemporal::setDataproductInstance,
+                DataproductTemporal::setTemporalInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** SOURCE (DataproductSource) **/
-        if (sourceExplicitlySet || !isNewVersion) {
-            if (obj.getSource() != null && !obj.getSource().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSource(), relationFromUpdate, relationToUpdate,
-                        DataproductSource.class, Dataproduct.class,
-                        "dataproduct1Instance",
-                        DataproductSource::getDataproduct2Instance,
-                        DataproductSource::setDataproduct1Instance,
-                        DataproductSource::setDataproduct2Instance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductSource.class, Dataproduct.class,
-                    "dataproduct1Instance",
-                    DataproductSource::getDataproduct2Instance,
-                    DataproductSource::setDataproduct1Instance,
-                    DataproductSource::setDataproduct2Instance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSource(), relationFromUpdate, relationToUpdate,
+                DataproductSource.class, Dataproduct.class,
+                "dataproduct1Instance",
+                DataproductSource::getDataproduct2Instance,
+                DataproductSource::setDataproduct1Instance,
+                DataproductSource::setDataproduct2Instance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** HAS PART (DataproductHaspart) **/
-        if (hasPartExplicitlySet || !isNewVersion) {
-            if (obj.getHasPart() != null && !obj.getHasPart().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getHasPart(), relationFromUpdate, relationToUpdate,
-                        DataproductHaspart.class, Dataproduct.class,
-                        "dataproduct1Instance",
-                        DataproductHaspart::getDataproduct2Instance,
-                        DataproductHaspart::setDataproduct1Instance,
-                        DataproductHaspart::setDataproduct2Instance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductHaspart.class, Dataproduct.class,
-                    "dataproduct1Instance",
-                    DataproductHaspart::getDataproduct2Instance,
-                    DataproductHaspart::setDataproduct1Instance,
-                    DataproductHaspart::setDataproduct2Instance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getHasPart(), relationFromUpdate, relationToUpdate,
+                DataproductHaspart.class, Dataproduct.class,
+                "dataproduct1Instance",
+                DataproductHaspart::getDataproduct2Instance,
+                DataproductHaspart::setDataproduct1Instance,
+                DataproductHaspart::setDataproduct2Instance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** IS PART OF (DataproductIspartof) **/
-        if (isPartOfExplicitlySet || !isNewVersion) {
-            if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
-                        DataproductIspartof.class, Dataproduct.class,
-                        "dataproduct1Instance",
-                        DataproductIspartof::getDataproduct2Instance,
-                        DataproductIspartof::setDataproduct1Instance,
-                        DataproductIspartof::setDataproduct2Instance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DataproductIspartof.class, Dataproduct.class,
-                    "dataproduct1Instance",
-                    DataproductIspartof::getDataproduct2Instance,
-                    DataproductIspartof::setDataproduct1Instance,
-                    DataproductIspartof::setDataproduct2Instance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
+                DataproductIspartof.class, Dataproduct.class,
+                "dataproduct1Instance",
+                DataproductIspartof::getDataproduct2Instance,
+                DataproductIspartof::setDataproduct1Instance,
+                DataproductIspartof::setDataproduct2Instance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** ELEMENT-BASED RELATIONS (landingPage, referencedBy, variableMeasured) **/
         handleElementRelations(obj, edmobj, overrideStatus, isNewVersion, oldInstanceId);

@@ -102,89 +102,45 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         }
 
         // CATEGORY
-        if (categoryExplicitlySet || !isNewVersion) {
-            if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-                CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyFacilityCategoryRelations(oldInstanceId, edmobj);
-        }
+        CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         // CONTACTPOINT
-        if (contactPointExplicitlySet || !isNewVersion) {
-            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyFacilityContactPointRelations(oldInstanceId, edmobj);
-        }
+        ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         // ADDRESS - Enable Store = True to allow creation of missing addresses
-        if (addressExplicitlySet || !isNewVersion) {
-            if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getAddress(), relationFromUpdate, relationToUpdate,
-                        FacilityAddress.class, Address.class,
-                        "facilityInstance", FacilityAddress::getAddressInstance, FacilityAddress::setFacilityInstance, FacilityAddress::setAddressInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (obj.getAddress() != null && !obj.getAddress().isEmpty()) {
             RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
+                    edmobj, edmobj.getInstanceId(), obj.getAddress(), relationFromUpdate, relationToUpdate,
                     FacilityAddress.class, Address.class,
                     "facilityInstance", FacilityAddress::getAddressInstance, FacilityAddress::setFacilityInstance, FacilityAddress::setAddressInstance,
                     obj, previousObj, overrideStatus, true
             );
+        } else {
+            deleteRelations("facilityInstance", edmobj.getInstanceId(), FacilityAddress.class);
         }
 
         // ISPARTOF (Facility -> Facility) - Enable Store = True to allow creation of missing facilities
-        if (isPartOfExplicitlySet || !isNewVersion) {
-            if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
-                        FacilityIspartof.class, Facility.class,
-                        "facility1Instance", FacilityIspartof::getFacility2Instance, FacilityIspartof::setFacility1Instance, FacilityIspartof::setFacility2Instance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    FacilityIspartof.class, Facility.class,
-                    "facility1Instance", FacilityIspartof::getFacility2Instance, FacilityIspartof::setFacility1Instance, FacilityIspartof::setFacility2Instance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getIsPartOf(), relationFromUpdate, relationToUpdate,
+                FacilityIspartof.class, Facility.class,
+                "facility1Instance", FacilityIspartof::getFacility2Instance, FacilityIspartof::setFacility1Instance, FacilityIspartof::setFacility2Instance,
+                obj, previousObj, overrideStatus, true
+        );
 
         // SPATIAL - Enable Store = True
-        if (spatialExtentExplicitlySet || !isNewVersion) {
-            if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
-                        FacilitySpatial.class, Spatial.class,
-                        "facilityInstance", FacilitySpatial::getSpatialInstance, FacilitySpatial::setFacilityInstance, FacilitySpatial::setSpatialInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    FacilitySpatial.class, Spatial.class,
-                    "facilityInstance", FacilitySpatial::getSpatialInstance, FacilitySpatial::setFacilityInstance, FacilitySpatial::setSpatialInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                FacilitySpatial.class, Spatial.class,
+                "facilityInstance", FacilitySpatial::getSpatialInstance, FacilitySpatial::setFacilityInstance, FacilitySpatial::setSpatialInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         // PAGE URL (list of strings)
-        if (pageURLExplicitlySet || !isNewVersion) {
-            if (obj.getPageURL() != null && !obj.getPageURL().isEmpty()) {
-                for (String pageurl : obj.getPageURL()) {
-                    createInnerElement(ElementType.PAGEURL, pageurl, edmobj, overrideStatus);
-                }
+        deleteExistingElements(edmobj.getInstanceId());
+        if (obj.getPageURL() != null && !obj.getPageURL().isEmpty()) {
+            for (String pageurl : obj.getPageURL()) {
+                createInnerElement(ElementType.PAGEURL, pageurl, edmobj, overrideStatus);
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PAGEURL, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
