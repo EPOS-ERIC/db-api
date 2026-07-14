@@ -333,8 +333,11 @@ public class RelationChecker {
                         }
                     }
 
-                    // Last resort: create stub entity if enabled
-                    if (obj == null && Boolean.TRUE.equals(enableStore) && linkedEntityType != null) {
+                    // Last resort: create stub entity if enabled.
+                    // WebService links are handled better as pending relations because
+                    // the stub path does not reliably materialize the join table entry.
+                    if (obj == null && Boolean.TRUE.equals(enableStore) && linkedEntityType != null
+                            && !EntityNames.WEBSERVICE.name().equals(linkedEntityTypeUpper)) {
                         obj = createStubEntity(linkedEntity, mainEntity, overrideStatus);
                     }
                 }

@@ -441,21 +441,22 @@ public class RelationSyncUtil {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // Handle null or empty list:
-            // - new version: copy from previous version
-            // - regular update: clear existing joins so omitted relations are detached
-            if (inputLinks == null || inputLinks.isEmpty()) {
+            // Null means "leave existing relations untouched" on regular updates.
+            // Empty means "clear all relations".
+            if (inputLinks == null) {
                 if (isNewVersion) {
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
                             joinClass, targetClass, parentFieldName, targetGetter, effectiveStatus, mainEntity);
-                } else {
-                    String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
-                    List<?> existingRawList = EposDataModelDAO.getInstance()
-                            .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
-                    if (existingRawList != null) {
-                        for (Object o : existingRawList) {
-                            EposDataModelDAO.getInstance().deleteObject(o);
-                        }
+                }
+                return;
+            }
+            if (inputLinks.isEmpty()) {
+                String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+                List<?> existingRawList = EposDataModelDAO.getInstance()
+                        .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+                if (existingRawList != null) {
+                    for (Object o : existingRawList) {
+                        EposDataModelDAO.getInstance().deleteObject(o);
                     }
                 }
                 return;
@@ -729,7 +730,10 @@ public class RelationSyncUtil {
                 }
 
                 J newJoin = joinClass.getDeclaredConstructor().newInstance();
-                initializeEmbeddedIdWithFieldName(newJoin, parentDbObject, targetEntity, parentFieldName);
+                // Use the legacy initializer here because it infers both sides of the join
+                // from the entity types, which is more reliable than field-name derivation
+                // for relations such as Distribution-WebService.
+                initializeEmbeddedIdLegacy(newJoin, parentDbObject, targetEntity);
 
                 if (parentSetter != null) {
                     parentSetter.accept(newJoin, parentDbObject);
