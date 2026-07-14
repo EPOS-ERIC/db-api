@@ -39,29 +39,23 @@ public class VersioningStatusAPI {
 
         if (edmobj == null && obj.getUid() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
-            for (Versioningstatus vs : list) {
-                if (isPendingRelationMarker(vs)) {
-                    continue;
-                }
-                edmobj = vs;
-                break;
-            }
+            edmobj = selectVersionForTransition(list, obj, overrideStatus);
         }
 
         if (edmobj != null) {
-            StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
+            boolean reuseExistingDraft = targetStatus == DRAFT && sameEditor(obj.getEditorId(), edmobj.getEditorId());
+            StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
 
             if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}",
-                        new Object[]{currentDbStatus, targetStatus});
+                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}, reuseExistingDraft={2}",
+                        new Object[]{currentDbStatus, targetStatus, reuseExistingDraft});
             }
 
-            if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
+            if (targetStatus == DRAFT && !reuseExistingDraft) {
                 createNewVersion(obj, edmobj, targetStatus);
-            }
-            else {
+            } else {
                 if (targetStatus == PUBLISHED && currentDbStatus != PUBLISHED) {
                     String searchUid = edmobj.getUid() != null ? edmobj.getUid() : obj.getUid();
                     archiveOldPublishedVersions(searchUid, edmobj.getVersionId());
@@ -83,6 +77,85 @@ public class VersioningStatusAPI {
             createFirstVersion(obj, initialStatus);
             return obj;
         }
+    }
+
+    private static Versioningstatus selectVersionForTransition(List<Versioningstatus> versions, EPOSDataModelEntity obj, StatusType overrideStatus) {
+        if (versions == null || versions.isEmpty()) {
+            return null;
+        }
+
+        StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
+        if (targetStatus == null) {
+            targetStatus = DRAFT;
+        }
+
+        if (targetStatus == DRAFT) {
+            Versioningstatus sameEditorDraft = findDraftForEditor(versions, obj.getEditorId());
+            if (sameEditorDraft != null) {
+                return sameEditorDraft;
+            }
+
+            Versioningstatus published = findPublishedVersion(versions);
+            if (published != null) {
+                return published;
+            }
+
+            return findFirstNonPending(versions);
+        }
+
+        Versioningstatus matching = findByStatus(versions, targetStatus);
+        if (matching != null) {
+            return matching;
+        }
+
+        return findFirstNonPending(versions);
+    }
+
+    private static Versioningstatus findDraftForEditor(List<Versioningstatus> versions, String editorId) {
+        for (Versioningstatus vs : versions) {
+            if (vs == null || isPendingRelationMarker(vs)) {
+                continue;
+            }
+            if (DRAFT.toString().equals(vs.getStatus()) && sameEditor(editorId, vs.getEditorId())) {
+                return vs;
+            }
+        }
+        return null;
+    }
+
+    private static Versioningstatus findPublishedVersion(List<Versioningstatus> versions) {
+        return findByStatus(versions, PUBLISHED);
+    }
+
+    private static Versioningstatus findByStatus(List<Versioningstatus> versions, StatusType status) {
+        if (status == null) {
+            return null;
+        }
+        for (Versioningstatus vs : versions) {
+            if (vs == null || isPendingRelationMarker(vs)) {
+                continue;
+            }
+            if (status.toString().equals(vs.getStatus())) {
+                return vs;
+            }
+        }
+        return null;
+    }
+
+    private static Versioningstatus findFirstNonPending(List<Versioningstatus> versions) {
+        for (Versioningstatus vs : versions) {
+            if (vs != null && !isPendingRelationMarker(vs)) {
+                return vs;
+            }
+        }
+        return null;
+    }
+
+    private static boolean sameEditor(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     private static boolean isPendingRelationMarker(Versioningstatus vs) {

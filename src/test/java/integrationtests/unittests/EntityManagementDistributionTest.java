@@ -8,11 +8,14 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
+import model.StatusType;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -90,6 +93,31 @@ public class EntityManagementDistributionTest extends TestcontainersLifecycle {
 
         Distribution retrieved = (Distribution) distApi.retrieve(distribution.getInstanceId());
         assertNull(retrieved.getAccessService());
+    }
+
+    @Test
+    @Order(4)
+    public void testStatusOnlyUpdatePreservesAccessService() {
+        AbstractAPI distApi = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+        AbstractAPI wsApi = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
+
+        LinkedEntity ws = createWebService(wsApi);
+        Distribution distribution = createDistributionWithAccessService(ws);
+        distApi.create(distribution, StatusType.PUBLISHED, null, null);
+
+        Distribution statusUpdate = new Distribution();
+        statusUpdate.setInstanceId(distribution.getInstanceId());
+        statusUpdate.setMetaId(distribution.getMetaId());
+        statusUpdate.setUid(distribution.getUid());
+        statusUpdate.setStatus(StatusType.ARCHIVED);
+
+        distApi.create(statusUpdate, StatusType.ARCHIVED, null, null);
+
+        Distribution retrieved = (Distribution) distApi.retrieve(distribution.getInstanceId());
+        assertEquals(StatusType.ARCHIVED, retrieved.getStatus());
+        assertNotNull(retrieved.getAccessService());
+        assertFalse(retrieved.getAccessService().isEmpty());
+        assertEquals(ws.getUid(), retrieved.getAccessService().get(0).getUid());
     }
 
     private LinkedEntity createWebService(AbstractAPI wsApi) {

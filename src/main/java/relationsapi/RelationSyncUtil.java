@@ -441,7 +441,9 @@ public class RelationSyncUtil {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // Handle null or empty list: copy from previous on new versions, otherwise clear existing joins.
+            // Handle null or empty list:
+            // - new version: copy from previous version
+            // - regular update: clear existing joins so omitted relations are detached
             if (inputLinks == null || inputLinks.isEmpty()) {
                 if (isNewVersion) {
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
@@ -945,7 +947,8 @@ public class RelationSyncUtil {
         if (metaId == null) {
             metaId = originalInstanceId;
         }
-        String cacheKey = metaId + "_" + newStatus.name();
+        String editorKey = editorId != null ? editorId.trim().toLowerCase(Locale.ROOT) : "";
+        String cacheKey = metaId + "_" + newStatus.name() + "_" + editorKey;
 
         Map<String, String> createdVersions = cascadeCreatedVersions.get();
         String existingNewInstanceId = createdVersions.get(cacheKey);

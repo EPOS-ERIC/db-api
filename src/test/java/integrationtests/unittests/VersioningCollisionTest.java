@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.DataProductAPI;
+import metadataapis.DistributionAPI;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,11 +19,13 @@ import java.util.UUID;
 class VersioningCollisionTest extends TestcontainersLifecycle {
 
     private DataProductAPI dataProductAPI;
+    private DistributionAPI distributionAPI;
 
     @BeforeEach
     void setUp() {
         // Ensure the test DB is clean or use rollback transactions
         dataProductAPI = new DataProductAPI("DATAPRODUCT", model.Dataproduct.class);
+        distributionAPI = new DistributionAPI("DISTRIBUTION", model.Distribution.class);
     }
 
     @Test
@@ -113,6 +116,60 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         // No other versions should exist (implicit check via retrieve)
     }
 
+    @Test
+    @Order(3)
+    @DisplayName("Scenario 3: DRAFTs are isolated per editor")
+    void testDraftsAreIsolatedPerEditor() {
+        String fixedUid = "DISTRIBUTION/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution published = createDummyDistribution();
+        published.setUid(fixedUid);
+        published.setStatus(StatusType.PUBLISHED);
+        published.addTitle("Published Distribution");
+
+        LinkedEntity publishedLE = distributionAPI.create(published, StatusType.PUBLISHED, null, null);
+        String publishedInstanceId = publishedLE.getInstanceId();
+
+        org.epos.eposdatamodel.Distribution beatrizDraft = distributionAPI.retrieve(publishedInstanceId);
+        beatrizDraft.setStatus(StatusType.DRAFT);
+        beatrizDraft.setEditorId("beatriz");
+        beatrizDraft.setTitle(Collections.singletonList("Beatriz Draft Distribution"));
+
+        LinkedEntity beatrizDraftLE = distributionAPI.create(beatrizDraft, StatusType.DRAFT, null, null);
+        String beatrizDraftInstanceId = beatrizDraftLE.getInstanceId();
+
+        org.epos.eposdatamodel.Distribution userDraft = distributionAPI.retrieve(publishedInstanceId);
+        userDraft.setStatus(StatusType.DRAFT);
+        userDraft.setEditorId("valerio");
+        userDraft.setTitle(Collections.singletonList("Valerio Draft Distribution"));
+
+        LinkedEntity userDraftLE = distributionAPI.create(userDraft, StatusType.DRAFT, null, null);
+        String userDraftInstanceId = userDraftLE.getInstanceId();
+
+        assertNotEquals(beatrizDraftInstanceId, userDraftInstanceId, "Different editors must get different DRAFT instances");
+
+        org.epos.eposdatamodel.Distribution retrievedBeatriz = distributionAPI.retrieve(beatrizDraftInstanceId);
+        org.epos.eposdatamodel.Distribution retrievedUser = distributionAPI.retrieve(userDraftInstanceId);
+
+        assertEquals(StatusType.DRAFT, retrievedBeatriz.getStatus());
+        assertEquals(StatusType.DRAFT, retrievedUser.getStatus());
+        assertEquals("Beatriz Draft Distribution", retrievedBeatriz.getTitle().get(0));
+        assertEquals("Valerio Draft Distribution", retrievedUser.getTitle().get(0));
+
+        org.epos.eposdatamodel.Distribution beatrizDraftUpdate = distributionAPI.retrieve(beatrizDraftInstanceId);
+        beatrizDraftUpdate.setStatus(StatusType.DRAFT);
+        beatrizDraftUpdate.setEditorId("beatriz");
+        beatrizDraftUpdate.setTitle(Collections.singletonList("Beatriz Draft Updated"));
+
+        LinkedEntity beatrizDraftUpdateLE = distributionAPI.create(beatrizDraftUpdate, StatusType.DRAFT, null, null);
+        assertEquals(beatrizDraftInstanceId, beatrizDraftUpdateLE.getInstanceId(),
+                "Same editor should reuse the existing DRAFT instance");
+
+        org.epos.eposdatamodel.Distribution retrievedPublished = distributionAPI.retrieve(publishedInstanceId);
+        assertEquals(StatusType.PUBLISHED, retrievedPublished.getStatus());
+        assertEquals("Published Distribution", retrievedPublished.getTitle().get(0));
+    }
+
     // Helper
     private org.epos.eposdatamodel.DataProduct createDummyDataProduct() {
         org.epos.eposdatamodel.DataProduct dp = new org.epos.eposdatamodel.DataProduct();
@@ -120,5 +177,13 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         dp.setIssued(OffsetDateTime.now().toLocalDateTime());
         dp.setModified(OffsetDateTime.now().toLocalDateTime());
         return dp;
+    }
+
+    private org.epos.eposdatamodel.Distribution createDummyDistribution() {
+        org.epos.eposdatamodel.Distribution dist = new org.epos.eposdatamodel.Distribution();
+        dist.setFormat("application/json");
+        dist.setIssued(OffsetDateTime.now().toLocalDateTime());
+        dist.setModified(OffsetDateTime.now().toLocalDateTime());
+        return dist;
     }
 }

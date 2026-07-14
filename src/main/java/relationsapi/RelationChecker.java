@@ -324,7 +324,8 @@ public class RelationChecker {
                                     : (overrideStatus != null ? overrideStatus :
                                     (mainEntity != null ? mainEntity.getStatus() : null));
 
-                            Object existing = findBestMatchingVersion(byUid, preferredStatus);
+                            Object existing = findBestMatchingVersion(byUid, preferredStatus,
+                                    mainEntity != null ? mainEntity.getEditorId() : null);
 
                             if (existing != null) {
                                 obj = buildLinkedEntity(existing, linkedEntityType);
@@ -457,7 +458,7 @@ public class RelationChecker {
         return le;
     }
 
-    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus) {
+    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus, String editorId) {
         if (versions == null || versions.isEmpty()) {
             return null;
         }
@@ -466,13 +467,35 @@ public class RelationChecker {
         }
 
         String targetStatusStr = targetStatus.toString();
+        if (StatusType.DRAFT.equals(targetStatus) && editorId != null) {
+            for (Object v : versions) {
+                if (StatusType.DRAFT.toString().equals(getModelVersionStatus(v)) && sameEditor(editorId, getModelStrProperty(v, "getEditorId"))) {
+                    return v;
+                }
+            }
+            for (Object v : versions) {
+                if (STATUS_PUBLISHED.equals(getModelVersionStatus(v))) {
+                    return v;
+                }
+            }
+            return null;
+        }
+
         for (Object v : versions) {
             String status = getModelVersionStatus(v);
             if (targetStatusStr.equals(status)) {
                 return v;
             }
         }
+
         return versions.get(0);
+    }
+
+    private static boolean sameEditor(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     /**

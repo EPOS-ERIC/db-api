@@ -940,4 +940,52 @@ public class RelationSyncTest extends TestcontainersLifecycle{
 
         System.out.println("   ✓ SoftwareApplication keywords elements synced correctly");
     }
+
+    @Test
+    @Order(99)
+    @DisplayName("99. DataProduct - Spatial relation is removed on PUT without spatial")
+    void dataProduct_SpatialExtentRemoved_OnUpdateWithoutSpatial() {
+        SpatialAPI spatialAPI = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
+        DataProductAPI dataProductAPI = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
+
+        Location spatial = new Location();
+        spatial.setUid(TEST_UID_PREFIX + "dp-spatial-001");
+        spatial.setEditorId("test");
+        spatial.setFileProvenance("test");
+        spatial.setStatus(StatusType.DRAFT);
+        spatial.setLocation("POLYGON((0 0, 1 0, 1 1, 0 0))");
+        LinkedEntity spatialEntity = spatialAPI.create(spatial, StatusType.DRAFT, null, null);
+
+        DataProduct dto = new DataProduct();
+        dto.setUid(TEST_UID_PREFIX + "dp-spatial-remove-001");
+        dto.setEditorId("test");
+        dto.setFileProvenance("test");
+        dto.addTitle("DataProduct with spatial");
+        dto.addSpatialExtentItem(new LinkedEntity()
+                .instanceId(spatialEntity.getInstanceId())
+                .uid(spatialEntity.getUid())
+                .entityType(EntityNames.LOCATION.name()));
+
+        LinkedEntity created = dataProductAPI.create(dto, StatusType.DRAFT, null, null);
+
+        DataProduct updateDto = new DataProduct();
+        updateDto.setInstanceId(created.getInstanceId());
+        updateDto.setMetaId(created.getMetaId());
+        updateDto.setUid(created.getUid());
+        updateDto.setEditorId("test");
+        updateDto.setFileProvenance("test");
+        updateDto.addTitle("DataProduct with spatial");
+
+        dataProductAPI.create(updateDto, StatusType.DRAFT, null, null);
+
+        DataProduct retrieved = dataProductAPI.retrieve(created.getInstanceId());
+        assertTrue(retrieved.getSpatialExtent() == null || retrieved.getSpatialExtent().isEmpty(),
+                "SpatialExtent should be removed when omitted from PUT");
+
+        List<Object> joins = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId("dataproductInstance", created.getInstanceId(), DataproductSpatial.class);
+        assertTrue(joins == null || joins.isEmpty(), "DataproductSpatial join should be deleted");
+
+        System.out.println("   ✓ DataProduct spatial relation removed correctly on update without spatial");
+    }
 }
