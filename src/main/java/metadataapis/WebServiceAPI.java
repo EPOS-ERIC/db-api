@@ -464,6 +464,12 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             o.addTemporalExtent(le);
         }
 
+        for (Object object : getDbaccess().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(), WebserviceDistribution.class)) {
+            WebserviceDistribution item = (WebserviceDistribution) object;
+            LinkedEntity le = retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveLinkedEntity(item.getDistributionInstance().getInstanceId());
+            o.getDistribution().add(le);
+        }
+
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(), OperationWebservice.class)) {
             OperationWebservice item = (OperationWebservice) object;
             LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());

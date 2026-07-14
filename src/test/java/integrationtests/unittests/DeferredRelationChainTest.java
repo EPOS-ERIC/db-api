@@ -47,6 +47,7 @@ public class DeferredRelationChainTest extends TestcontainersLifecycle {
         distribution.addTitle("Chain Distribution");
         distribution.setFormat("application/json");
         distribution.setStatus(StatusType.PUBLISHED);
+        distribution.addDataproduct(linkedEntity(dataProductUid, EntityNames.DATAPRODUCT.name()));
         distribution.addAccessService(linkedEntity(webServiceUid, EntityNames.WEBSERVICE.name()));
 
         LinkedEntity distributionCreated = distributionAPI.create(distribution, StatusType.PUBLISHED, null, null);
@@ -57,6 +58,7 @@ public class DeferredRelationChainTest extends TestcontainersLifecycle {
         webService.setName("Chain WebService");
         webService.setDescription("WebService created after the chain is referenced");
         webService.setStatus(StatusType.PUBLISHED);
+        webService.setDistribution(List.of(linkedEntity(distributionUid, EntityNames.DISTRIBUTION.name())));
 
         LinkedEntity webServiceCreated = webServiceAPI.create(webService, StatusType.PUBLISHED, null, null);
         assertNotNull(webServiceCreated);
@@ -66,6 +68,7 @@ public class DeferredRelationChainTest extends TestcontainersLifecycle {
         assertNotNull(retrievedDataProduct.getDistribution());
         assertEquals(1, retrievedDataProduct.getDistribution().size());
         assertEquals(distributionUid, retrievedDataProduct.getDistribution().get(0).getUid());
+        assertEquals(distributionCreated.getInstanceId(), retrievedDataProduct.getDistribution().get(0).getInstanceId());
 
         List<Object> dataproductJoins = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache("dataproductInstance", dataProductCreated.getInstanceId(), DistributionDataproduct.class);
@@ -93,6 +96,7 @@ public class DeferredRelationChainTest extends TestcontainersLifecycle {
         assertNotNull(retrievedDistribution.getDataProduct());
         assertEquals(1, retrievedDistribution.getDataProduct().size());
         assertEquals(dataProductUid, retrievedDistribution.getDataProduct().get(0).getUid());
+        assertEquals(dataProductCreated.getInstanceId(), retrievedDistribution.getDataProduct().get(0).getInstanceId());
         assertNotNull(retrievedDistribution.getAccessService());
         assertEquals(1, retrievedDistribution.getAccessService().size());
         assertEquals(webServiceUid, retrievedDistribution.getAccessService().get(0).getUid());
@@ -100,6 +104,10 @@ public class DeferredRelationChainTest extends TestcontainersLifecycle {
         WebService retrievedWebService = (WebService) webServiceAPI.retrieve(webServiceCreated.getInstanceId());
         assertNotNull(retrievedWebService);
         assertEquals(webServiceUid, retrievedWebService.getUid());
+        assertNotNull(retrievedWebService.getDistribution());
+        assertEquals(1, retrievedWebService.getDistribution().size());
+        assertEquals(distributionUid, retrievedWebService.getDistribution().get(0).getUid());
+        assertEquals(distributionCreated.getInstanceId(), retrievedWebService.getDistribution().get(0).getInstanceId());
         assertTrue(((DistributionDataproduct) dataproductJoins.get(0)).getDistributionInstance().getUid().equals(distributionUid));
         assertTrue(((WebserviceDistribution) webserviceJoins.get(0)).getWebserviceInstance().getUid().equals(webServiceUid));
     }
