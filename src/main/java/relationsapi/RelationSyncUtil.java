@@ -1196,7 +1196,11 @@ public class RelationSyncUtil {
             }
 
             try {
-                EposDataModelDAO.getInstance().updateObject(newJoin);
+                boolean persisted = EposDataModelDAO.getInstance().updateObject(newJoin);
+                if (!persisted) {
+                    throw new IllegalStateException("Join persistence failed for " + joinClass.getSimpleName() +
+                            " source=" + sourceId + " target=" + targetId);
+                }
                 cleanupJoinLocksIfNeeded();
             } catch (Exception e) {
                 if (!isDuplicateKeyException(e)) {
