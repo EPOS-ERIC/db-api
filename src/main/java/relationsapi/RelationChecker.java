@@ -268,6 +268,7 @@ public class RelationChecker {
 
                 // For shared reference entities, don't propagate status changes
                 if (statusMismatch && isReference && !isSharedReference) {
+                    relationEntity.setEditorId(mainEntity.getEditorId());
                     relationEntity.setStatus(mainEntity.getStatus());
                     relationEntity.setEditorId(mainEntity.getEditorId());
 
@@ -373,6 +374,9 @@ public class RelationChecker {
             newDto.setUid(linkedEntity.getUid());
             newDto.setInstanceId(UUID.randomUUID().toString());
             newDto.setMetaId(UUID.randomUUID().toString());
+            if (mainEntity != null && mainEntity.getEditorId() != null) {
+                newDto.setEditorId(mainEntity.getEditorId());
+            }
 
             // Reference entities always create as PUBLISHED
             StatusType createStatus;

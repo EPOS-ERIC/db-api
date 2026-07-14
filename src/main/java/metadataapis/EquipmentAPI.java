@@ -116,115 +116,75 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
 
         // CATEGORY
-        if (categoryExplicitlySet || !isNewVersion) {
-            if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-                CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyEquipmentCategoryRelations(oldInstanceId, edmobj);
-        }
+        CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         // CONTACTPOINT
-        if (contactPointExplicitlySet || !isNewVersion) {
-            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyEquipmentContactPointRelations(oldInstanceId, edmobj);
-        }
+        ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         // ISPARTOF (special handling - can be Equipment or Facility)
-        if (isPartOfExplicitlySet || !isNewVersion) {
-            if (obj.getIsPartOf() != null && !obj.getIsPartOf().isEmpty()) {
-                if (relationFromUpdate != null && obj.getIsPartOf().contains(relationFromUpdate)) {
-                    obj.getIsPartOf().remove(relationFromUpdate);
-                    obj.getIsPartOf().add(relationToUpdate);
-                }
+        if (obj.getIsPartOf() == null || obj.getIsPartOf().isEmpty()) {
+            deleteRelations("equipment", edmobj.getInstanceId(), EquipmentIspartof.class);
+        } else {
+            if (relationFromUpdate != null && obj.getIsPartOf().contains(relationFromUpdate)) {
+                obj.getIsPartOf().remove(relationFromUpdate);
+                obj.getIsPartOf().add(relationToUpdate);
+            }
 
-                List<Object> existing = getDbaccess().getJoinEntitiesByRelationField("equipment", edmobj.getInstanceId(), EquipmentIspartof.class);
-                Map<String, EquipmentIspartof> existingMap = new HashMap<>();
-                if (existing != null) {
-                    for (Object o : existing) {
-                        EquipmentIspartof rel = (EquipmentIspartof) o;
-                        existingMap.put(rel.getEntityInstanceId(), rel);
-                    }
+            List<Object> existing = getDbaccess().getJoinEntitiesByRelationField("equipment", edmobj.getInstanceId(), EquipmentIspartof.class);
+            Map<String, EquipmentIspartof> existingMap = new HashMap<>();
+            if (existing != null) {
+                for (Object o : existing) {
+                    EquipmentIspartof rel = (EquipmentIspartof) o;
+                    existingMap.put(rel.getEntityInstanceId(), rel);
                 }
-                Set<String> processedIds = new HashSet<>();
+            }
+            Set<String> processedIds = new HashSet<>();
 
-                for (LinkedEntity item : obj.getIsPartOf()) {
-                    Class<?> targetClass = EntityNames.FACILITY.name().equals(item.getEntityType()) ? Facility.class : Equipment.class;
-                    Object resolved = RelationChecker.checkRelation(obj, previousObj, null, item, overrideStatus, targetClass, false);
-                    if (resolved != null) {
-                        String resolvedInstanceId = extractInstanceId(resolved);
-                        if (resolvedInstanceId != null) {
-                            processedIds.add(resolvedInstanceId);
-                            if (!existingMap.containsKey(resolvedInstanceId)) {
-                                EquipmentIspartof pi = new EquipmentIspartof();
-                                pi.setEquipment(edmobj);
-                                pi.setEquipmentInstanceId(edmobj.getInstanceId());
-                                pi.setEntityInstanceId(resolvedInstanceId);
-                                pi.setResourceEntity(targetClass == Facility.class ? EntityNames.FACILITY.name() : EntityNames.EQUIPMENT.name());
-                                EposDataModelDAO.getInstance().updateObject(pi);
-                            }
+            for (LinkedEntity item : obj.getIsPartOf()) {
+                Class<?> targetClass = EntityNames.FACILITY.name().equals(item.getEntityType()) ? Facility.class : Equipment.class;
+                Object resolved = RelationChecker.checkRelation(obj, previousObj, null, item, overrideStatus, targetClass, false);
+                if (resolved != null) {
+                    String resolvedInstanceId = extractInstanceId(resolved);
+                    if (resolvedInstanceId != null) {
+                        processedIds.add(resolvedInstanceId);
+                        if (!existingMap.containsKey(resolvedInstanceId)) {
+                            EquipmentIspartof pi = new EquipmentIspartof();
+                            pi.setEquipment(edmobj);
+                            pi.setEquipmentInstanceId(edmobj.getInstanceId());
+                            pi.setEntityInstanceId(resolvedInstanceId);
+                            pi.setResourceEntity(targetClass == Facility.class ? EntityNames.FACILITY.name() : EntityNames.EQUIPMENT.name());
+                            EposDataModelDAO.getInstance().updateObject(pi);
                         }
                     }
                 }
-                // Delete orphans
-                for (Map.Entry<String, EquipmentIspartof> entry : existingMap.entrySet()) {
-                    if (!processedIds.contains(entry.getKey())) {
-                        EposDataModelDAO.getInstance().deleteObject(entry.getValue());
-                    }
+            }
+            for (Map.Entry<String, EquipmentIspartof> entry : existingMap.entrySet()) {
+                if (!processedIds.contains(entry.getKey())) {
+                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
                 }
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyEquipmentIsPartOfRelations(oldInstanceId, edmobj);
         }
 
         // SPATIAL EXTENT
-        if (spatialExtentExplicitlySet || !isNewVersion) {
-            if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
-                        EquipmentSpatial.class, Spatial.class,
-                        "equipmentInstance", EquipmentSpatial::getSpatialInstance, EquipmentSpatial::setEquipmentInstance, EquipmentSpatial::setSpatialInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    EquipmentSpatial.class, Spatial.class,
-                    "equipmentInstance", EquipmentSpatial::getSpatialInstance, EquipmentSpatial::setEquipmentInstance, EquipmentSpatial::setSpatialInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                EquipmentSpatial.class, Spatial.class,
+                "equipmentInstance", EquipmentSpatial::getSpatialInstance, EquipmentSpatial::setEquipmentInstance, EquipmentSpatial::setSpatialInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         // TEMPORAL EXTENT
-        if (temporalExtentExplicitlySet || !isNewVersion) {
-            if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
-                        EquipmentTemporal.class, Temporal.class,
-                        "equipmentInstance", EquipmentTemporal::getTemporalInstance, EquipmentTemporal::setEquipmentInstance, EquipmentTemporal::setTemporalInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    EquipmentTemporal.class, Temporal.class,
-                    "equipmentInstance", EquipmentTemporal::getTemporalInstance, EquipmentTemporal::setEquipmentInstance, EquipmentTemporal::setTemporalInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
+                EquipmentTemporal.class, Temporal.class,
+                "equipmentInstance", EquipmentTemporal::getTemporalInstance, EquipmentTemporal::setEquipmentInstance, EquipmentTemporal::setTemporalInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         // PAGE URL
-        if (pageURLExplicitlySet || !isNewVersion) {
-            if (obj.getPageURL() != null) {
-                createInnerElement(ElementType.PAGEURL, obj.getPageURL(), edmobj, overrideStatus);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PAGEURL, overrideStatus);
+        deleteExistingElements(edmobj.getInstanceId());
+        if (obj.getPageURL() != null) {
+            createInnerElement(ElementType.PAGEURL, obj.getPageURL(), edmobj, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);

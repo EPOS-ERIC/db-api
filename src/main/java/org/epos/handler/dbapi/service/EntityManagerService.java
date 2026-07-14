@@ -469,6 +469,8 @@ public class EntityManagerService {
         if (hikariDataSource != null && !hikariDataSource.isClosed()) {
             hikariDataSource.close();
         }
+        instance = null;
+        hikariDataSource = null;
         LOG.fine("EntityManagerService closed");
     }
 

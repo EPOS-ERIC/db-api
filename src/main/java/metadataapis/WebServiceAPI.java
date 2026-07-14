@@ -110,181 +110,86 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         getDbaccess().updateObject(edmobj);
 
         /** PROVIDER **/
-        if (providerExplicitlySet || !isNewVersion) {
-            if (obj.getProvider() != null) {
-                LinkedEntity providerLink = obj.getProvider();
+        if (obj.getProvider() != null) {
+            LinkedEntity providerLink = obj.getProvider();
 
-                // Handle relationFromUpdate substitution
-                if (relationFromUpdate != null && providerLink.equals(relationFromUpdate)) {
-                    providerLink = relationToUpdate;
-                }
-
-                // Try to find existing Organization via RelationChecker
-                Organization organization1 = (Organization) RelationChecker.checkRelation(
-                        obj, previousObj, null, providerLink, overrideStatus, Organization.class, true);
-
-                if (organization1 != null) {
-                    // Found or created - set the provider
-                    edmobj.setProvider(organization1.getInstanceId());
-                } else {
-                    // FIX: RelationChecker returned null - try additional fallback strategies
-                    String resolvedProviderId = resolveProviderFallback(providerLink);
-                    if (resolvedProviderId != null) {
-                        edmobj.setProvider(resolvedProviderId);
-                    } else {
-                        // System.out.println("[WebServiceAPI] Could not resolve provider: " +
-                        //         (providerLink.getUid() != null ? providerLink.getUid() : providerLink.getInstanceId()) +
-                        //         " - WebService: " + edmobj.getUid());
-                    }
-                }
-
-                getDbaccess().updateObject(edmobj);
+            if (relationFromUpdate != null && providerLink.equals(relationFromUpdate)) {
+                providerLink = relationToUpdate;
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyProviderFromPreviousVersion(oldInstanceId, edmobj);
+
+            Organization organization1 = (Organization) RelationChecker.checkRelation(
+                    obj, previousObj, null, providerLink, overrideStatus, Organization.class, true);
+
+            if (organization1 != null) {
+                edmobj.setProvider(organization1.getInstanceId());
+            } else {
+                String resolvedProviderId = resolveProviderFallback(providerLink);
+                edmobj.setProvider(resolvedProviderId);
+            }
+        } else {
+            edmobj.setProvider(null);
         }
+
+        getDbaccess().updateObject(edmobj);
 
         /** CATEGORY **/
-        if (categoryExplicitlySet || !isNewVersion) {
-            if (obj.getCategory() != null && !obj.getCategory().isEmpty()) {
-                CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyWebserviceCategoryRelations(oldInstanceId, edmobj);
-        }
+        CategoryRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         /** CONTACTPOINT **/
-        if (contactPointExplicitlySet || !isNewVersion) {
-            if (obj.getContactPoint() != null && !obj.getContactPoint().isEmpty()) {
-                ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyWebserviceContactPointRelations(oldInstanceId, edmobj);
-        }
+        ContactPointRelationsAPI.createRelation(edmobj, obj, overrideStatus, previousObj);
 
         /** DOCUMENTATION **/
-        if (documentationExplicitlySet || !isNewVersion) {
-            if (obj.getDocumentation() != null && !obj.getDocumentation().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getDocumentation(), relationFromUpdate, relationToUpdate,
-                        WebserviceElement.class, Element.class,
-                        "webserviceInstance", WebserviceElement::getElementInstance, WebserviceElement::setWebserviceInstance, WebserviceElement::setElementInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceElement.class, Element.class,
-                    "webserviceInstance", WebserviceElement::getElementInstance, WebserviceElement::setWebserviceInstance, WebserviceElement::setElementInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getDocumentation(), relationFromUpdate, relationToUpdate,
+                WebserviceElement.class, Element.class,
+                "webserviceInstance", WebserviceElement::getElementInstance, WebserviceElement::setWebserviceInstance, WebserviceElement::setElementInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** IDENTIFIER **/
-        if (identifierExplicitlySet || !isNewVersion) {
-            if (obj.getIdentifier() != null && !obj.getIdentifier().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
-                        WebserviceIdentifier.class, Identifier.class,
-                        "webserviceInstance", WebserviceIdentifier::getIdentifierInstance, WebserviceIdentifier::setWebserviceInstance, WebserviceIdentifier::setIdentifierInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceIdentifier.class, Identifier.class,
-                    "webserviceInstance", WebserviceIdentifier::getIdentifierInstance, WebserviceIdentifier::setWebserviceInstance, WebserviceIdentifier::setIdentifierInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getIdentifier(), relationFromUpdate, relationToUpdate,
+                WebserviceIdentifier.class, Identifier.class,
+                "webserviceInstance", WebserviceIdentifier::getIdentifierInstance, WebserviceIdentifier::setWebserviceInstance, WebserviceIdentifier::setIdentifierInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** SPATIAL **/
-        if (spatialExtentExplicitlySet || !isNewVersion) {
-            if (obj.getSpatialExtent() != null && !obj.getSpatialExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
-                        WebserviceSpatial.class, Spatial.class,
-                        "webserviceInstance", WebserviceSpatial::getSpatialInstance, WebserviceSpatial::setWebserviceInstance, WebserviceSpatial::setSpatialInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceSpatial.class, Spatial.class,
-                    "webserviceInstance", WebserviceSpatial::getSpatialInstance, WebserviceSpatial::setWebserviceInstance, WebserviceSpatial::setSpatialInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                WebserviceSpatial.class, Spatial.class,
+                "webserviceInstance", WebserviceSpatial::getSpatialInstance, WebserviceSpatial::setWebserviceInstance, WebserviceSpatial::setSpatialInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** TEMPORAL **/
-        if (temporalExtentExplicitlySet || !isNewVersion) {
-            if (obj.getTemporalExtent() != null && !obj.getTemporalExtent().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
-                        WebserviceTemporal.class, Temporal.class,
-                        "webserviceInstance", WebserviceTemporal::getTemporalInstance, WebserviceTemporal::setWebserviceInstance, WebserviceTemporal::setTemporalInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceTemporal.class, Temporal.class,
-                    "webserviceInstance", WebserviceTemporal::getTemporalInstance, WebserviceTemporal::setWebserviceInstance, WebserviceTemporal::setTemporalInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getTemporalExtent(), relationFromUpdate, relationToUpdate,
+                WebserviceTemporal.class, Temporal.class,
+                "webserviceInstance", WebserviceTemporal::getTemporalInstance, WebserviceTemporal::setWebserviceInstance, WebserviceTemporal::setTemporalInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** DISTRIBUTION **/
-        if (distributionExplicitlySet || !isNewVersion) {
-            if (obj.getDistribution() != null && !obj.getDistribution().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
-                        WebserviceDistribution.class, model.Distribution.class,
-                        "webserviceInstance", WebserviceDistribution::getDistributionInstance, WebserviceDistribution::setWebserviceInstance, WebserviceDistribution::setDistributionInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceDistribution.class, model.Distribution.class,
-                    "webserviceInstance", WebserviceDistribution::getDistributionInstance, WebserviceDistribution::setWebserviceInstance, WebserviceDistribution::setDistributionInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
+                WebserviceDistribution.class, model.Distribution.class,
+                "webserviceInstance", WebserviceDistribution::getDistributionInstance, WebserviceDistribution::setWebserviceInstance, WebserviceDistribution::setDistributionInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** SUPPORTED OPERATION **/
-        if (supportedOperationExplicitlySet || !isNewVersion) {
-            if (obj.getSupportedOperation() != null && !obj.getSupportedOperation().isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
-                        OperationWebservice.class, Operation.class,
-                        "webserviceInstance", OperationWebservice::getOperationInstance, OperationWebservice::setWebserviceInstance, OperationWebservice::setOperationInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OperationWebservice.class, Operation.class,
-                    "webserviceInstance", OperationWebservice::getOperationInstance, OperationWebservice::setWebserviceInstance, OperationWebservice::setOperationInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
+                OperationWebservice.class, Operation.class,
+                "webserviceInstance", OperationWebservice::getOperationInstance, OperationWebservice::setWebserviceInstance, OperationWebservice::setOperationInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         /** WEBSERVICE RELATION **/
-        if (webserviceRelationExplicitlySet || !isNewVersion) {
-            // Delete existing relations if updating same version (to avoid duplicates)
-            if (isUpdate && !isNewVersion) {
-                deleteWebserviceRelations(edmobj.getInstanceId());
-            }
-
-            if (obj.getWebserviceRelation() != null && !obj.getWebserviceRelation().isEmpty()) {
-                for (LinkedEntity le : obj.getWebserviceRelation()) {
+        deleteWebserviceRelations(edmobj.getInstanceId());
+        if (obj.getWebserviceRelation() != null && !obj.getWebserviceRelation().isEmpty()) {
+            for (LinkedEntity le : obj.getWebserviceRelation()) {
                     // Get the related Webservice entity
                     List<Webservice> relatedWsList = EposDataModelDAO.getInstance()
                             .getOneFromDBByInstanceId(le.getInstanceId(), Webservice.class);
@@ -326,10 +231,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                             // System.out.println("WARNING: Could not find related Webservice for relation and no UID provided");
                         }
                     }
-                }
             }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyWebserviceRelations(oldInstanceId, edmobj);
         }
 
         getDbaccess().updateObject(edmobj);

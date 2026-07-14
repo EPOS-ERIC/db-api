@@ -39,7 +39,7 @@ public class User {
         this.lastName = familyname;
         this.firstName = firstName;
         this.email = email;
-        this.isAdmin = Boolean.getBoolean(isAdmin);
+        this.isAdmin = Boolean.parseBoolean(isAdmin);
         this.groups = new ArrayList<>();
     }
 

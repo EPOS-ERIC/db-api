@@ -9,8 +9,11 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
-import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,27 +100,10 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             deleteExistingElements(oldInstanceId);
         }
 
-        // PARAM VALUE (Elements)
-        if (paramValueExplicitlySet || !isNewVersion) {
-            if (obj.getParamValue() != null && !obj.getParamValue().isEmpty()) {
-                List<Object> existingRaw = getDbaccess().getOneFromDBBySpecificKey("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
-                if (existingRaw != null) {
-                    for (Object o : existingRaw) {
-                        MappingElement me = (MappingElement) o;
-                        if (me.getElementInstance() != null &&
-                                ElementType.PARAMVALUE.name().equals(me.getElementInstance().getType()) &&
-                                !obj.getParamValue().contains(me.getElementInstance().getValue())) {
-                            EposDataModelDAO.getInstance().deleteObject(me);
-                        }
-                    }
-                }
-                for (String paramvalue : obj.getParamValue()) {
-                    createInnerElement(ElementType.PARAMVALUE, paramvalue, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PARAMVALUE, overrideStatus);
-        }
+            List<String> paramValues = deduplicateParamValues(obj.getParamValue());
+
+            // PARAM VALUE (Elements)
+            syncParamValues(edmobj, paramValues, isNewVersion, oldInstanceId, overrideStatus);
 
         getDbaccess().updateObject(edmobj);
 
@@ -155,30 +141,17 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 .getJoinEntitiesByRelationField("mappingInstance", oldInstanceId, MappingElement.class);
         if (oldRelations == null) return;
 
+        Set<String> copiedValues = new HashSet<>();
         for (Object obj : oldRelations) {
             MappingElement oldRelation = (MappingElement) obj;
             Element oldElement = oldRelation.getElementInstance();
-            if (oldElement != null && oldElement.getType().equals(elementType.name())) {
+            if (oldElement != null && oldElement.getType().equals(elementType.name()) && copiedValues.add(oldElement.getValue())) {
                 createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
             }
         }
     }
 
     private void createInnerElement(ElementType elementType, String value, Mapping edmobj, StatusType overrideStatus) {
-        List<MappingElement> existingRelations = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("mappingInstance", edmobj.getInstanceId(), MappingElement.class);
-
-        if (existingRelations != null) {
-            for (Object obj : existingRelations) {
-                MappingElement relation = (MappingElement) obj;
-                Element existingElement = relation.getElementInstance();
-                if (existingElement != null &&
-                        existingElement.getType().equals(elementType.name()) &&
-                        existingElement.getValue().equals(value)) {
-                    return;
-                }
-            }
-        }
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
         element.setType(elementType);
         element.setValue(value);
@@ -203,6 +176,48 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
         }
+    }
+
+    private void syncParamValues(Mapping edmobj, List<String> values, boolean isNewVersion, String oldInstanceId, StatusType overrideStatus) {
+        if (isNewVersion && oldInstanceId != null && (values == null || values.isEmpty())) {
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.PARAMVALUE, overrideStatus);
+            return;
+        }
+
+        deleteExistingElements(edmobj.getInstanceId());
+        if (values != null && !values.isEmpty()) {
+            Set<String> existingValues = loadExistingParamValueSet(edmobj.getInstanceId());
+            for (String value : values) {
+                if (existingValues.add(value)) {
+                    createInnerElement(ElementType.PARAMVALUE, value, edmobj, overrideStatus);
+                }
+            }
+        }
+    }
+
+    private List<String> deduplicateParamValues(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return new ArrayList<>(values.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
+    }
+
+    private Set<String> loadExistingParamValueSet(String mappingInstanceId) {
+        Set<String> existingValues = new HashSet<>();
+        List<Object> existingRaw = getDbaccess().getOneFromDBBySpecificKey("mappingInstance", mappingInstanceId, MappingElement.class);
+        if (existingRaw == null) {
+            return existingValues;
+        }
+
+        for (Object o : existingRaw) {
+            MappingElement me = (MappingElement) o;
+            if (me.getElementInstance() != null && ElementType.PARAMVALUE.name().equals(me.getElementInstance().getType())) {
+                existingValues.add(me.getElementInstance().getValue());
+            }
+        }
+        return existingValues;
     }
 
     

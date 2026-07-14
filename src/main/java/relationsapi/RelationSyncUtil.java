@@ -361,6 +361,28 @@ public class RelationSyncUtil {
         }
     }
 
+    public static <P, C> void syncSimpleOneToManyWithVersionFallback(P parentEntity, String parentInstanceId,
+                                                                     List<String> newValues, Class<C> childClass,
+                                                                     String foreignKeyFieldName, String uidPrefix,
+                                                                     Function<C, String> valueGetter,
+                                                                     BiConsumer<C, String> valueSetter,
+                                                                     BiConsumer<C, P> parentSetter,
+                                                                     org.epos.eposdatamodel.EPOSDataModelEntity mainEntity,
+                                                                     String oldParentInstanceId) {
+        boolean isNewVersion = mainEntity != null
+                && mainEntity.getInstanceChangedId() != null
+                && oldParentInstanceId != null;
+
+        if (isNewVersion && (newValues == null || newValues.isEmpty())) {
+            copySimpleOneToMany(oldParentInstanceId, parentEntity, parentInstanceId,
+                    childClass, foreignKeyFieldName, uidPrefix, valueGetter, valueSetter, parentSetter);
+            return;
+        }
+
+        syncSimpleOneToMany(parentEntity, parentInstanceId, newValues, childClass,
+                foreignKeyFieldName, uidPrefix, valueGetter, valueSetter, parentSetter);
+    }
+
     public static <P, C> void copySimpleOneToMany(String oldParentInstanceId, P newParentEntity, String newParentInstanceId,
                                                   Class<C> childClass, String foreignKeyFieldName, String uidPrefix,
                                                   Function<C, String> valueGetter, BiConsumer<C, String> valueSetter,
@@ -419,11 +441,20 @@ public class RelationSyncUtil {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // Handle null or empty list - copy from previous if new version
+            // Handle null or empty list: copy from previous on new versions, otherwise clear existing joins.
             if (inputLinks == null || inputLinks.isEmpty()) {
                 if (isNewVersion) {
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
                             joinClass, targetClass, parentFieldName, targetGetter, effectiveStatus, mainEntity);
+                } else {
+                    String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+                    List<?> existingRawList = EposDataModelDAO.getInstance()
+                            .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+                    if (existingRawList != null) {
+                        for (Object o : existingRawList) {
+                            EposDataModelDAO.getInstance().deleteObject(o);
+                        }
+                    }
                 }
                 return;
             }

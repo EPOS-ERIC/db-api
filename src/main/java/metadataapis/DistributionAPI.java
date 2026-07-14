@@ -32,12 +32,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         try {
 
 
-        boolean accessServiceExplicitlySet = isFieldExplicitlySet(obj, "accessService");
-        boolean supportedOperationExplicitlySet = isFieldExplicitlySet(obj, "supportedOperation");
-        boolean dataProductExplicitlySet = isFieldExplicitlySet(obj, "dataProduct");
-        boolean accessURLExplicitlySet = isFieldExplicitlySet(obj, "accessURL");
-        boolean downloadURLExplicitlySet = isFieldExplicitlySet(obj, "downloadURL");
-
         // Performance: Single retrieve call instead of potentially calling twice
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
@@ -85,8 +79,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
-        String newInstanceId = obj.getInstanceId();
-
         Distribution edmobj = new Distribution();
         edmobj.setVersion(VersioningStatusAPI.retrieveVersioningStatus(obj));
         edmobj.setInstanceId(obj.getInstanceId());
@@ -111,139 +103,66 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
 
         /** TITLE **/
-        List<String> titles = obj.getTitle();
-        if (titles != null && !titles.isEmpty()) {
-            RelationSyncUtil.syncSimpleOneToMany(
-                    edmobj, edmobj.getInstanceId(), titles, model.DistributionTitle.class,
-                    "distributionInstance", "Title",
-                    model.DistributionTitle::getTitle, model.DistributionTitle::setTitle, model.DistributionTitle::setDistributionInstance
-            );
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(
-                    oldInstanceId, edmobj, newInstanceId, model.DistributionTitle.class,
-                    "distributionInstance", "Title",
-                    model.DistributionTitle::getTitle, model.DistributionTitle::setTitle, model.DistributionTitle::setDistributionInstance
-            );
-        }
+        RelationSyncUtil.syncSimpleOneToManyWithVersionFallback(
+                edmobj, edmobj.getInstanceId(), obj.getTitle(), model.DistributionTitle.class,
+                "distributionInstance", "Title",
+                model.DistributionTitle::getTitle, model.DistributionTitle::setTitle, model.DistributionTitle::setDistributionInstance,
+                obj, oldInstanceId
+        );
 
         /** DESCRIPTION **/
-        List<String> descriptions = obj.getDescription();
-        if (descriptions != null && !descriptions.isEmpty()) {
-            RelationSyncUtil.syncSimpleOneToMany(
-                    edmobj, edmobj.getInstanceId(), descriptions, model.DistributionDescription.class,
-                    "distributionInstance", "Description",
-                    model.DistributionDescription::getDescription, model.DistributionDescription::setDescription, model.DistributionDescription::setDistributionInstance
-            );
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.copySimpleOneToMany(
-                    oldInstanceId, edmobj, newInstanceId, model.DistributionDescription.class,
-                    "distributionInstance", "Description",
-                    model.DistributionDescription::getDescription, model.DistributionDescription::setDescription, model.DistributionDescription::setDistributionInstance
-            );
-        }
+        RelationSyncUtil.syncSimpleOneToManyWithVersionFallback(
+                edmobj, edmobj.getInstanceId(), obj.getDescription(), model.DistributionDescription.class,
+                "distributionInstance", "Description",
+                model.DistributionDescription::getDescription, model.DistributionDescription::setDescription, model.DistributionDescription::setDistributionInstance,
+                obj, oldInstanceId
+        );
 
         /** DATAPRODUCT **/
-        if (dataProductExplicitlySet || !isNewVersion) {
-            List<LinkedEntity> dataProducts = obj.getDataProduct();
-            if (dataProducts != null && !dataProducts.isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), dataProducts, relationFromUpdate, relationToUpdate,
-                        DistributionDataproduct.class, Dataproduct.class,
-                        "distributionInstance",
-                        DistributionDataproduct::getDataproductInstance,
-                        DistributionDataproduct::setDistributionInstance,
-                        DistributionDataproduct::setDataproductInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    DistributionDataproduct.class, Dataproduct.class,
-                    "distributionInstance",
-                    DistributionDataproduct::getDataproductInstance,
-                    DistributionDataproduct::setDistributionInstance,
-                    DistributionDataproduct::setDataproductInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getDataProduct(), relationFromUpdate, relationToUpdate,
+                DistributionDataproduct.class, Dataproduct.class,
+                "distributionInstance",
+                DistributionDataproduct::getDataproductInstance,
+                DistributionDataproduct::setDistributionInstance,
+                DistributionDataproduct::setDataproductInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         /** ACCESSSERVICE **/
-        if (accessServiceExplicitlySet || !isNewVersion) {
-            List<LinkedEntity> accessServices = obj.getAccessService();
-            if (accessServices != null && !accessServices.isEmpty()) {
-                // System.out.println("AccessService: " + accessServices);
-                // System.out.println(overrideStatus);
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), accessServices, relationFromUpdate, relationToUpdate,
-                        WebserviceDistribution.class, Webservice.class,
-                        "distributionInstance",
-                        WebserviceDistribution::getWebserviceInstance,
-                        WebserviceDistribution::setDistributionInstance,
-                        WebserviceDistribution::setWebserviceInstance,
-                        obj, previousObj, overrideStatus, true
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    WebserviceDistribution.class, Webservice.class,
-                    "distributionInstance",
-                    WebserviceDistribution::getWebserviceInstance,
-                    WebserviceDistribution::setDistributionInstance,
-                    WebserviceDistribution::setWebserviceInstance,
-                    obj, previousObj, overrideStatus, true
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getAccessService(), relationFromUpdate, relationToUpdate,
+                WebserviceDistribution.class, Webservice.class,
+                "distributionInstance",
+                WebserviceDistribution::getWebserviceInstance,
+                WebserviceDistribution::setDistributionInstance,
+                WebserviceDistribution::setWebserviceInstance,
+                obj, previousObj, overrideStatus, true
+        );
 
         /** SUPPORTEDOPERATION **/
-        if (supportedOperationExplicitlySet || !isNewVersion) {
-            List<LinkedEntity> operations = obj.getSupportedOperation();
-            if (operations != null && !operations.isEmpty()) {
-                RelationSyncUtil.syncComplexRelation(
-                        edmobj, edmobj.getInstanceId(), operations, relationFromUpdate, relationToUpdate,
-                        OperationDistribution.class, Operation.class,
-                        "distributionInstance",
-                        OperationDistribution::getOperationInstance,
-                        OperationDistribution::setDistributionInstance,
-                        OperationDistribution::setOperationInstance,
-                        obj, previousObj, overrideStatus, false
-                );
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
-            RelationSyncUtil.syncComplexRelation(
-                    edmobj, edmobj.getInstanceId(), null, relationFromUpdate, relationToUpdate,
-                    OperationDistribution.class, Operation.class,
-                    "distributionInstance",
-                    OperationDistribution::getOperationInstance,
-                    OperationDistribution::setDistributionInstance,
-                    OperationDistribution::setOperationInstance,
-                    obj, previousObj, overrideStatus, false
-            );
-        }
+        RelationSyncUtil.syncComplexRelation(
+                edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
+                OperationDistribution.class, Operation.class,
+                "distributionInstance",
+                OperationDistribution::getOperationInstance,
+                OperationDistribution::setDistributionInstance,
+                OperationDistribution::setOperationInstance,
+                obj, previousObj, overrideStatus, false
+        );
 
         /** ACCESSURL **/
-        if (accessURLExplicitlySet || !isNewVersion) {
-            List<String> accessURLs = obj.getAccessURL();
-            if (accessURLs != null && !accessURLs.isEmpty()) {
-                for (String url : accessURLs) {
-                    createInnerElement(ElementType.ACCESSURL, url, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.ACCESSURL, overrideStatus);
+        } else {
+            replaceInnerElements(edmobj, obj.getAccessURL(), ElementType.ACCESSURL, overrideStatus);
         }
 
         /** DOWNLOADURL **/
-        if (downloadURLExplicitlySet || !isNewVersion) {
-            List<String> downloadURLs = obj.getDownloadURL();
-            if (downloadURLs != null && !downloadURLs.isEmpty()) {
-                for (String url : downloadURLs) {
-                    createInnerElement(ElementType.DOWNLOADURL, url, edmobj, overrideStatus);
-                }
-            }
-        } else if (isNewVersion && oldInstanceId != null) {
+        if (isNewVersion && oldInstanceId != null) {
             copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.DOWNLOADURL, overrideStatus);
+        } else {
+            replaceInnerElements(edmobj, obj.getDownloadURL(), ElementType.DOWNLOADURL, overrideStatus);
         }
 
         getDbaccess().updateObject(edmobj);
@@ -327,6 +246,29 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             ce.setDistributionInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
+        }
+    }
+
+    private void replaceInnerElements(Distribution edmobj, List<String> values, ElementType elementType, StatusType overrideStatus) {
+        deleteInnerElementsByType(edmobj.getInstanceId(), elementType);
+        if (values != null && !values.isEmpty()) {
+            for (String value : values) {
+                createInnerElement(elementType, value, edmobj, overrideStatus);
+            }
+        }
+    }
+
+    private void deleteInnerElementsByType(String distributionInstanceId, ElementType type) {
+        List<DistributionElement> existingRelations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("distributionInstance", distributionInstanceId, DistributionElement.class);
+        if (existingRelations != null) {
+            for (DistributionElement relation : existingRelations) {
+                Element element = relation.getElementInstance();
+                if (element != null && type.name().equals(element.getType())) {
+                    EposDataModelDAO.getInstance().deleteObject(relation);
+                    EposDataModelDAO.getInstance().deleteObject(element);
+                }
+            }
         }
     }
 
