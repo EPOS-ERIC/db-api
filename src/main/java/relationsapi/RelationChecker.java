@@ -269,6 +269,7 @@ public class RelationChecker {
                 // For shared reference entities, don't propagate status changes
                 if (statusMismatch && isReference && !isSharedReference) {
                     relationEntity.setStatus(mainEntity.getStatus());
+                    relationEntity.setEditorId(mainEntity.getEditorId());
 
                     if (Boolean.TRUE.equals(enableStore)) {
                         obj = OperationWebserviceInDistributionSingleton.getInstance()
