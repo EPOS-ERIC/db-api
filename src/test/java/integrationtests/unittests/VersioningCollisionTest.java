@@ -337,6 +337,138 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         assertEquals("Second Updated Draft Title", retrieved.getTitle().get(0));
     }
 
+    @Test
+    @DisplayName("A stale published relation is resolved to the current editor draft")
+    void testStalePublishedRelationDoesNotReplaceDistributionDraft() {
+        String distributionUid = "DISTRIBUTION/" + UUID.randomUUID();
+        String dataProductUid = "DATAPRODUCT/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution publishedDistribution = createDummyDistribution();
+        publishedDistribution.setUid(distributionUid);
+        publishedDistribution.setStatus(StatusType.PUBLISHED);
+        publishedDistribution.addTitle("Published Distribution");
+        LinkedEntity publishedDistributionLE = distributionAPI.create(
+                publishedDistribution, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct publishedDataProduct = createDummyDataProduct();
+        publishedDataProduct.setUid(dataProductUid);
+        publishedDataProduct.setStatus(StatusType.PUBLISHED);
+        publishedDataProduct.addDistribution(publishedDistributionLE);
+        LinkedEntity publishedDataProductLE = dataProductAPI.create(
+                publishedDataProduct, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct draftDataProduct =
+                dataProductAPI.retrieve(publishedDataProductLE.getInstanceId());
+        draftDataProduct.setStatus(StatusType.DRAFT);
+        draftDataProduct.setEditorId("user-one");
+        LinkedEntity draftDataProductLE = dataProductAPI.create(
+                draftDataProduct, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct storedDraft =
+                dataProductAPI.retrieve(draftDataProductLE.getInstanceId());
+        String draftDistributionId = storedDraft.getDistribution().get(0).getInstanceId();
+        assertNotEquals(publishedDistributionLE.getInstanceId(), draftDistributionId);
+        assertFalse(dao.EposDataModelDAO.getInstance()
+                        .getOneFromDBBySpecificKeyNoCache("dataproductInstance",
+                                draftDataProductLE.getInstanceId(), model.DistributionDataproduct.class)
+                        .isEmpty(),
+                "The DataProduct draft relation must exist before the update");
+
+        org.epos.eposdatamodel.DataProduct staleUpdate = new org.epos.eposdatamodel.DataProduct();
+        staleUpdate.setInstanceId(draftDataProductLE.getInstanceId());
+        staleUpdate.setMetaId(draftDataProductLE.getMetaId());
+        staleUpdate.setUid(draftDataProductLE.getUid());
+        staleUpdate.setStatus(StatusType.DRAFT);
+        staleUpdate.setTitle(Collections.singletonList("Updated DataProduct"));
+        // Simulate a client payload that still contains the published relation.
+        staleUpdate.addDistribution(publishedDistributionLE);
+
+        dataProductAPI.create(staleUpdate, StatusType.DRAFT, null, null);
+
+        var updatedRelations = dao.EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache("dataproductInstance",
+                        draftDataProductLE.getInstanceId(), model.DistributionDataproduct.class);
+        assertFalse(updatedRelations.isEmpty(), "The DataProduct draft relation must remain persisted");
+
+        org.epos.eposdatamodel.DataProduct updatedDataProduct =
+                dataProductAPI.retrieve(draftDataProductLE.getInstanceId());
+        assertEquals(draftDistributionId,
+                updatedDataProduct.getDistribution().get(0).getInstanceId());
+        assertEquals("Updated DataProduct", updatedDataProduct.getTitle().get(0));
+
+        org.epos.eposdatamodel.Distribution draftDistribution =
+                distributionAPI.retrieve(draftDistributionId);
+        org.epos.eposdatamodel.Distribution distributionUpdate =
+                new org.epos.eposdatamodel.Distribution();
+        distributionUpdate.setInstanceId(draftDistribution.getInstanceId());
+        distributionUpdate.setMetaId(draftDistribution.getMetaId());
+        distributionUpdate.setUid(draftDistribution.getUid());
+        distributionUpdate.setStatus(StatusType.DRAFT);
+        distributionUpdate.setTitle(Collections.singletonList("Updated Distribution"));
+
+        distributionAPI.create(distributionUpdate, StatusType.DRAFT, null, null);
+
+        assertEquals("Updated Distribution",
+                distributionAPI.retrieve(draftDistributionId).getTitle().get(0));
+        assertEquals("Published Distribution",
+                distributionAPI.retrieve(publishedDistributionLE.getInstanceId()).getTitle().get(0));
+    }
+
+    @Test
+    @DisplayName("Resaving a draft does not create a duplicate cascaded distribution")
+    void testResavingDraftDoesNotCreateDuplicateCascade() {
+        String distributionUid = "DISTRIBUTION/" + UUID.randomUUID();
+        String dataProductUid = "DATAPRODUCT/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution publishedDistribution = createDummyDistribution();
+        publishedDistribution.setUid(distributionUid);
+        publishedDistribution.setStatus(StatusType.PUBLISHED);
+        publishedDistribution.addTitle("Published Distribution");
+        LinkedEntity publishedDistributionLE = distributionAPI.create(
+                publishedDistribution, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct publishedDataProduct = createDummyDataProduct();
+        publishedDataProduct.setUid(dataProductUid);
+        publishedDataProduct.setStatus(StatusType.PUBLISHED);
+        publishedDataProduct.addDistribution(publishedDistributionLE);
+        LinkedEntity publishedDataProductLE = dataProductAPI.create(
+                publishedDataProduct, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct userOne =
+                dataProductAPI.retrieve(publishedDataProductLE.getInstanceId());
+        userOne.setStatus(StatusType.DRAFT);
+        userOne.setEditorId("user-one");
+        LinkedEntity userOneLE = dataProductAPI.create(userOne, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct userTwo =
+                dataProductAPI.retrieve(publishedDataProductLE.getInstanceId());
+        userTwo.setStatus(StatusType.DRAFT);
+        userTwo.setEditorId("user-two");
+        LinkedEntity userTwoLE = dataProductAPI.create(userTwo, StatusType.DRAFT, null, null);
+
+        String userOneDistributionId = dataProductAPI.retrieve(userOneLE.getInstanceId())
+                .getDistribution().get(0).getInstanceId();
+        String userTwoDistributionId = dataProductAPI.retrieve(userTwoLE.getInstanceId())
+                .getDistribution().get(0).getInstanceId();
+        assertNotEquals(userOneDistributionId, userTwoDistributionId);
+
+        org.epos.eposdatamodel.DataProduct resave = new org.epos.eposdatamodel.DataProduct();
+        resave.setInstanceId(userTwoLE.getInstanceId());
+        resave.setMetaId(userTwoLE.getMetaId());
+        resave.setUid(userTwoLE.getUid());
+        resave.setStatus(StatusType.DRAFT);
+        // Simulate the stale published relation on a second save.
+        resave.addDistribution(publishedDistributionLE);
+
+        LinkedEntity resavedLE = dataProductAPI.create(resave, StatusType.DRAFT, null, null);
+
+        assertEquals(userTwoLE.getInstanceId(), resavedLE.getInstanceId());
+        org.epos.eposdatamodel.DataProduct resaved = dataProductAPI.retrieve(resavedLE.getInstanceId());
+        assertEquals(userTwoDistributionId, resaved.getDistribution().get(0).getInstanceId());
+        assertEquals(StatusType.DRAFT,
+                distributionAPI.retrieve(userTwoDistributionId).getStatus());
+    }
+
     // Helper
     private org.epos.eposdatamodel.DataProduct createDummyDataProduct() {
         org.epos.eposdatamodel.DataProduct dp = new org.epos.eposdatamodel.DataProduct();

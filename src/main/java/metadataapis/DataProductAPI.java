@@ -67,14 +67,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
-            Dataproduct selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Dataproduct item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Dataproduct selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Dataproduct::getVersion);
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -99,6 +94,10 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
+
+        if (isUpdate && obj.getStatus() == StatusType.DRAFT && previousObj instanceof DataProduct previousDataProduct) {
+            preserveDraftDistributionLinks(obj, previousDataProduct);
+        }
 
         String newInstanceId = obj.getInstanceId();
 
@@ -205,8 +204,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         );
 
         /** SPATIAL (DataproductSpatial) **/
+        List<LinkedEntity> spatialLinks = obj.getSpatialExtent();
+        if (isUpdate && !spatialExtentExplicitlySet) {
+            spatialLinks = Collections.emptyList();
+        }
         RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getSpatialExtent(), relationFromUpdate, relationToUpdate,
+                edmobj, edmobj.getInstanceId(), spatialLinks, relationFromUpdate, relationToUpdate,
                 DataproductSpatial.class, Spatial.class,
                 "dataproductInstance",
                 DataproductSpatial::getSpatialInstance,
@@ -277,6 +280,40 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             logCreateEnd(null, t);
             throw t;
         }
+    }
+
+    private void preserveDraftDistributionLinks(DataProduct current, DataProduct previous) {
+        if (current.getDistribution() == null || previous.getDistribution() == null) {
+            return;
+        }
+
+        Map<String, LinkedEntity> previousByUid = new HashMap<>();
+        for (LinkedEntity link : previous.getDistribution()) {
+            if (link != null && link.getUid() != null) {
+                previousByUid.put(link.getUid(), link);
+            }
+        }
+
+        List<LinkedEntity> normalized = new ArrayList<>(current.getDistribution().size());
+        boolean unchangedRelation = true;
+        for (LinkedEntity link : current.getDistribution()) {
+            if (link != null && link.getUid() != null) {
+                LinkedEntity previousLink = previousByUid.get(link.getUid());
+                if (previousLink != null && !Objects.equals(link.getInstanceId(), previousLink.getInstanceId())) {
+                    normalized.add(previousLink);
+                    continue;
+                }
+                if (previousLink == null) {
+                    unchangedRelation = false;
+                }
+            } else {
+                unchangedRelation = false;
+            }
+            normalized.add(link);
+        }
+        // A stale published link represents the already persisted logical
+        // relation. Null tells the synchronizer to leave that join untouched.
+        current.setDistribution(unchangedRelation ? null : normalized);
     }
 
     private void handleElementRelations(DataProduct obj, Dataproduct edmobj, StatusType overrideStatus, boolean isNewVersion, String oldInstanceId) {

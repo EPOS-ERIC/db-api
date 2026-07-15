@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 import static model.StatusType.*;
@@ -114,6 +115,46 @@ public class VersioningStatusAPI {
         }
 
         return findFirstNonPending(versions);
+    }
+
+    /**
+     * Selects the source version before an API mutates the incoming DTO.
+     * Drafts are scoped by editor; another editor's draft is never a source
+     * when a published version is available.
+     */
+    public static <T> T selectVersion(List<T> versions, String editorId, StatusType targetStatus,
+                                      Function<T, Versioningstatus> versionGetter) {
+        if (versions == null || versions.isEmpty()) return null;
+
+        if (targetStatus == DRAFT && editorId != null) {
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && DRAFT.toString().equals(version.getStatus())
+                        && sameEditor(editorId, version.getEditorId())) {
+                    return entity;
+                }
+            }
+        }
+
+        if (targetStatus != null) {
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && targetStatus.toString().equals(version.getStatus())) {
+                    if (targetStatus != DRAFT) return entity;
+                }
+            }
+        }
+
+        if (targetStatus == DRAFT) {
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && PUBLISHED.toString().equals(version.getStatus())) {
+                    return entity;
+                }
+            }
+        }
+
+        return versions.get(0);
     }
 
     private static Versioningstatus findDraftForEditor(List<Versioningstatus> versions, String editorId) {

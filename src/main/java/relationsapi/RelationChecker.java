@@ -254,7 +254,10 @@ public class RelationChecker {
                 Object bestVersion = findBestMatchingVersion(allVersions, targetStatus,
                         effectiveEditorId);
                 if (bestVersion != null) {
-                    obj = buildLinkedEntity(bestVersion, linkedEntityType);
+                    // Return the resolved model directly. Re-resolving the
+                    // generated LinkedEntity can lose the selected draft when
+                    // caches or identifier fallbacks are involved.
+                    return bestVersion;
                 }
             }
         }

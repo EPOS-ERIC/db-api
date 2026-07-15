@@ -462,18 +462,18 @@ public class RelationSyncUtil {
                 return;
             }
 
-            // Handle update replacement in-place
+            // Work on a copy so replacing a relation cannot mutate the caller's DTO.
+            inputLinks = new ArrayList<>(inputLinks);
             if (relationFromUpdate != null && inputLinks.contains(relationFromUpdate)) {
                 inputLinks.remove(relationFromUpdate);
-                inputLinks.add(relationToUpdate);
+                if (relationToUpdate != null) {
+                    inputLinks.add(relationToUpdate);
+                }
             }
-
-            // Compute embedded ID field name once
-            String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
 
             // Get existing joins and build lookup map
             List<?> existingRawList = EposDataModelDAO.getInstance()
-                    .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+                    .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
             Map<String, J> existingMap = new HashMap<>(existingRawList != null ? existingRawList.size() : 4);
             if (existingRawList != null) {
                 for (Object o : existingRawList) {
@@ -500,16 +500,23 @@ public class RelationSyncUtil {
 
                 Object rawTarget = null;
 
-                // Direct lookup optimization for non-new versions with instance ID
-                if (!isNewVersion && link.getInstanceId() != null) {
-                    List<Object> directResults = EposDataModelDAO.getInstance()
-                            .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
-                    if (directResults != null && !directResults.isEmpty()) {
-                        rawTarget = directResults.get(0);
+                // On an ordinary draft update, keep an already-linked draft for
+                // this editor even when the client sends a stale published link.
+                if (!isNewVersion && effectiveStatus == StatusType.DRAFT
+                        && link.getUid() != null) {
+                    for (J existingJoin : existingMap.values()) {
+                        T existingTarget = targetGetter.apply(existingJoin);
+                        if (existingTarget != null
+                                && link.getUid().equals(getUid(existingTarget))) {
+                            rawTarget = existingTarget;
+                            break;
+                        }
                     }
                 }
 
                 if (rawTarget == null) {
+                    // Resolve all other cases centrally so status/editor selection
+                    // cannot be bypassed by a direct instanceId lookup.
                     rawTarget = RelationChecker.checkRelation(mainEntity, previousEntity, null, link,
                             effectiveStatus, targetClass, effectiveEnableStore);
                 }
@@ -894,9 +901,8 @@ public class RelationSyncUtil {
                                                                           Function<J, T> targetGetter, StatusType cascadeStatus,
                                                                           org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
 
-        String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
         List<?> oldRelationsRaw = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByParentId(embeddedIdField, oldParentInstanceId, joinClass);
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
         if (oldRelationsRaw == null || oldRelationsRaw.isEmpty()) {
             return;
         }
