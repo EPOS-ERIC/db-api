@@ -45,6 +45,11 @@ public class VersioningStatusAPI {
         if (edmobj != null) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
+            // Requests may omit version metadata on updates. Keep the persisted
+            // editor so draft ownership and relation resolution remain stable.
+            if (obj.getEditorId() == null) {
+                obj.setEditorId(edmobj.getEditorId());
+            }
             boolean reuseExistingDraft = targetStatus == DRAFT && sameEditor(obj.getEditorId(), edmobj.getEditorId());
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
 

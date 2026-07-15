@@ -194,6 +194,9 @@ public class RelationChecker {
         String mainEntityTypeName = mainEntityClazz.getSimpleName().toUpperCase(Locale.ROOT);
         String linkedEntityType = linkedEntity.getEntityType();
         String linkedEntityTypeUpper = linkedEntityType != null ? linkedEntityType.toUpperCase(Locale.ROOT) : null;
+        String effectiveEditorId = mainEntity != null && mainEntity.getEditorId() != null
+                ? mainEntity.getEditorId()
+                : oldMainEntity != null ? oldMainEntity.getEditorId() : null;
 
         LinkedEntity newLinkedEntityMainEntity = null;
         if (mainEntity != null) {
@@ -249,7 +252,7 @@ public class RelationChecker {
                 // draft, resolve the relation from the published version instead of
                 // accidentally reusing another editor's draft.
                 Object bestVersion = findBestMatchingVersion(allVersions, targetStatus,
-                        mainEntity != null ? mainEntity.getEditorId() : null);
+                        effectiveEditorId);
                 if (bestVersion != null) {
                     obj = buildLinkedEntity(bestVersion, linkedEntityType);
                 }
@@ -267,7 +270,7 @@ public class RelationChecker {
 
                 // For shared reference entities, don't propagate status changes
                 if (statusMismatch && isReference && !isSharedReference) {
-                    relationEntity.setEditorId(mainEntity.getEditorId());
+                    relationEntity.setEditorId(effectiveEditorId);
                     relationEntity.setStatus(mainEntity.getStatus());
 
                     if (Boolean.TRUE.equals(enableStore)) {

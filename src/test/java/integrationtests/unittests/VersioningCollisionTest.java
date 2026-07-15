@@ -296,6 +296,47 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         assertEquals("published-template", retrievedUserTwoOperation.getTemplate());
     }
 
+    @Test
+    @DisplayName("Updating a draft without editor metadata keeps the same draft")
+    void testDraftUpdatePreservesEditorAndTitle() {
+        String uid = "DISTRIBUTION/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution published = createDummyDistribution();
+        published.setUid(uid);
+        published.setStatus(StatusType.PUBLISHED);
+        published.addTitle("Published Distribution");
+        LinkedEntity publishedLE = distributionAPI.create(published, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.Distribution draft = distributionAPI.retrieve(publishedLE.getInstanceId());
+        draft.setStatus(StatusType.DRAFT);
+        draft.setEditorId("user-one");
+        draft.setTitle(Collections.singletonList("First Draft Title"));
+        LinkedEntity draftLE = distributionAPI.create(draft, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution firstUpdate = new org.epos.eposdatamodel.Distribution();
+        firstUpdate.setInstanceId(draftLE.getInstanceId());
+        firstUpdate.setMetaId(draftLE.getMetaId());
+        firstUpdate.setUid(draftLE.getUid());
+        firstUpdate.setStatus(StatusType.DRAFT);
+        firstUpdate.setTitle(Collections.singletonList("Updated Draft Title"));
+        LinkedEntity firstUpdateLE = distributionAPI.create(firstUpdate, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution secondUpdate = new org.epos.eposdatamodel.Distribution();
+        secondUpdate.setInstanceId(firstUpdateLE.getInstanceId());
+        secondUpdate.setMetaId(firstUpdateLE.getMetaId());
+        secondUpdate.setUid(firstUpdateLE.getUid());
+        secondUpdate.setStatus(StatusType.DRAFT);
+        secondUpdate.setTitle(Collections.singletonList("Second Updated Draft Title"));
+        LinkedEntity secondUpdateLE = distributionAPI.create(secondUpdate, StatusType.DRAFT, null, null);
+
+        assertEquals(draftLE.getInstanceId(), firstUpdateLE.getInstanceId());
+        assertEquals(draftLE.getInstanceId(), secondUpdateLE.getInstanceId());
+
+        org.epos.eposdatamodel.Distribution retrieved = distributionAPI.retrieve(draftLE.getInstanceId());
+        assertEquals("user-one", retrieved.getEditorId());
+        assertEquals("Second Updated Draft Title", retrieved.getTitle().get(0));
+    }
+
     // Helper
     private org.epos.eposdatamodel.DataProduct createDummyDataProduct() {
         org.epos.eposdatamodel.DataProduct dp = new org.epos.eposdatamodel.DataProduct();
