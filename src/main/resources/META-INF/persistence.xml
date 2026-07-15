@@ -220,10 +220,8 @@
 			<property name="eclipselink.connection-pool.default.connection-creation-failure-policy" value="retry"/>
 			<property name="eclipselink.connection-pool.default.fail-on-wait" value="false"/>
 
-			<!-- Cache settings -->
-			<property name="eclipselink.cache.shared.default" value="true"/>
-			<property name="eclipselink.cache.type.default" value="SoftWeak"/>
-			<property name="eclipselink.cache.size.default" value="1000"/>
+			<!-- Disable EclipseLink L2 and query-result caching. -->
+			<property name="eclipselink.cache.shared.default" value="false"/>
 
 			<!-- 
 			  Disable L2 cache for join tables to prevent IllegalMonitorStateException
@@ -337,9 +335,6 @@
 			<property name="eclipselink.cache.shared.model.MetadataUser" value="false"/>
 			<property name="eclipselink.cache.shared.model.AuthorizationGroup" value="false"/>
 
-			<!-- Query optimization -->
-			<property name="eclipselink.query-results-cache" value="true"/>
-			<property name="eclipselink.query-results-cache.size" value="500"/>
 
 			<!-- Logging (WARNING level for production) -->
 			<property name="eclipselink.logging.level" value="WARNING"/>

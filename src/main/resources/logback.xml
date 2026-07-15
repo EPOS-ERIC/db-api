@@ -20,10 +20,8 @@
     </appender>
 
     <!-- Logger configurations -->
-    <logger name="dao.CaffeineOptimizedEposDataModelDAO" level="INFO"/>
     <logger name="org.eclipse.persistence" level="WARN"/>
     <logger name="com.zaxxer.hikari" level="INFO"/>
-    <logger name="com.github.benmanes.caffeine" level="INFO"/>
 
     <!-- Root logger -->
     <root level="INFO">

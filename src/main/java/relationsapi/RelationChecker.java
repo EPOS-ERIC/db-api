@@ -32,6 +32,28 @@ import java.util.logging.Logger;
  */
 public class RelationChecker {
 
+    /**
+     * Result of relation lookup. A published entity can be a cascade source
+     * without being the entity that may be persisted in the final join.
+     */
+    public static final class RelationResolution {
+        private final Object entity;
+        private final boolean cascadeSource;
+
+        private RelationResolution(Object entity, boolean cascadeSource) {
+            this.entity = entity;
+            this.cascadeSource = cascadeSource;
+        }
+
+        public Object getEntity() {
+            return entity;
+        }
+
+        public boolean isCascadeSource() {
+            return cascadeSource;
+        }
+    }
+
     private static final Logger LOG = Logger.getLogger(RelationChecker.class.getName());
 
     private static final ThreadLocal<Set<String>> processingEntities = ThreadLocal.withInitial(() -> new HashSet<>(8));
@@ -168,6 +190,29 @@ public class RelationChecker {
                 processingEntities.remove();
             }
         }
+    }
+
+    /**
+     * Resolves a relation and explicitly identifies a PUBLISHED cascade source.
+     * Shared references are final targets and are therefore never marked as
+     * cascade sources.
+     */
+    @SuppressWarnings("rawtypes")
+    public static RelationResolution resolveRelation(EPOSDataModelEntity mainEntity,
+                                                      EPOSDataModelEntity oldMainEntity,
+                                                      Class mainEntityClazz,
+                                                      LinkedEntity linkedEntity,
+                                                      StatusType overrideStatus,
+                                                      Class clazz,
+                                                      Boolean enableStore) {
+        Object entity = checkRelation(mainEntity, oldMainEntity, mainEntityClazz, linkedEntity,
+                overrideStatus, clazz, enableStore);
+        boolean cascadeSource = entity != null
+                && mainEntity != null
+                && StatusType.DRAFT.equals(overrideStatus != null ? overrideStatus : mainEntity.getStatus())
+                && !shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)
+                && STATUS_PUBLISHED.equals(getModelVersionStatus(entity));
+        return new RelationResolution(entity, cascadeSource);
     }
 
     @SuppressWarnings("rawtypes")

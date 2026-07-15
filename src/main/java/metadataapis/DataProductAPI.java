@@ -81,6 +81,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
 
+        String previousVersionInstanceId = obj.getInstanceChangedId();
         obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
         if (obj.getInstanceId() == null) {
@@ -95,8 +96,10 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
 
+        boolean preserveExistingDistribution = false;
         if (isUpdate && obj.getStatus() == StatusType.DRAFT && previousObj instanceof DataProduct previousDataProduct) {
             preserveDraftDistributionLinks(obj, previousDataProduct);
+            preserveExistingDistribution = obj.getDistribution() == null;
         }
 
         String newInstanceId = obj.getInstanceId();
@@ -171,15 +174,21 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         );
 
         /** DISTRIBUTION (DistributionDataproduct) **/
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
-                DistributionDataproduct.class, Distribution.class,
-                "dataproductInstance",
-                DistributionDataproduct::getDistributionInstance,
-                DistributionDataproduct::setDataproductInstance,
-                DistributionDataproduct::setDistributionInstance,
-                obj, previousObj, overrideStatus, false
-        );
+        List<LinkedEntity> distributionLinks = obj.getDistribution();
+        if (distributionLinks == null && previousObj instanceof DataProduct previousDataProduct) {
+            distributionLinks = previousDataProduct.getDistribution();
+        }
+        if (!preserveExistingDistribution) {
+            RelationSyncUtil.syncComplexRelation(
+                    edmobj, edmobj.getInstanceId(), distributionLinks, relationFromUpdate, relationToUpdate,
+                    DistributionDataproduct.class, Distribution.class,
+                    "dataproductInstance",
+                    DistributionDataproduct::getDistributionInstance,
+                    DistributionDataproduct::setDataproductInstance,
+                    DistributionDataproduct::setDistributionInstance,
+                    obj, previousObj, overrideStatus, false
+            );
+        }
 
         /** QUALIFIED ATTRIBUTION (DataproductAttribution) **/
         RelationSyncUtil.syncComplexRelation(
@@ -265,9 +274,53 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         /** ELEMENT-BASED RELATIONS (landingPage, referencedBy, variableMeasured) **/
         handleElementRelations(obj, edmobj, overrideStatus, isNewVersion, oldInstanceId);
 
+        if (StatusType.PUBLISHED.equals(obj.getStatus())) {
+            RelationSyncUtil.propagateStatusToChildren(
+                    edmobj, edmobj.getInstanceId(), DistributionDataproduct.class,
+                    "dataproductInstance", obj);
+            AbstractAPI distributionApi = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+            if (distributionLinks != null) {
+                for (LinkedEntity distributionLink : distributionLinks) {
+                    org.epos.eposdatamodel.Distribution child =
+                            (org.epos.eposdatamodel.Distribution) distributionApi.retrieve(distributionLink.getInstanceId());
+                    if (child != null) {
+                        distributionApi.create(child, StatusType.PUBLISHED, null, null);
+                        for (Object rawChildVersion : getDbaccess()
+                                .getOneFromDBByInstanceIdNoCache(distributionLink.getInstanceId(), Versioningstatus.class)) {
+                            Versioningstatus childVersion = (Versioningstatus) rawChildVersion;
+                            if (!StatusType.PUBLISHED.name().equals(childVersion.getStatus())) {
+                                childVersion.setStatus(StatusType.PUBLISHED.name());
+                                getDbaccess().updateObject(childVersion);
+                            }
+                        }
+                        for (Object rawDistribution : getDbaccess().getOneFromDBByUIDNoCache(
+                                distributionLink.getUid(), Distribution.class)) {
+                            Distribution distribution = (Distribution) rawDistribution;
+                            if (distribution.getVersion() != null
+                                    && !StatusType.PUBLISHED.name().equals(distribution.getVersion().getStatus())) {
+                                distribution.getVersion().setStatus(StatusType.PUBLISHED.name());
+                                getDbaccess().updateObject(distribution.getVersion());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         getDbaccess().updateObject(edmobj);
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DATAPRODUCT.name(), edmobj);
+
+        if (StatusType.PUBLISHED.equals(obj.getStatus())
+                && previousVersionInstanceId != null
+                && !previousVersionInstanceId.equals(obj.getInstanceId())) {
+            org.epos.eposdatamodel.DataProduct previousVersion = retrieve(previousVersionInstanceId);
+            if (previousVersion != null && previousVersion.getDistribution() != null) {
+                for (LinkedEntity distributionLink : previousVersion.getDistribution()) {
+                    RelationSyncUtil.archiveVersionByInstanceId(distributionLink.getInstanceId());
+                }
+            }
+        }
 
         
             LinkedEntity result = new LinkedEntity().entityType(entityName)
@@ -455,7 +508,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
     @Override
     public org.epos.eposdatamodel.DataProduct retrieve(String instanceId) {
-        List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
+        List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Dataproduct.class);
         if (elementList == null || elementList.isEmpty()) return null;
 
         Dataproduct edmobj = elementList.get(0);

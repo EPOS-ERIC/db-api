@@ -46,13 +46,16 @@ public class VersioningStatusAPI {
         if (edmobj != null) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
             if (targetStatus == null) targetStatus = DRAFT;
+            boolean editorWasOmitted = obj.getEditorId() == null;
             // Requests may omit version metadata on updates. Keep the persisted
             // editor so draft ownership and relation resolution remain stable.
             if (obj.getEditorId() == null) {
                 obj.setEditorId(edmobj.getEditorId());
             }
-            boolean reuseExistingDraft = targetStatus == DRAFT && sameEditor(obj.getEditorId(), edmobj.getEditorId());
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
+            boolean reuseExistingDraft = targetStatus == DRAFT
+                    && currentDbStatus == DRAFT
+                    && (editorWasOmitted || sameEditor(obj.getEditorId(), edmobj.getEditorId()));
 
             if (LOG.isLoggable(java.util.logging.Level.FINE)) {
                 LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}, reuseExistingDraft={2}",
@@ -198,9 +201,7 @@ public class VersioningStatusAPI {
     }
 
     private static boolean sameEditor(String left, String right) {
-        if (left == null || right == null) {
-            return false;
-        }
+        if (left == null || right == null) return false;
         return left.trim().equalsIgnoreCase(right.trim());
     }
 
@@ -340,10 +341,7 @@ public class VersioningStatusAPI {
         Versioningstatus vs = null;
 
         if (obj.getInstanceId() != null) {
-            List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
-            if (returnList.isEmpty()) {
-                returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
-            }
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
 
             for (Versioningstatus candidate : returnList) {
                 if (!isPendingRelationMarker(candidate)) {

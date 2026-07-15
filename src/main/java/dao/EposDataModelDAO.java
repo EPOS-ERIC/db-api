@@ -1,8 +1,5 @@
 package dao;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -23,16 +20,8 @@ import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import utilities.MemoryMonitor;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,8 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * High-performance Data Access Object for EPOS data model entities.
  *
- * Implements a multi-tier caching strategy with Caffeine for query, entity, and count caches.
- * Designed for high-throughput scenarios with optimized memory footprint and thread safety.
+ * Queries the database directly so reads always observe the latest committed state.
  *
  * Key optimizations:
  * - Thread-safe singleton with double-checked locking
@@ -55,17 +43,6 @@ public class EposDataModelDAO<T> {
 	private static final Logger LOG = LoggerFactory.getLogger(EposDataModelDAO.class);
 
 	private static final int BATCH_SIZE = 25;
-
-	// Reasonable cache sizes - 1B entries would cause OOM, these are tuned for typical workloads
-	private static final long QUERY_CACHE_MAX_SIZE = 10_000L;
-	private static final long COUNT_CACHE_MAX_SIZE = 1_000L;
-	private static final long ENTITY_CACHE_MAX_SIZE = 50_000L;
-
-	// Connection timeout for cache invalidation HTTP calls (fail-fast)
-	private static final int HTTP_CONNECT_TIMEOUT_MS = 2_000;
-	private static final int HTTP_READ_TIMEOUT_MS = 5_000;
-
-	// Cache key separator - single char for minimal allocation
 	private static final char KEY_SEP = '\u001F';
 
 	// Reflection method cache - eliminates repeated lookups which are expensive
@@ -73,57 +50,19 @@ public class EposDataModelDAO<T> {
 	private static final ConcurrentHashMap<Class<?>, Method> STATUS_GETTER_CACHE = new ConcurrentHashMap<>(32);
 	private static final ConcurrentHashMap<Class<?>, Map<String, Method>> LIST_GETTER_CACHE = new ConcurrentHashMap<>(32);
 
-	// Service endpoint mapping - computed once at class load
-	private static final Map<String, String> SERVICE_ENDPOINT_MAP;
-	private static final String[] DEFAULT_SERVICES = {
-			"resources-service", "ingestor-service", "external-access-service",
-			"email-sender-service", "distributed-processing-service"
-	};
-
-	static {
-		Map<String, String> map = new HashMap<>(8);
-		map.put("resources", "resources-service");
-		map.put("ingestor", "ingestor-service");
-		map.put("external", "external-access-service");
-		map.put("email", "email-sender-service");
-		map.put("distributed", "distributed-processing-service");
-		SERVICE_ENDPOINT_MAP = Collections.unmodifiableMap(map);
-	}
-
 	/*
 	 * Primary query cache - stores list results with optimized TTL.
 	 * Uses write-through expiration plus shorter access-based refresh for better memory efficiency.
 	 * Increased size for higher hit rates on read-heavy workloads.
 	 */
-	private final Cache<String, Object> queryCache = Caffeine.newBuilder()
-			.maximumSize(QUERY_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofMinutes(90))   // Reduced from 120 for fresher data
-			.expireAfterAccess(Duration.ofMinutes(30))  // Reduced from 60 to evict inactive entries faster
-			.recordStats()
-			.build();
-
 	/*
 	 * Count cache - shorter TTL since aggregates change more frequently than individual records.
 	 * Added access-based expiry to keep frequently accessed counts warm.
 	 */
-	private final Cache<String, Long> countCache = Caffeine.newBuilder()
-			.maximumSize(COUNT_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofMinutes(30))   // Reduced from 60 - counts change often
-			.expireAfterAccess(Duration.ofMinutes(15))  // Added - keep hot counts cached
-			.recordStats()
-			.build();
-
 	/*
 	 * Entity cache - longer TTL for individual entity lookups which are more stable.
 	 * Differentiated TTLs: longer write expiry, shorter access expiry for better memory use.
 	 */
-	private final Cache<String, Object> entityCache = Caffeine.newBuilder()
-			.maximumSize(ENTITY_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofHours(2))      // Increased from 1h for stable entities
-			.expireAfterAccess(Duration.ofMinutes(45))  // Reduced from 60 to evict inactive sooner
-			.recordStats()
-			.build();
-
 	private EntityManagerService entityManagerService;
 
 	private EposDataModelDAO() {
@@ -137,7 +76,6 @@ public class EposDataModelDAO<T> {
 
 	// Volatile for visibility + synchronization for atomicity = safe lazy init
 	private static volatile EposDataModelDAO instance;
-	private static volatile EposDataModelDAO cacheInstance;
 	private static final Object INSTANCE_LOCK = new Object();
 
 	@SuppressWarnings("rawtypes")
@@ -155,178 +93,14 @@ public class EposDataModelDAO<T> {
 		return localRef;
 	}
 
-	// =================== CACHE UTILITY METHODS ===================
-
-	private void putInQueryCache(String key, Object value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting query result in cache. Key: {}", key);
-			}
-			queryCache.put(key, value);
-		}
-	}
-
-	private void putInEntityCache(String key, Object value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting entity in cache. Key: {}", key);
-			}
-			entityCache.put(key, value);
-		}
-	}
-
-	private void putInCountCache(String key, Long value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting count in cache. Key: {}", key);
-			}
-			countCache.put(key, value);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private <R> R getFromQueryCache(String key) {
-		Object cached = queryCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Query cache hit for key: {}", key);
-			}
-			if (cached instanceof List) {
-				// Return unmodifiable view instead of defensive copy for performance
-				// Callers should NOT modify the returned list - use new ArrayList<>() if mutation needed
-				return (R) java.util.Collections.unmodifiableList((List<?>) cached);
-			}
-			return (R) cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Query cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	@SuppressWarnings("unchecked")
-	private <R> R getFromEntityCache(String key) {
-		Object cached = entityCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Entity cache hit for key: {}", key);
-			}
-			return (R) cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Entity cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	private Long getFromCountCache(String key) {
-		Long cached = countCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Count cache hit for key: {}", key);
-			}
-			return cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Count cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Evicts cache entries matching the entity pattern and propagates invalidation
-	 * to peer services. Pattern matching uses contains() which is O(n) but acceptable
-	 * given typical cache sizes and infrequent write operations.
-	 */
-	private void evictCacheByPattern(String pattern) {
-		queryCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		entityCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		countCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		propagateCacheInvalidation(pattern);
-	}
-
-	/**
-	 * Propagates cache invalidation to configured peer services.
-	 * Fire-and-forget semantics with short timeouts to avoid blocking writers.
-	 */
-	private void propagateCacheInvalidation(String pattern) {
-		String servicesEnv = System.getenv("SERVICES");
-		String[] services = (servicesEnv == null || servicesEnv.isBlank())
-				? DEFAULT_SERVICES
-				: servicesEnv.split(",");
-
-		// Allow configurable protocol (http/https) and port for cache invalidation
-		String protocol = System.getenv().getOrDefault("CACHE_INVALIDATION_PROTOCOL", "http");
-		String port = System.getenv().getOrDefault("CACHE_INVALIDATION_PORT", "8080");
-
-		for (String service : services) {
-			for (Map.Entry<String, String> entry : SERVICE_ENDPOINT_MAP.entrySet()) {
-				if (service.contains(entry.getKey())) {
-					String url = protocol + "://" + service + ":" + port + "/api/" + entry.getKey() + "/v1/invalidate";
-					sendInvalidationRequest(url, pattern);
-					break;
-				}
-			}
-		}
-	}
-
-	/**
-	 * Sends HTTP POST to invalidate remote cache. Uses minimal resource footprint
-	 * with proper connection cleanup in all code paths.
-	 */
-	private void sendInvalidationRequest(String targetUrl, String pattern) {
-		HttpURLConnection conn = null;
-		try {
-			conn = (HttpURLConnection) URI.create(targetUrl).toURL().openConnection();
-			conn.setRequestMethod("POST");
-			conn.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
-			conn.setReadTimeout(HTTP_READ_TIMEOUT_MS);
-			conn.setDoOutput(true);
-			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-			byte[] payload = ("pattern=" + pattern).getBytes(StandardCharsets.UTF_8);
-			conn.setFixedLengthStreamingMode(payload.length);
-
-			try (OutputStream os = conn.getOutputStream()) {
-				os.write(payload);
-			}
-
-			int status = conn.getResponseCode();
-			if (status != HttpURLConnection.HTTP_OK) {
-				LOG.debug("Cache invalidation returned non-200: {} for {}", status, targetUrl);
-			}
-
-			// Drain response to allow connection reuse
-			try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-				if (is != null) {
-					while (is.read() != -1) { /* drain */ }
-				}
-			}
-		} catch (IOException e) {
-			LOG.trace("Cache invalidation failed for {}: {}", targetUrl, e.getMessage());
-		} finally {
-			if (conn != null) {
-				conn.disconnect();
-			}
-		}
-	}
-
-	/**
-	 * Generates an interned cache key from method name and parameters.
-	 * Uses unit separator char to avoid collision with typical parameter values.
-	 * Initial capacity is estimated to reduce StringBuilder resizing.
-	 */
-	private String generateCacheKey(String method, Object... params) {
-		int estimatedSize = method.length() + params.length * 20;
-		StringBuilder sb = new StringBuilder(estimatedSize).append(method);
-		for (Object param : params) {
-			sb.append(KEY_SEP).append(param != null ? param.toString() : "null");
-		}
-		return sb.toString();
-	}
+	private void putInQueryCache(String key, Object value) { }
+	private void putInEntityCache(String key, Object value) { }
+	private void putInCountCache(String key, Long value) { }
+	private <R> R getFromQueryCache(String key) { return null; }
+	private <R> R getFromEntityCache(String key) { return null; }
+	private Long getFromCountCache(String key) { return null; }
+	private void evictCacheByPattern(String pattern) { }
+	private String generateCacheKey(String method, Object... params) { return method; }
 
 	// =================== OPTIMIZED CRUD OPERATIONS ===================
 
@@ -843,10 +617,13 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :id", obj);
-			query.setParameter("id", instanceId);
-			return query.getResultList();
+            TypedQuery<T> query = em.createQuery(
+                    "SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :id", obj);
+            query.setParameter("id", instanceId);
+            query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+            query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
+            query.setHint("eclipselink.refresh", "true");
+            return query.getResultList();
 
 		} catch (Exception e) {
 			LOG.error("Error in getOneFromDBByInstanceIdNoCache", e);
@@ -1275,39 +1052,17 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	// =================== ADVANCED CACHE MANAGEMENT ===================
+	// =================== CACHE COMPATIBILITY API ===================
 
-	/**
-	 * Returns detailed statistics for all cache tiers.
-	 * Pre-sizes maps based on known field count for minimal allocation.
-	 */
 	public Map<String, Object> getDetailedCacheStats() {
-		Map<String, Object> stats = new HashMap<>(8);
-
-		CacheStats queryStats = queryCache.stats();
-		stats.put("queryCache", buildStatsMap(queryStats));
-
-		CacheStats entityStats = entityCache.stats();
-		stats.put("entityCache", buildStatsMap(entityStats));
-
-		CacheStats countStats = countCache.stats();
-		stats.put("countCache", buildStatsMap(countStats));
-
-		stats.put("queryCacheSize", queryCache.estimatedSize());
-		stats.put("entityCacheSize", entityCache.estimatedSize());
-		stats.put("countCacheSize", countCache.estimatedSize());
-
+		Map<String, Object> stats = new HashMap<>();
+		stats.put("queryCache", Collections.emptyMap());
+		stats.put("entityCache", Collections.emptyMap());
+		stats.put("countCache", Collections.emptyMap());
+		stats.put("queryCacheSize", 0L);
+		stats.put("entityCacheSize", 0L);
+		stats.put("countCacheSize", 0L);
 		return stats;
-	}
-
-	private Map<String, Object> buildStatsMap(CacheStats stats) {
-		Map<String, Object> map = new HashMap<>(6);
-		map.put("hitCount", stats.hitCount());
-		map.put("missCount", stats.missCount());
-		map.put("hitRate", stats.hitRate() * 100);
-		map.put("evictionCount", stats.evictionCount());
-		map.put("averageLoadPenalty", stats.averageLoadPenalty() / 1_000_000.0);
-		return map;
 	}
 
 	public void warmUpCache(Class<T> entityClass, List<String> commonInstanceIds) {
@@ -1333,39 +1088,12 @@ public class EposDataModelDAO<T> {
 	 * Policy-based cache cleanup triggered by low hit rates.
 	 */
 	public void smartCacheCleanup() {
-		CacheStats queryStats = queryCache.stats();
-		CacheStats entityStats = entityCache.stats();
-
-		if (queryStats.hitRate() < 0.5 && queryStats.requestCount() > 100) {
-			queryCache.cleanUp();
-			LOG.debug("Query cache cleaned due to low hit rate: {}%", queryStats.hitRate() * 100);
-		}
-
-		if (entityStats.hitRate() < 0.3 && entityStats.requestCount() > 100) {
-			entityCache.cleanUp();
-			LOG.debug("Entity cache cleaned due to low hit rate: {}%", entityStats.hitRate() * 100);
-		}
-
-		countCache.cleanUp();
 	}
 
 	public void invalidateAllCachesForClass(String className) {
-		queryCache.asMap().keySet().removeIf(key -> key.contains(className));
-		entityCache.asMap().keySet().removeIf(key -> key.contains(className));
-		countCache.asMap().keySet().removeIf(key -> key.contains(className));
-		LOG.debug("Invalidated all caches for class: {}", className);
 	}
 
 	public void clearAllCaches() {
-		long querySize = queryCache.estimatedSize();
-		long entitySize = entityCache.estimatedSize();
-		long countSize = countCache.estimatedSize();
-
-		queryCache.invalidateAll();
-		entityCache.invalidateAll();
-		countCache.invalidateAll();
-
-		LOG.info("All caches cleared - query: {}, entity: {}, count: {}", querySize, entitySize, countSize);
 	}
 
 	// =================== ECLIPSELINK L2 CACHE EVICTION ===================
@@ -1433,60 +1161,19 @@ public class EposDataModelDAO<T> {
 	// =================== MONITORING AND HEALTH CHECK ===================
 
 	public boolean isCacheHealthy() {
-		try {
-			CacheStats queryStats = queryCache.stats();
-			CacheStats entityStats = entityCache.stats();
-
-			boolean queryHealthy = queryStats.hitRate() > 0.1 || queryStats.requestCount() < 100;
-			boolean entityHealthy = entityStats.hitRate() > 0.1 || entityStats.requestCount() < 100;
-
-			return queryHealthy && entityHealthy;
-		} catch (Exception e) {
-			LOG.warn("Error during cache health check", e);
-			return false;
-		}
+		return true;
 	}
 
 	/**
 	 * Outputs cache performance report to logger at INFO level.
 	 */
-	@SuppressWarnings("unchecked")
     public void printCacheReport() {
-        Map<String, Object> stats = getDetailedCacheStats();
-
-        LOG.info("=== CAFFEINE CACHE PERFORMANCE REPORT ===");
-        LOG.info("Runtime Snapshot: {}", MemoryMonitor.snapshot());
-
-        Map<String, Object> queryStats = (Map<String, Object>) stats.get("queryCache");
-        LOG.info("Query Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-                queryStats.get("hitRate"), queryStats.get("hitCount"), queryStats.get("missCount"),
-                stats.get("queryCacheSize"), queryStats.get("evictionCount"), queryStats.get("averageLoadPenalty"));
-
-		Map<String, Object> entityStats = (Map<String, Object>) stats.get("entityCache");
-		LOG.info("Entity Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-				entityStats.get("hitRate"), entityStats.get("hitCount"), entityStats.get("missCount"),
-				stats.get("entityCacheSize"), entityStats.get("evictionCount"), entityStats.get("averageLoadPenalty"));
-
-		Map<String, Object> countStats = (Map<String, Object>) stats.get("countCache");
-		LOG.info("Count Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-				countStats.get("hitRate"), countStats.get("hitCount"), countStats.get("missCount"),
-				stats.get("countCacheSize"), countStats.get("evictionCount"), countStats.get("averageLoadPenalty"));
-
-		LOG.info("Cache Health: {}", isCacheHealthy() ? "HEALTHY" : "DEGRADED");
+		LOG.info("Caching disabled; all DAO reads query the database directly");
 	}
 
 	// =================== SCHEDULED MAINTENANCE ===================
 
 	public void performCacheMaintenance() {
-		long start = System.nanoTime();
-
-		queryCache.cleanUp();
-		entityCache.cleanUp();
-		countCache.cleanUp();
-
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("Cache maintenance completed in {}ms", (System.nanoTime() - start) / 1_000_000);
-		}
 	}
 
 	public void preloadCriticalData(Class<T> entityClass) {
@@ -1497,23 +1184,7 @@ public class EposDataModelDAO<T> {
 
 	@SuppressWarnings("rawtypes")
 	public void reloadCache() {
-		EposDataModelDAO newCache = new EposDataModelDAO(instance);
-
-		newCache.getAllFromDB(Dataproduct.class);
-		newCache.getAllFromDB(Distribution.class);
-		newCache.getAllFromDB(Webservice.class);
-		newCache.getAllFromDB(Category.class);
-		newCache.getAllFromDB(Mapping.class);
-		newCache.getAllFromDB(Operation.class);
-		newCache.getAllFromDB(Organization.class);
-		newCache.getAllFromDB(Versioningstatus.class);
-		newCache.getAllFromDB(Person.class);
-
-		synchronized (INSTANCE_LOCK) {
-			cacheInstance = newCache;
-			instance = cacheInstance;
-		}
-		LOG.info("Cache reload completed");
+		LOG.debug("Caching disabled; reload ignored");
 	}
 
 	// =================== REFLECTION METHOD CACHING ===================

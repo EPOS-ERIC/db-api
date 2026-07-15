@@ -184,8 +184,8 @@ public class RelationSyncUtil {
     // ===== Status Propagation =====
 
     public static <P, C> void propagateStatusToChildren(P parentEntity, String parentInstanceId,
-                                                        Class<C> childClass, String foreignKeyFieldName,
-                                                        org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
+                                                         Class<C> childClass, String foreignKeyFieldName,
+                                                         org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
         if (shouldApplyReferenceEntityLogic(childClass, mainEntity)) {
             return;
         }
@@ -198,12 +198,62 @@ public class RelationSyncUtil {
         List<Object> children = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
         if (children == null || children.isEmpty()) {
+            children = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(
+                    foreignKeyFieldName.replace("Instance", "InstanceId"), parentInstanceId, childClass);
+        }
+        if (children == null || children.isEmpty()) {
             return;
         }
 
         for (Object obj : children) {
             if (childClass.isInstance(obj)) {
                 updateChildEntityStatus(obj, parentStatus);
+            }
+        }
+    }
+
+    /** Archives the child versions belonging to a previous parent version. */
+    public static <C> void archiveChildrenOfPreviousVersion(String parentInstanceId,
+                                                            Class<C> childClass,
+                                                            String foreignKeyFieldName) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        String embeddedIdField = foreignKeyFieldName.replace("Instance", "InstanceId");
+        List<Object> children = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId(embeddedIdField, parentInstanceId, childClass);
+        if (children == null) {
+            return;
+        }
+        for (Object child : children) {
+            if (childClass.isInstance(child)) {
+                updateChildEntityStatus(child, StatusType.ARCHIVED);
+            }
+        }
+    }
+
+    public static void archiveVersionByInstanceId(String instanceId) {
+        if (instanceId == null) {
+            return;
+        }
+        List<Versioningstatus> versions = EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, Versioningstatus.class);
+        for (Versioningstatus version : versions) {
+            if (STATUS_PUBLISHED.equals(version.getStatus())) {
+                version.setStatus(STATUS_ARCHIVED);
+                version.setChangeTimestamp(OffsetDateTime.now());
+                EposDataModelDAO.getInstance().updateObject(version);
+            }
+        }
+    }
+
+    public static void archivePublishedVersionsByUid(String uid, String currentInstanceId) {
+        if (uid == null) return;
+        for (Object raw : EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, Versioningstatus.class)) {
+            Versioningstatus version = (Versioningstatus) raw;
+            if (STATUS_PUBLISHED.equals(version.getStatus())
+                    && !Objects.equals(currentInstanceId, version.getInstanceId())) {
+                archiveVersionByInstanceId(version.getInstanceId());
             }
         }
     }
@@ -441,16 +491,17 @@ public class RelationSyncUtil {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // Null means "leave existing relations untouched" on regular updates.
-            // Empty means "clear all relations".
-            if (inputLinks == null) {
-                if (isNewVersion) {
+            // A missing or empty relation collection means that the caller
+            // explicitly cleared the relation for this API update.
+            if (inputLinks == null || inputLinks.isEmpty()) {
+                if (inputLinks == null && overrideStatus != null) {
+                    return;
+                }
+                if (inputLinks == null && previousInstanceId != null) {
                     copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
                             joinClass, targetClass, parentFieldName, targetGetter, effectiveStatus, mainEntity);
+                    return;
                 }
-                return;
-            }
-            if (inputLinks.isEmpty()) {
                 String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
                 List<?> existingRawList = EposDataModelDAO.getInstance()
                         .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
@@ -499,6 +550,7 @@ public class RelationSyncUtil {
                 }
 
                 Object rawTarget = null;
+                boolean cascadeSource = false;
 
                 // On an ordinary draft update, keep an already-linked draft for
                 // this editor even when the client sends a stale published link.
@@ -517,8 +569,11 @@ public class RelationSyncUtil {
                 if (rawTarget == null) {
                     // Resolve all other cases centrally so status/editor selection
                     // cannot be bypassed by a direct instanceId lookup.
-                    rawTarget = RelationChecker.checkRelation(mainEntity, previousEntity, null, link,
+                    RelationChecker.RelationResolution resolution = RelationChecker.resolveRelation(
+                            mainEntity, previousEntity, null, link,
                             effectiveStatus, targetClass, effectiveEnableStore);
+                    rawTarget = resolution.getEntity();
+                    cascadeSource = resolution.isCascadeSource();
                 }
 
                 // Stub creation fallback for reference entities
@@ -550,9 +605,7 @@ public class RelationSyncUtil {
                         // but must never be persisted as the target of a versioned
                         // draft relation. This also covers ordinary updates whose
                         // payload contains a stale published LinkedEntity.
-                        boolean materializeDraft = effectiveStatus == StatusType.DRAFT
-                                && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)
-                                && STATUS_PUBLISHED.equals(getVersionStatus(targetEntity));
+                        boolean materializeDraft = cascadeSource;
 
                         // Handle cascade versioning or status propagation
                         if (cascadeStatus != null || materializeDraft) {
@@ -912,6 +965,10 @@ public class RelationSyncUtil {
 
         List<?> oldRelationsRaw = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
+        if (oldRelationsRaw == null || oldRelationsRaw.isEmpty()) {
+            oldRelationsRaw = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(
+                    parentFieldName.replace("Instance", "InstanceId"), oldParentInstanceId, joinClass);
+        }
         if (oldRelationsRaw == null || oldRelationsRaw.isEmpty()) {
             return;
         }

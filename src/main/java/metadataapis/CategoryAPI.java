@@ -201,7 +201,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
         deleteRelations("categoryInstance", instanceId, FacilityCategory.class);
         deleteRelations("categoryInstance", instanceId, EquipmentCategory.class);
 
-        List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
+        List<Category> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Category.class);
         for(Category object : elementList){
             EposDataModelDAO.getInstance().deleteObject(object);
         }
@@ -215,7 +215,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     @Override
     public org.epos.eposdatamodel.Category retrieve(String instanceId) {
-        List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
+        List<Category> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Category.class);
         if (elementList == null || elementList.isEmpty()) return null;
 
         Category edmobj = elementList.get(0);

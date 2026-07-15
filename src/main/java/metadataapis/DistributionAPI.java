@@ -36,6 +36,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId());
 
         String searchInstanceId = obj.getInstanceId();
+        boolean lookupByUidOnly = searchInstanceId == null && obj.getUid() != null;
+        final String requestedInstanceId = searchInstanceId;
 
         List<Distribution> returnList = getDbaccess().getOneFromDB(
                 searchInstanceId,
@@ -47,8 +49,13 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            Distribution selectedEntity = VersioningStatusAPI.selectVersion(
-                    returnList, obj.getEditorId(), targetStatus, Distribution::getVersion);
+            final StatusType requestedStatus = targetStatus;
+            final String requestedEditorId = obj.getEditorId();
+            Distribution selectedEntity = returnList.stream()
+                    .filter(item -> requestedInstanceId != null && requestedInstanceId.equals(item.getInstanceId()))
+                    .findFirst()
+                    .orElseGet(() -> VersioningStatusAPI.selectVersion(
+                            returnList, requestedEditorId, requestedStatus, Distribution::getVersion));
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -58,9 +65,19 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             if (previousObj == null) {
                 previousObj = retrieve(selectedEntity.getInstanceId());
             }
+            if (lookupByUidOnly && targetStatus == StatusType.DRAFT) {
+                obj.setInstanceId(null);
+            }
         }
 
         obj = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+
+        if (obj.getInstanceChangedId() != null && obj.getAccessService() == null) {
+            org.epos.eposdatamodel.Distribution previousVersion = retrieve(obj.getInstanceChangedId());
+            if (previousVersion != null && previousVersion.getAccessService() != null) {
+                obj.setAccessService(previousVersion.getAccessService());
+            }
+        }
 
         if (obj.getInstanceId() == null) {
             obj.setInstanceId(UUID.randomUUID().toString());
@@ -294,7 +311,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
     @Override
     public org.epos.eposdatamodel.Distribution retrieve(String instanceId) {
-        List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
+        List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Distribution.class);
         if (elementList == null || elementList.isEmpty()) return null;
 
         Distribution edmobj = elementList.get(0);

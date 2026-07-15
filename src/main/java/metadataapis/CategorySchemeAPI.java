@@ -376,7 +376,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
             }
         }
 
-        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
+        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, CategoryScheme.class);
         for (CategoryScheme object : elementList) {
             EposDataModelDAO.getInstance().deleteObject(object);
         }
@@ -385,7 +385,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public org.epos.eposdatamodel.CategoryScheme retrieve(String instanceId) {
-        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, CategoryScheme.class);
+        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, CategoryScheme.class);
         if (elementList == null || elementList.isEmpty()) return null;
 
         CategoryScheme edmobj = elementList.get(0);
