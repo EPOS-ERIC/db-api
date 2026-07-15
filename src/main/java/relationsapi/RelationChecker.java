@@ -250,7 +250,8 @@ public class RelationChecker {
 
                 // Draft relations must be isolated per editor. If this editor has no
                 // draft, resolve the relation from the published version instead of
-                // accidentally reusing another editor's draft.
+                // accidentally reusing another editor's draft. During a new-version
+                // cascade, the caller materializes that published source as a draft.
                 Object bestVersion = findBestMatchingVersion(allVersions, targetStatus,
                         effectiveEditorId);
                 if (bestVersion != null) {
