@@ -546,8 +546,16 @@ public class RelationSyncUtil {
                         T targetForJoin = targetEntity;
                         String targetIdForJoin = targetId;
 
+                        // A published entity can be used as the source for a draft,
+                        // but must never be persisted as the target of a versioned
+                        // draft relation. This also covers ordinary updates whose
+                        // payload contains a stale published LinkedEntity.
+                        boolean materializeDraft = effectiveStatus == StatusType.DRAFT
+                                && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)
+                                && STATUS_PUBLISHED.equals(getVersionStatus(targetEntity));
+
                         // Handle cascade versioning or status propagation
-                        if (cascadeStatus != null) {
+                        if (cascadeStatus != null || materializeDraft) {
                             if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                                 T publishedVersion = findPublishedVersion(targetEntity, targetClass);
                                 if (publishedVersion != null) {
@@ -561,7 +569,8 @@ public class RelationSyncUtil {
                                     }
                                 }
                             } else {
-                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus, mainEntity.getEditorId());
+                                StatusType versionStatus = cascadeStatus != null ? cascadeStatus : effectiveStatus;
+                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, versionStatus, mainEntity.getEditorId());
                                 if (newVersionTarget != null) {
                                     targetForJoin = newVersionTarget;
                                     targetIdForJoin = getModelId(newVersionTarget);
