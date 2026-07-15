@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.DataProductAPI;
 import metadataapis.DistributionAPI;
+import metadataapis.OperationAPI;
+import metadataapis.WebServiceAPI;
 import model.StatusType;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,6 +170,130 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         org.epos.eposdatamodel.Distribution retrievedPublished = distributionAPI.retrieve(publishedInstanceId);
         assertEquals(StatusType.PUBLISHED, retrievedPublished.getStatus());
         assertEquals("Published Distribution", retrievedPublished.getTitle().get(0));
+    }
+
+    @Test
+    @DisplayName("Relations do not reuse another editor's draft")
+    void testRelationsUsePublishedWhenEditorDraftDoesNotExist() {
+        String distributionUid = "DISTRIBUTION/" + UUID.randomUUID();
+        String dataProductUid = "DATAPRODUCT/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.Distribution publishedDistribution = createDummyDistribution();
+        publishedDistribution.setUid(distributionUid);
+        publishedDistribution.setStatus(StatusType.PUBLISHED);
+        publishedDistribution.addTitle("Published Distribution");
+        LinkedEntity publishedDistributionLE = distributionAPI.create(
+                publishedDistribution, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct publishedDataProduct = createDummyDataProduct();
+        publishedDataProduct.setUid(dataProductUid);
+        publishedDataProduct.setStatus(StatusType.PUBLISHED);
+        publishedDataProduct.addDistribution(publishedDistributionLE);
+        LinkedEntity publishedDataProductLE = dataProductAPI.create(
+                publishedDataProduct, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct userOneDataProduct =
+                dataProductAPI.retrieve(publishedDataProductLE.getInstanceId());
+        userOneDataProduct.setStatus(StatusType.DRAFT);
+        userOneDataProduct.setEditorId("user-one");
+        dataProductAPI.create(userOneDataProduct, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution userOneDistribution =
+                distributionAPI.retrieve(userOneDataProduct.getDistribution().get(0).getInstanceId());
+        userOneDistribution.setStatus(StatusType.DRAFT);
+        userOneDistribution.setEditorId("user-one");
+        userOneDistribution.setTitle(Collections.singletonList("User One Distribution"));
+        distributionAPI.create(userOneDistribution, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct userTwoDataProduct =
+                dataProductAPI.retrieve(publishedDataProductLE.getInstanceId());
+        userTwoDataProduct.setStatus(StatusType.DRAFT);
+        userTwoDataProduct.setEditorId("user-two");
+        LinkedEntity userTwoDataProductLE = dataProductAPI.create(
+                userTwoDataProduct, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct retrievedUserTwo =
+                dataProductAPI.retrieve(userTwoDataProductLE.getInstanceId());
+        assertNotNull(retrievedUserTwo.getDistribution());
+        assertFalse(retrievedUserTwo.getDistribution().isEmpty());
+
+        org.epos.eposdatamodel.Distribution retrievedUserTwoDistribution =
+                distributionAPI.retrieve(retrievedUserTwo.getDistribution().get(0).getInstanceId());
+        assertEquals("user-two", retrievedUserTwoDistribution.getEditorId());
+        assertEquals("Published Distribution", retrievedUserTwoDistribution.getTitle().get(0));
+    }
+
+    @Test
+    @DisplayName("Distribution relations do not reuse another editor's drafts")
+    void testDistributionRelationsUsePublishedForWebServiceAndOperation() {
+        WebServiceAPI webServiceAPI = new WebServiceAPI("WEBSERVICE", model.Webservice.class);
+        OperationAPI operationAPI = new OperationAPI("OPERATION", model.Operation.class);
+
+        org.epos.eposdatamodel.WebService publishedWebService = new org.epos.eposdatamodel.WebService();
+        publishedWebService.setUid("WEBSERVICE/" + UUID.randomUUID());
+        publishedWebService.setStatus(StatusType.PUBLISHED);
+        publishedWebService.setName("Published WebService");
+        LinkedEntity publishedWebServiceLE = webServiceAPI.create(
+                publishedWebService, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.Operation publishedOperation = new org.epos.eposdatamodel.Operation();
+        publishedOperation.setUid("OPERATION/" + UUID.randomUUID());
+        publishedOperation.setStatus(StatusType.PUBLISHED);
+        publishedOperation.setMethod("GET");
+        publishedOperation.setTemplate("published-template");
+        LinkedEntity publishedOperationLE = operationAPI.create(
+                publishedOperation, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.Distribution publishedDistribution = createDummyDistribution();
+        publishedDistribution.setUid("DISTRIBUTION/" + UUID.randomUUID());
+        publishedDistribution.setStatus(StatusType.PUBLISHED);
+        publishedDistribution.addTitle("Published Distribution");
+        publishedDistribution.addAccessService(publishedWebServiceLE);
+        publishedDistribution.addSupportedOperation(publishedOperationLE);
+        LinkedEntity publishedDistributionLE = distributionAPI.create(
+                publishedDistribution, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.Distribution userOneDistribution =
+                distributionAPI.retrieve(publishedDistributionLE.getInstanceId());
+        userOneDistribution.setStatus(StatusType.DRAFT);
+        userOneDistribution.setEditorId("user-one");
+        LinkedEntity userOneDistributionLE = distributionAPI.create(
+                userOneDistribution, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution userOneDraft =
+                distributionAPI.retrieve(userOneDistributionLE.getInstanceId());
+        org.epos.eposdatamodel.WebService userOneWebService =
+                webServiceAPI.retrieve(userOneDraft.getAccessService().get(0).getInstanceId());
+        userOneWebService.setStatus(StatusType.DRAFT);
+        userOneWebService.setEditorId("user-one");
+        userOneWebService.setName("User One WebService");
+        webServiceAPI.create(userOneWebService, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Operation userOneOperation =
+                operationAPI.retrieve(userOneDraft.getSupportedOperation().get(0).getInstanceId());
+        userOneOperation.setStatus(StatusType.DRAFT);
+        userOneOperation.setEditorId("user-one");
+        userOneOperation.setTemplate("user-one-template");
+        operationAPI.create(userOneOperation, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution userTwoDistribution =
+                distributionAPI.retrieve(publishedDistributionLE.getInstanceId());
+        userTwoDistribution.setStatus(StatusType.DRAFT);
+        userTwoDistribution.setEditorId("user-two");
+        LinkedEntity userTwoDistributionLE = distributionAPI.create(
+                userTwoDistribution, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution retrievedUserTwo =
+                distributionAPI.retrieve(userTwoDistributionLE.getInstanceId());
+        org.epos.eposdatamodel.WebService retrievedUserTwoWebService =
+                webServiceAPI.retrieve(retrievedUserTwo.getAccessService().get(0).getInstanceId());
+        org.epos.eposdatamodel.Operation retrievedUserTwoOperation =
+                operationAPI.retrieve(retrievedUserTwo.getSupportedOperation().get(0).getInstanceId());
+
+        assertEquals("user-two", retrievedUserTwoWebService.getEditorId());
+        assertEquals("Published WebService", retrievedUserTwoWebService.getName());
+        assertEquals("user-two", retrievedUserTwoOperation.getEditorId());
+        assertEquals("published-template", retrievedUserTwoOperation.getTemplate());
     }
 
     // Helper

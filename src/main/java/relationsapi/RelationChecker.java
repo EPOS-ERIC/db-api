@@ -245,14 +245,13 @@ public class RelationChecker {
                     }
                 }
 
-                // Standard behavior: find matching status version
-                String targetStatusStr = targetStatus.toString();
-                for (Object v : allVersions) {
-                    String statusStr = getModelVersionStatus(v);
-                    if (targetStatusStr.equals(statusStr)) {
-                        obj = buildLinkedEntity(v, linkedEntityType);
-                        break;
-                    }
+                // Draft relations must be isolated per editor. If this editor has no
+                // draft, resolve the relation from the published version instead of
+                // accidentally reusing another editor's draft.
+                Object bestVersion = findBestMatchingVersion(allVersions, targetStatus,
+                        mainEntity != null ? mainEntity.getEditorId() : null);
+                if (bestVersion != null) {
+                    obj = buildLinkedEntity(bestVersion, linkedEntityType);
                 }
             }
         }
