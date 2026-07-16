@@ -15766,3 +15766,29 @@ Caused by: org.postgresql.util.PSQLException: ERROR: null value in column "distr
 2026-07-16 15:27:34 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Start completed.
 2026-07-16 15:27:35 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown initiated...
 2026-07-16 15:27:35 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown completed.
+2026-07-16 15:51:46 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+2026-07-16 15:51:46 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+2026-07-16 15:51:47 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 2.0.2
+2026-07-16 15:51:47 [main] INFO  o.t.d.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+2026-07-16 15:51:47 [main] INFO  o.t.d.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+2026-07-16 15:51:47 [main] INFO  o.testcontainers.DockerClientFactory - Docker host IP address is localhost
+2026-07-16 15:51:47 [main] INFO  o.testcontainers.DockerClientFactory - Connected to docker: 
+  Server Version: 29.6.1
+  API Version: 1.55
+  Operating System: Arch Linux
+  Total Memory: 63796 MB
+2026-07-16 15:51:47 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Creating container for image: testcontainers/ryuk:0.13.0
+2026-07-16 15:51:47 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Container testcontainers/ryuk:0.13.0 is starting: b98a8625c959eb0d8ef346f0612eba2b3c4da804cb6b31974688e0d08767ece0
+2026-07-16 15:51:47 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Container testcontainers/ryuk:0.13.0 started in PT0.215528266S
+2026-07-16 15:51:47 [main] INFO  o.t.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+2026-07-16 15:51:47 [main] INFO  o.testcontainers.DockerClientFactory - Checking the system...
+2026-07-16 15:51:47 [main] INFO  o.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+2026-07-16 15:51:47 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Creating container for image: ghcr.io/epos-eric/metadata-database/deploy:main
+2026-07-16 15:51:47 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container ghcr.io/epos-eric/metadata-database/deploy:main is starting: c942f1258d59b4e32b81644d6c41de590134856b949e7e87b29d56666bb691f3
+2026-07-16 15:51:51 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container ghcr.io/epos-eric/metadata-database/deploy:main started in PT3.709918043S
+2026-07-16 15:51:51 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container is started (JDBC URL: jdbc:postgresql://localhost:33379/cerif?loggerLevel=OFF)
+2026-07-16 15:51:51 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Starting...
+2026-07-16 15:51:51 [main] INFO  com.zaxxer.hikari.pool.HikariPool - metadata_catalogue - Added connection org.postgresql.jdbc.PgConnection@7f37b6d9
+2026-07-16 15:51:51 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Start completed.
+2026-07-16 15:51:53 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown initiated...
+2026-07-16 15:51:53 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown completed.
