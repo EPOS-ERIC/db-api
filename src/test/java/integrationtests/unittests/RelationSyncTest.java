@@ -366,15 +366,15 @@ public class RelationSyncTest extends TestcontainersLifecycle{
         payloadDto.setUid(TEST_UID_PREFIX + "payload-001");
         payloadDto.setEditorId("test");
         payloadDto.setFileProvenance("test");
-        payloadDto.setSupportedOperation(new LinkedEntity()
-                .instanceId(op.getInstanceId())
-                .uid(op.getUid())
-                .entityType(EntityNames.OPERATION.name()));
 
         LinkedEntity payload = assertDoesNotThrow(() ->
                         payloadApi.create(payloadDto, StatusType.PUBLISHED, null, null),
                 "Should NOT throw ClassCastException"
         );
+
+        // Operation is the canonical owner of its payload collection.
+        opDto.addPayload(payload);
+        assertDoesNotThrow(() -> opApi.create(opDto, StatusType.PUBLISHED, null, null));
 
         Payload retrieved = payloadApi.retrieve(payload.getInstanceId());
 

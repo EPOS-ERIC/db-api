@@ -39,16 +39,11 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Temporal selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Temporal item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
+            Temporal selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Temporal::getVersion);
+            if (selectedEntity == null) {
+                selectedEntity = returnList.get(0);
             }
 
             obj.setInstanceId(selectedEntity.getInstanceId());

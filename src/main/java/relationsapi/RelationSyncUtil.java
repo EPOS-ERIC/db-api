@@ -490,7 +490,13 @@ public class RelationSyncUtil {
         String previousInstanceId = mainEntity.getInstanceChangedId();
         boolean hasInstanceChanged = previousInstanceId != null && !previousInstanceId.equals(parentId);
         StatusType currentStatus = mainEntity.getStatus();
-        boolean isNewVersion = hasInstanceChanged && currentStatus == StatusType.DRAFT;
+        // instanceChangedId stays on a draft for its whole lifetime. A persisted
+        // draft must therefore update its existing graph, not cascade a fresh
+        // graph on every save. previousEntity is the persisted target selected by
+        // the API: it matches parentId only for an in-place draft update.
+        boolean isNewVersion = hasInstanceChanged
+                && currentStatus == StatusType.DRAFT
+                && (previousEntity == null || !Objects.equals(previousEntity.getInstanceId(), parentId));
         boolean effectiveEnableStore = enableStore || isReferenceEntity(targetClass);
 
         String parentMetaId = null;
@@ -504,6 +510,11 @@ public class RelationSyncUtil {
             }
         }
 
+        // Replacing a relation collection is a read/diff/delete/insert operation.
+        // Serialize that complete sequence for this owner in the current service
+        // process; pair-level locks alone cannot protect the delete phase.
+        Object relationSetLock = getJoinLock(joinClass.getName(), parentId, "__relation_set__");
+        synchronized (relationSetLock) {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
@@ -570,9 +581,19 @@ public class RelationSyncUtil {
                 Object rawTarget = null;
                 boolean cascadeSource = false;
 
+                // A status transition must promote the exact child currently
+                // attached to this parent version. Resolving by UID/status here
+                // would select a published sibling and orphan the edited draft.
+                if (effectiveStatus == StatusType.PUBLISHED && link.getInstanceId() != null) {
+                    J currentJoin = existingMap.get(link.getInstanceId());
+                    if (currentJoin != null) {
+                        rawTarget = targetGetter.apply(currentJoin);
+                    }
+                }
+
                 // On an ordinary draft update, keep an already-linked draft for
                 // this editor even when the client sends a stale published link.
-                if ((isNewVersion || effectiveStatus == StatusType.DRAFT)
+                if (rawTarget == null && (isNewVersion || effectiveStatus == StatusType.DRAFT)
                         && link.getUid() != null) {
                     for (J existingJoin : existingMap.values()) {
                         T existingTarget = targetGetter.apply(existingJoin);
@@ -703,6 +724,7 @@ public class RelationSyncUtil {
                     cascadeCreatedVersions.remove();
                 }
             }
+        }
         }
     }
 

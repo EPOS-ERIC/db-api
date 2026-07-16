@@ -93,32 +93,8 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
             );
         }
 
-        // SUPPORTED OPERATION
-        if (obj.getSupportedOperation() != null) {
-            Object resolvedObj = RelationChecker.checkRelation(obj, previousObj, null, obj.getSupportedOperation(), overrideStatus, Operation.class, true);
-
-            if (resolvedObj != null) {
-                // Extract instanceId from resolved object (could be DTO or JPA entity)
-                String relatedInstanceId = extractInstanceId(resolvedObj);
-
-                if (relatedInstanceId != null) {
-                    // Delete existing relations only if updating same version
-                    if (!isNewVersion) {
-                        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), OperationPayload.class);
-                        if (existing != null) existing.forEach(EposDataModelDAO.getInstance()::deleteObject);
-                    }
-
-                    // Get the JPA entity for the relation
-                    List<Operation> operations = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(relatedInstanceId, Operation.class);
-                    if (!operations.isEmpty()) {
-                        OperationPayload pi = new OperationPayload();
-                        pi.setPayloadInstance(edmobj);
-                        pi.setOperationInstance(operations.get(0));
-                        EposDataModelDAO.getInstance().updateObject(pi);
-                    }
-                }
-            }
-        }
+        // An Operation owns its payload collection. This inverse is derived from
+        // OperationPayload and is intentionally read-only.
 
         getDbaccess().updateObject(edmobj);
 

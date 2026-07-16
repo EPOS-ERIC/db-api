@@ -131,19 +131,11 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 obj, oldInstanceId
         );
 
-        /** DATAPRODUCT **/
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getDataProduct(), relationFromUpdate, relationToUpdate,
-                DistributionDataproduct.class, Dataproduct.class,
-                "distributionInstance",
-                DistributionDataproduct::getDataproductInstance,
-                DistributionDataproduct::setDistributionInstance,
-                DistributionDataproduct::setDataproductInstance,
-                obj, previousObj, overrideStatus, true
-        );
+        // A DataProduct owns its Distribution collection. This inverse is exposed
+        // on reads but must not replace DistributionDataproduct rows from here.
 
         /** ACCESSSERVICE **/
-        RelationSyncUtil.syncComplexRelationWithInverse(
+        RelationSyncUtil.syncComplexRelation(
                 edmobj, edmobj.getInstanceId(), obj.getAccessService(),
                 RelationSyncUtil.toLinkedEntity(previousObj), RelationSyncUtil.toLinkedEntity(obj),
                 WebserviceDistribution.class, Webservice.class,
@@ -151,9 +143,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 WebserviceDistribution::getWebserviceInstance,
                 WebserviceDistribution::setDistributionInstance,
                 WebserviceDistribution::setWebserviceInstance,
-                WebserviceDistribution::setWebserviceInstance,
-                WebserviceDistribution::setDistributionInstance,
-                "webserviceInstance",
                 obj, previousObj, overrideStatus, true
         );
 
@@ -351,8 +340,13 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             o.addDataproduct(le);
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(), WebserviceDistribution.class)) {
-            WebserviceDistribution item = (WebserviceDistribution) object;
+        List<Object> rawAccessServiceRelations = getDbaccess()
+                .getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(), WebserviceDistribution.class);
+        List<WebserviceDistribution> accessServiceRelations = rawAccessServiceRelations
+                .stream()
+                .map(WebserviceDistribution.class::cast)
+                .collect(Collectors.toList());
+        for (WebserviceDistribution item : selectAccessServiceRelations(accessServiceRelations, edmobj.getVersion())) {
             LinkedEntity le = retrieveAPI(EntityNames.WEBSERVICE.name()).retrieveLinkedEntity(item.getWebserviceInstance().getInstanceId());
             o.addAccessService(le);
         }
@@ -537,7 +531,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
         
         // Add webservice (accessService) relations
-        for (WebserviceDistribution rel : webservices.getOrDefault(instanceId, Collections.emptyList())) {
+        for (WebserviceDistribution rel : selectAccessServiceRelations(
+                webservices.getOrDefault(instanceId, Collections.emptyList()), versioningMap.get(instanceId))) {
             Webservice target = webserviceMap.get(rel.getWebserviceInstance().getInstanceId());
             if (target != null) {
                 o.addAccessService(createLinkedEntity(target, EntityNames.WEBSERVICE.name()));
@@ -589,6 +584,59 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         }
         
         return o;
+    }
+
+    /**
+     * Legacy data can contain joins to both a published WebService and a draft
+     * of the same logical WebService. A Distribution version may expose only one
+     * access service per logical UID; prefer the version compatible with the
+     * Distribution status and draft editor.
+     */
+    private List<WebserviceDistribution> selectAccessServiceRelations(
+            Collection<WebserviceDistribution> relations, Versioningstatus distributionVersion) {
+        Map<String, WebserviceDistribution> selected = new LinkedHashMap<>();
+        for (WebserviceDistribution relation : relations) {
+            if (relation == null || relation.getWebserviceInstance() == null) {
+                continue;
+            }
+            Webservice candidate = relation.getWebserviceInstance();
+            String key = candidate.getUid() != null ? candidate.getUid() : candidate.getInstanceId();
+            WebserviceDistribution current = selected.get(key);
+            if (current == null || isPreferredAccessService(candidate, current.getWebserviceInstance(), distributionVersion)) {
+                selected.put(key, relation);
+            }
+        }
+        return new ArrayList<>(selected.values());
+    }
+
+    private boolean isPreferredAccessService(Webservice candidate, Webservice current,
+                                             Versioningstatus distributionVersion) {
+        if (candidate == null || candidate.getVersion() == null) {
+            return false;
+        }
+        if (current == null || current.getVersion() == null) {
+            return true;
+        }
+        String parentStatus = distributionVersion != null ? distributionVersion.getStatus() : null;
+        String candidateStatus = candidate.getVersion().getStatus();
+        String currentStatus = current.getVersion().getStatus();
+        if (StatusType.DRAFT.name().equals(parentStatus)) {
+            String editorId = distributionVersion.getEditorId();
+            boolean candidateOwnedDraft = StatusType.DRAFT.name().equals(candidateStatus)
+                    && editorId != null && editorId.equalsIgnoreCase(candidate.getVersion().getEditorId());
+            boolean currentOwnedDraft = StatusType.DRAFT.name().equals(currentStatus)
+                    && editorId != null && editorId.equalsIgnoreCase(current.getVersion().getEditorId());
+            if (candidateOwnedDraft != currentOwnedDraft) {
+                return candidateOwnedDraft;
+            }
+        }
+        boolean candidateMatchesParent = parentStatus != null && parentStatus.equals(candidateStatus);
+        boolean currentMatchesParent = parentStatus != null && parentStatus.equals(currentStatus);
+        if (candidateMatchesParent != currentMatchesParent) {
+            return candidateMatchesParent;
+        }
+        return StatusType.PUBLISHED.name().equals(candidateStatus)
+                && !StatusType.PUBLISHED.name().equals(currentStatus);
     }
 
     /**

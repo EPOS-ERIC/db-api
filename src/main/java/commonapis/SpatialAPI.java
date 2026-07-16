@@ -39,16 +39,11 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Spatial selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Spatial item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
+            Spatial selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Spatial::getVersion);
+            if (selectedEntity == null) {
+                selectedEntity = returnList.get(0);
             }
 
             obj.setInstanceId(selectedEntity.getInstanceId());

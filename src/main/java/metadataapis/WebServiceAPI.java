@@ -172,21 +172,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 obj, previousObj, overrideStatus, false
         );
 
-        /** DISTRIBUTION **/
-        List<LinkedEntity> distributionLinks = obj.getDistribution();
-        if (relationToUpdate != null
-                && relationToUpdate.getInstanceId() != null
-                && EntityNames.DISTRIBUTION.name().equalsIgnoreCase(relationToUpdate.getEntityType())) {
-            distributionLinks = Collections.singletonList(relationToUpdate);
-        } else if (distributionLinks == null && previousObj instanceof WebService previousWebService) {
-            distributionLinks = previousWebService.getDistribution();
-        }
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), distributionLinks, relationFromUpdate, relationToUpdate,
-                WebserviceDistribution.class, model.Distribution.class,
-                "webserviceInstance", WebserviceDistribution::getDistributionInstance, WebserviceDistribution::setWebserviceInstance, WebserviceDistribution::setDistributionInstance,
-                obj, previousObj, overrideStatus, false
-        );
+        // A Distribution owns its accessService collection. This inverse is
+        // derived from WebserviceDistribution and is intentionally read-only.
         /** SUPPORTED OPERATION **/
         RelationSyncUtil.syncComplexRelation(
                 edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,

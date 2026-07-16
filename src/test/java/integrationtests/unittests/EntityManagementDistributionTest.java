@@ -120,6 +120,29 @@ public class EntityManagementDistributionTest extends TestcontainersLifecycle {
         assertEquals(ws.getUid(), retrieved.getAccessService().get(0).getUid());
     }
 
+    @Test
+    @Order(5)
+    public void testWebServiceInverseUpdateDoesNotReplaceDistributionAccessService() {
+        AbstractAPI distApi = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+        AbstractAPI wsApi = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
+
+        LinkedEntity ws = createWebService(wsApi);
+        Distribution distribution = createDistributionWithAccessService(ws);
+        distApi.create(distribution, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.WebService inverseUpdate = new org.epos.eposdatamodel.WebService();
+        inverseUpdate.setInstanceId(ws.getInstanceId());
+        inverseUpdate.setMetaId(ws.getMetaId());
+        inverseUpdate.setUid(ws.getUid());
+        inverseUpdate.setDistribution(Collections.emptyList());
+        wsApi.create(inverseUpdate, StatusType.PUBLISHED, null, null);
+
+        Distribution retrieved = (Distribution) distApi.retrieve(distribution.getInstanceId());
+        assertNotNull(retrieved.getAccessService());
+        assertEquals(1, retrieved.getAccessService().size());
+        assertEquals(ws.getInstanceId(), retrieved.getAccessService().get(0).getInstanceId());
+    }
+
     private LinkedEntity createWebService(AbstractAPI wsApi) {
         org.epos.eposdatamodel.WebService webService = new org.epos.eposdatamodel.WebService();
         webService.setInstanceId(UUID.randomUUID().toString());

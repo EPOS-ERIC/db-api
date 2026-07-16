@@ -99,13 +99,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 obj, previousObj, overrideStatus, false
         );
 
-        // WEBSERVICE
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
-                OperationWebservice.class, Webservice.class,
-                "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
-                obj, previousObj, overrideStatus, true
-        );
+        // A WebService owns its supportedOperation collection. This inverse is
+        // derived from OperationWebservice and is intentionally read-only.
 
         // PAYLOAD
         RelationSyncUtil.syncComplexRelation(

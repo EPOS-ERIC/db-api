@@ -970,16 +970,17 @@ public class ComprehensiveMetadataTest extends TestcontainersLifecycle  {
         dp.setStatus(StatusType.PUBLISHED);
         LinkedEntity dpResult = dataProductAPI.create(dp, StatusType.PUBLISHED, null, null);
 
-        // Create Distribution referencing the DataProduct
+        // Create the child first, then attach it from the canonical owner.
         org.epos.eposdatamodel.Distribution dist = new org.epos.eposdatamodel.Distribution();
         dist.setUid("distribution:backref:" + UUID.randomUUID());
         dist.addTitle("Distribution with DataProduct ref");
         dist.setFormat("text/csv");
         dist.setStatus(StatusType.PUBLISHED);
-        dist.addDataproduct(dpResult);
-
         LinkedEntity distResult = distributionAPI.create(dist, StatusType.PUBLISHED, null, null);
         assertNotNull(distResult);
+
+        dp.addDistribution(distResult);
+        dataProductAPI.create(dp, StatusType.PUBLISHED, null, null);
 
         // Verify bidirectional relationship
         org.epos.eposdatamodel.Distribution distRetrieved = distributionAPI.retrieve(distResult.getInstanceId());
