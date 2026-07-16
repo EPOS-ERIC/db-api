@@ -515,10 +515,12 @@ public class RelationSyncUtil {
 
             // Work on a copy so replacing a relation cannot mutate the caller's DTO.
             inputLinks = new ArrayList<>(inputLinks);
-            if (relationFromUpdate != null && inputLinks.contains(relationFromUpdate)) {
-                inputLinks.remove(relationFromUpdate);
-                if (relationToUpdate != null) {
-                    inputLinks.add(relationToUpdate);
+            if (relationFromUpdate != null && relationToUpdate != null) {
+                for (int i = 0; i < inputLinks.size(); i++) {
+                    LinkedEntity inputLink = inputLinks.get(i);
+                    if (sameLinkedEntity(inputLink, relationFromUpdate)) {
+                        inputLinks.set(i, relationToUpdate);
+                    }
                 }
             }
 
@@ -623,7 +625,8 @@ public class RelationSyncUtil {
                                 }
                             } else {
                                 StatusType versionStatus = cascadeStatus != null ? cascadeStatus : effectiveStatus;
-                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, versionStatus, mainEntity.getEditorId());
+                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, versionStatus,
+                                        mainEntity.getEditorId(), toLinkedEntity(previousEntity), toLinkedEntity(mainEntity));
                                 if (newVersionTarget != null) {
                                     targetForJoin = newVersionTarget;
                                     targetIdForJoin = getModelId(newVersionTarget);
@@ -988,7 +991,9 @@ public class RelationSyncUtil {
                                 targetForJoin = publishedVersion;
                             }
                         } else {
-                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus, mainEntity.getEditorId());
+                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus,
+                                    mainEntity.getEditorId(), toLinkedEntityById(oldParentInstanceId, mainEntity),
+                                    toLinkedEntity(mainEntity));
                             if (newVersionTarget != null) {
                                 targetForJoin = newVersionTarget;
                             }
@@ -1012,8 +1017,47 @@ public class RelationSyncUtil {
 
     // ===== Cascade Version Creation =====
 
+    private static boolean sameLinkedEntity(LinkedEntity left, LinkedEntity right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        if (left.getEntityType() == null || right.getEntityType() == null
+                || !left.getEntityType().equalsIgnoreCase(right.getEntityType())) {
+            return false;
+        }
+        if (left.getUid() != null && left.getUid().equals(right.getUid())) {
+            return true;
+        }
+        return left.getInstanceId() != null && left.getInstanceId().equals(right.getInstanceId());
+    }
+
+    private static LinkedEntity toLinkedEntity(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        if (entity == null || entity.getInstanceId() == null) {
+            return null;
+        }
+        return new LinkedEntity()
+                .instanceId(entity.getInstanceId())
+                .metaId(entity.getMetaId())
+                .uid(entity.getUid())
+                .entityType(entity.getClass().getSimpleName().toUpperCase(Locale.ROOT));
+    }
+
+    private static LinkedEntity toLinkedEntityById(String instanceId,
+                                                   org.epos.eposdatamodel.EPOSDataModelEntity template) {
+        if (instanceId == null || template == null) {
+            return null;
+        }
+        return new LinkedEntity()
+                .instanceId(instanceId)
+                .metaId(template.getMetaId())
+                .uid(template.getUid())
+                .entityType(template.getClass().getSimpleName().toUpperCase(Locale.ROOT));
+    }
+
     @SuppressWarnings("unchecked")
-    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus, String editorId) {
+    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus,
+                                              String editorId, LinkedEntity relationFromUpdate,
+                                              LinkedEntity relationToUpdate) {
         String originalInstanceId = getModelId(originalEntity);
         if (originalInstanceId == null) {
             return null;
@@ -1062,7 +1106,7 @@ public class RelationSyncUtil {
                 dto.setEditorId(editorId);
             }
 
-            LinkedEntity result = api.create(dto, newStatus, null, null);
+            LinkedEntity result = api.create(dto, newStatus, relationFromUpdate, relationToUpdate);
             if (result != null && result.getInstanceId() != null) {
                 createdVersions.put(cacheKey, result.getInstanceId());
                 List<Object> newList = EposDataModelDAO.getInstance()

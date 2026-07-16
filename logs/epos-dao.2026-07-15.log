@@ -1,0 +1,26 @@
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+2026-07-15 17:40:30 [main] INFO  o.t.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.DockerClientFactory - Testcontainers version: 2.0.2
+2026-07-15 17:40:30 [main] INFO  o.t.d.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+2026-07-15 17:40:30 [main] INFO  o.t.d.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.DockerClientFactory - Docker host IP address is localhost
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.DockerClientFactory - Connected to docker: 
+  Server Version: 29.6.1
+  API Version: 1.55
+  Operating System: Arch Linux
+  Total Memory: 63796 MB
+2026-07-15 17:40:30 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Creating container for image: testcontainers/ryuk:0.13.0
+2026-07-15 17:40:30 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Container testcontainers/ryuk:0.13.0 is starting: 1b93eb059d953061b88fd1de95ff31823f8392bd52a7cbb192e5ffd660ec1ac3
+2026-07-15 17:40:30 [main] INFO  tc.testcontainers/ryuk:0.13.0 - Container testcontainers/ryuk:0.13.0 started in PT0.25309621S
+2026-07-15 17:40:30 [main] INFO  o.t.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.DockerClientFactory - Checking the system...
+2026-07-15 17:40:30 [main] INFO  o.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+2026-07-15 17:40:30 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Creating container for image: ghcr.io/epos-eric/metadata-database/deploy:main
+2026-07-15 17:40:31 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container ghcr.io/epos-eric/metadata-database/deploy:main is starting: e3726bcba1c4019c91f1bf8197ae7512a6a87d03eb4bb66018f444b72740c6f1
+2026-07-15 17:40:34 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container ghcr.io/epos-eric/metadata-database/deploy:main started in PT3.676065425S
+2026-07-15 17:40:34 [main] INFO  t.g.io/epos-eric/metadata-database/deploy:main - Container is started (JDBC URL: jdbc:postgresql://localhost:33776/cerif?loggerLevel=OFF)
+2026-07-15 17:40:34 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Starting...
+2026-07-15 17:40:34 [main] INFO  com.zaxxer.hikari.pool.HikariPool - metadata_catalogue - Added connection org.postgresql.jdbc.PgConnection@78e17a99
+2026-07-15 17:40:34 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Start completed.
+2026-07-15 17:40:36 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown initiated...
+2026-07-15 17:40:36 [main] INFO  com.zaxxer.hikari.HikariDataSource - metadata_catalogue - Shutdown completed.
