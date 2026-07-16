@@ -166,13 +166,20 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         );
 
         /** DISTRIBUTION **/
+        List<LinkedEntity> distributionLinks = obj.getDistribution();
+        if (relationToUpdate != null
+                && relationToUpdate.getInstanceId() != null
+                && EntityNames.DISTRIBUTION.name().equalsIgnoreCase(relationToUpdate.getEntityType())) {
+            distributionLinks = Collections.singletonList(relationToUpdate);
+        } else if (distributionLinks == null && previousObj instanceof WebService previousWebService) {
+            distributionLinks = previousWebService.getDistribution();
+        }
         RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getDistribution(), relationFromUpdate, relationToUpdate,
+                edmobj, edmobj.getInstanceId(), distributionLinks, relationFromUpdate, relationToUpdate,
                 WebserviceDistribution.class, model.Distribution.class,
                 "webserviceInstance", WebserviceDistribution::getDistributionInstance, WebserviceDistribution::setWebserviceInstance, WebserviceDistribution::setDistributionInstance,
                 obj, previousObj, overrideStatus, false
         );
-
         /** SUPPORTED OPERATION **/
         RelationSyncUtil.syncComplexRelation(
                 edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
@@ -459,7 +466,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             o.addTemporalExtent(le);
         }
 
-        for (Object object : getDbaccess().getOneFromDBBySpecificKey("webserviceInstance", edmobj.getInstanceId(), WebserviceDistribution.class)) {
+        for (Object object : getDbaccess().getJoinEntitiesByParentId("webserviceInstanceId", edmobj.getInstanceId(), WebserviceDistribution.class)) {
             WebserviceDistribution item = (WebserviceDistribution) object;
             LinkedEntity le = retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveLinkedEntity(item.getDistributionInstance().getInstanceId());
             o.getDistribution().add(le);
@@ -539,6 +546,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceSpatial.class);
         Map<String, List<WebserviceTemporal>> temporals = 
                 getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceTemporal.class);
+        Map<String, List<WebserviceDistribution>> distributions =
+                getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, WebserviceDistribution.class);
         Map<String, List<OperationWebservice>> operations = 
                 getDbaccess().batchFetchRelationsForMultipleParents("webserviceInstance", foundIds, OperationWebservice.class);
         Map<String, List<WebserviceRelation>> relations = 
@@ -550,6 +559,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         Set<String> allIdentifierIds = new HashSet<>();
         Set<String> allSpatialIds = new HashSet<>();
         Set<String> allTemporalIds = new HashSet<>();
+        Set<String> allDistributionIds = new HashSet<>();
         Set<String> allOperationIds = new HashSet<>();
         Set<String> allProviderIds = new HashSet<>();
         Set<String> allRelatedWebserviceIds = new HashSet<>();
@@ -568,6 +578,9 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         }));
         temporals.values().forEach(list -> list.forEach(r -> {
             if (r.getTemporalInstance() != null) allTemporalIds.add(r.getTemporalInstance().getInstanceId());
+        }));
+        distributions.values().forEach(list -> list.forEach(r -> {
+            if (r.getDistributionInstance() != null) allDistributionIds.add(r.getDistributionInstance().getInstanceId());
         }));
         operations.values().forEach(list -> list.forEach(r -> {
             if (r.getOperationInstance() != null) allOperationIds.add(r.getOperationInstance().getInstanceId());
@@ -591,6 +604,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allSpatialIds), Spatial.class);
         Map<String, Temporal> temporalMap = allTemporalIds.isEmpty() ? Collections.emptyMap() :
                 getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allTemporalIds), Temporal.class);
+        Map<String, model.Distribution> distributionMap = allDistributionIds.isEmpty() ? Collections.emptyMap() :
+                getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allDistributionIds), model.Distribution.class);
         Map<String, model.Operation> operationMap = allOperationIds.isEmpty() ? Collections.emptyMap() :
                 getDbaccess().batchFetchByInstanceIds(new ArrayList<>(allOperationIds), model.Operation.class);
         Map<String, Organization> providerMap = allProviderIds.isEmpty() ? Collections.emptyMap() :
@@ -616,8 +631,8 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             if (edmobj != null) {
                 org.epos.eposdatamodel.WebService dto = assembleWebService(
                         instanceId, edmobj,
-                        categories, contactPoints, elements, identifiers, spatials, temporals, operations, relations,
-                        categoryMap, contactPointMap, identifierMap, spatialMap, temporalMap, operationMap, providerMap, relatedWsMap,
+                        categories, contactPoints, elements, identifiers, spatials, temporals, distributions, operations, relations,
+                        categoryMap, contactPointMap, identifierMap, spatialMap, temporalMap, distributionMap, operationMap, providerMap, relatedWsMap,
                         versioningMap, groupsMap
                 );
                 results.add(dto);
@@ -636,6 +651,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             Map<String, List<WebserviceIdentifier>> identifiers,
             Map<String, List<WebserviceSpatial>> spatials,
             Map<String, List<WebserviceTemporal>> temporals,
+            Map<String, List<WebserviceDistribution>> distributions,
             Map<String, List<OperationWebservice>> operations,
             Map<String, List<WebserviceRelation>> relations,
             Map<String, model.Category> categoryMap,
@@ -643,6 +659,7 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             Map<String, Identifier> identifierMap,
             Map<String, Spatial> spatialMap,
             Map<String, Temporal> temporalMap,
+            Map<String, model.Distribution> distributionMap,
             Map<String, model.Operation> operationMap,
             Map<String, Organization> providerMap,
             Map<String, Webservice> relatedWsMap,
@@ -719,6 +736,14 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
             Temporal target = temporalMap.get(rel.getTemporalInstance().getInstanceId());
             if (target != null) {
                 o.addTemporalExtent(createLinkedEntity(target, EntityNames.PERIODOFTIME.name()));
+            }
+        }
+
+        // Distributions
+        for (WebserviceDistribution rel : distributions.getOrDefault(instanceId, Collections.emptyList())) {
+            model.Distribution target = distributionMap.get(rel.getDistributionInstance().getInstanceId());
+            if (target != null) {
+                o.getDistribution().add(createLinkedEntity(target, EntityNames.DISTRIBUTION.name()));
             }
         }
         

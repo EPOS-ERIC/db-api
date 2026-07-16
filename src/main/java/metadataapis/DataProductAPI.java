@@ -911,9 +911,10 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
         
+        Set<String> distributionIds = new HashSet<>();
         for (DistributionDataproduct rel : distributions.getOrDefault(instanceId, Collections.emptyList())) {
             Distribution target = distributionMap.get(rel.getDistributionInstance().getInstanceId());
-            if (target != null) {
+            if (target != null && distributionIds.add(target.getInstanceId())) {
                 o.addDistribution(createLinkedEntity(target, EntityNames.DISTRIBUTION.name()));
             }
         }

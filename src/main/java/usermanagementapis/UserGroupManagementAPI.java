@@ -383,8 +383,8 @@ public class UserGroupManagementAPI {
         List<Group> groups = new ArrayList<>();
 
         // Optimized: Query only authorization groups for this specific metaId
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple(
-                "meta.metaId", metaId, AuthorizationGroup.class);
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBByUsingMultipleKeys(
+                Collections.singletonMap("meta.metaId", metaId), AuthorizationGroup.class);
 
         for(AuthorizationGroup authorizationGroup : authorizationGroupList){
             groups.add(retrieveGroupById(authorizationGroup.getGroup().getId()));
@@ -397,7 +397,8 @@ public class UserGroupManagementAPI {
             LOG.log(java.util.logging.Level.FINE, "[USER GROUPS] Retrieving groups for metaId: {0}", metaId);
         }
         List<String> groups = new ArrayList<>();
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getOneFromDBBySpecificKeySimple("meta.metaId", metaId, AuthorizationGroup.class);
+        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getFromDBByUsingMultipleKeys(
+                Collections.singletonMap("meta.metaId", metaId), AuthorizationGroup.class);
         authorizationGroupList.forEach(authorizationGroup -> groups.add(authorizationGroup.getGroup().getId()));
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
             LOG.log(java.util.logging.Level.FINE, "[USER GROUPS] Found {0} groups for metaId: {1}", new Object[]{groups.size(), metaId});

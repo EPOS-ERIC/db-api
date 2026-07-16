@@ -173,9 +173,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         // OWNS (polymorphic - can be Facility or Equipment) - Not reference entities, no changes needed
         if (obj.getOwns() == null || obj.getOwns().isEmpty()) {
-            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+            deleteRelations("organizationInstanceId", edmobj.getInstanceId(), OrganizationOwn.class);
         } else {
-            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+            deleteRelations("organizationInstanceId", edmobj.getInstanceId(), OrganizationOwn.class);
             for (LinkedEntity rel : obj.getOwns()) {
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(rel, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (le != null && le.getInstanceId() != null && le.getEntityType() != null) {

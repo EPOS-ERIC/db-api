@@ -470,6 +470,22 @@ public class RelationSyncUtil {
                                                      org.epos.eposdatamodel.EPOSDataModelEntity mainEntity,
                                                      org.epos.eposdatamodel.EPOSDataModelEntity previousEntity,
                                                      model.StatusType overrideStatus, boolean enableStore) {
+        syncComplexRelationWithInverse(parentDbObject, parentId, inputLinks, relationFromUpdate, relationToUpdate,
+                joinClass, targetClass, parentFieldName, targetGetter, parentSetter, targetSetter,
+                null, null, null, mainEntity, previousEntity, overrideStatus, enableStore);
+    }
+
+    public static <P, J, T> void syncComplexRelationWithInverse(P parentDbObject, String parentId, List<LinkedEntity> inputLinks,
+                                                     LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate,
+                                                     Class<J> joinClass, Class<T> targetClass, String parentFieldName,
+                                                     Function<J, T> targetGetter, BiConsumer<J, P> parentSetter,
+                                                     BiConsumer<J, T> targetSetter,
+                                                     BiConsumer<J, T> inverseParentSetter,
+                                                     BiConsumer<J, P> inverseTargetSetter,
+                                                     String inverseParentFieldName,
+                                                     org.epos.eposdatamodel.EPOSDataModelEntity mainEntity,
+                                                     org.epos.eposdatamodel.EPOSDataModelEntity previousEntity,
+                                                     model.StatusType overrideStatus, boolean enableStore) {
 
         String previousInstanceId = mainEntity.getInstanceChangedId();
         boolean hasInstanceChanged = previousInstanceId != null && !previousInstanceId.equals(parentId);
@@ -556,7 +572,7 @@ public class RelationSyncUtil {
 
                 // On an ordinary draft update, keep an already-linked draft for
                 // this editor even when the client sends a stale published link.
-                if (!isNewVersion && effectiveStatus == StatusType.DRAFT
+                if ((isNewVersion || effectiveStatus == StatusType.DRAFT)
                         && link.getUid() != null) {
                     for (J existingJoin : existingMap.values()) {
                         T existingTarget = targetGetter.apply(existingJoin);
@@ -576,6 +592,18 @@ public class RelationSyncUtil {
                             effectiveStatus, targetClass, effectiveEnableStore);
                     rawTarget = resolution.getEntity();
                     cascadeSource = resolution.isCascadeSource();
+                }
+
+                // During a cascade, the child may already point to the draft
+                // parent being materialized. Resolve that target directly so
+                // cycle detection does not discard the inverse join.
+                if (rawTarget == null && sameLinkedEntity(link, relationToUpdate)
+                        && link.getInstanceId() != null) {
+                    List<Object> currentTarget = EposDataModelDAO.getInstance()
+                            .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
+                    if (currentTarget != null && !currentTarget.isEmpty()) {
+                        rawTarget = currentTarget.get(0);
+                    }
                 }
 
                 // Stub creation fallback for reference entities
@@ -610,7 +638,8 @@ public class RelationSyncUtil {
                         boolean materializeDraft = cascadeSource;
 
                         // Handle cascade versioning or status propagation
-                        if (cascadeStatus != null || materializeDraft) {
+                        boolean isCurrentRelationTarget = sameLinkedEntity(link, relationToUpdate);
+                        if ((cascadeStatus != null || materializeDraft) && !isCurrentRelationTarget) {
                             if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                                 T publishedVersion = findPublishedVersion(targetEntity, targetClass);
                                 if (publishedVersion != null) {
@@ -645,6 +674,10 @@ public class RelationSyncUtil {
                                 createPendingRelation(parentId, sourceEntityType, link.getUid(),
                                         link.getEntityType(), joinClass.getName());
                             }
+                        }
+                        if (inverseParentSetter != null && inverseTargetSetter != null) {
+                            createJoinEntity(joinClass, targetForJoin, parentDbObject,
+                                    inverseParentSetter, inverseTargetSetter, inverseParentFieldName);
                         }
                     }
                 } else {
@@ -1031,7 +1064,7 @@ public class RelationSyncUtil {
         return left.getInstanceId() != null && left.getInstanceId().equals(right.getInstanceId());
     }
 
-    private static LinkedEntity toLinkedEntity(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+    public static LinkedEntity toLinkedEntity(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
         if (entity == null || entity.getInstanceId() == null) {
             return null;
         }
@@ -1106,6 +1139,8 @@ public class RelationSyncUtil {
                 dto.setEditorId(editorId);
             }
 
+            // Pass the parent replacement so inverse relations can be moved to
+            // the new version. Each API must apply it only to its own relation.
             LinkedEntity result = api.create(dto, newStatus, relationFromUpdate, relationToUpdate);
             if (result != null && result.getInstanceId() != null) {
                 createdVersions.put(cacheKey, result.getInstanceId());

@@ -224,7 +224,7 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
     }
 
     @Test
-    @DisplayName("Distribution relations do not reuse another editor's drafts")
+    @DisplayName("Distribution relations cascade to the current editor's drafts")
     void testDistributionRelationsUsePublishedForWebServiceAndOperation() {
         WebServiceAPI webServiceAPI = new WebServiceAPI("WEBSERVICE", model.Webservice.class);
         OperationAPI operationAPI = new OperationAPI("OPERATION", model.Operation.class);
@@ -267,7 +267,38 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
         userOneWebService.setStatus(StatusType.DRAFT);
         userOneWebService.setEditorId("user-one");
         userOneWebService.setName("User One WebService");
-        webServiceAPI.create(userOneWebService, StatusType.DRAFT, null, null);
+        LinkedEntity userOneWebServiceLE = webServiceAPI.create(
+                userOneWebService, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution retrievedUserOneDistribution =
+                distributionAPI.retrieve(userOneDistributionLE.getInstanceId());
+        assertNotNull(retrievedUserOneDistribution.getAccessService());
+        assertEquals(1, retrievedUserOneDistribution.getAccessService().size());
+        assertEquals(userOneWebServiceLE.getInstanceId(),
+                retrievedUserOneDistribution.getAccessService().get(0).getInstanceId());
+
+        org.epos.eposdatamodel.Distribution userOneDistributionUpdate =
+                distributionAPI.retrieve(userOneDistributionLE.getInstanceId());
+        userOneDistributionUpdate.setStatus(StatusType.DRAFT);
+        userOneDistributionUpdate.setEditorId("user-one");
+        userOneDistributionUpdate.setTitle(Collections.singletonList("User One Distribution Updated"));
+        distributionAPI.create(userOneDistributionUpdate, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.Distribution retrievedUserOneDistributionAfterUpdate =
+                distributionAPI.retrieve(userOneDistributionLE.getInstanceId());
+        assertNotNull(retrievedUserOneDistributionAfterUpdate.getAccessService());
+        assertEquals(1, retrievedUserOneDistributionAfterUpdate.getAccessService().size());
+        assertEquals(userOneWebServiceLE.getInstanceId(),
+                retrievedUserOneDistributionAfterUpdate.getAccessService().get(0).getInstanceId());
+        assertEquals("User One Distribution Updated",
+                retrievedUserOneDistributionAfterUpdate.getTitle().get(0));
+
+        org.epos.eposdatamodel.Distribution retrievedPublishedDistribution =
+                distributionAPI.retrieve(publishedDistributionLE.getInstanceId());
+        assertNotNull(retrievedPublishedDistribution.getAccessService());
+        assertEquals(1, retrievedPublishedDistribution.getAccessService().size());
+        assertEquals(publishedWebServiceLE.getInstanceId(),
+                retrievedPublishedDistribution.getAccessService().get(0).getInstanceId());
 
         org.epos.eposdatamodel.Operation userOneOperation =
                 operationAPI.retrieve(userOneDraft.getSupportedOperation().get(0).getInstanceId());

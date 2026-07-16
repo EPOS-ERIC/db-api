@@ -5,6 +5,10 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.metamodel.Attribute;
+import jakarta.persistence.metamodel.EmbeddableType;
+import jakarta.persistence.metamodel.IdentifiableType;
+import jakarta.persistence.metamodel.ManagedType;
 import model.Category;
 import model.Dataproduct;
 import model.Distribution;
@@ -162,8 +166,9 @@ public class EposDataModelDAO<T> {
 					em.merge(vs);
 				}
 			}
-		} catch (Exception ignored) {
-			// Entity may not have version field - this is expected for some types
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to sanitize version status for "
+					+ entity.getClass().getSimpleName(), e);
 		}
 	}
 
@@ -202,8 +207,9 @@ public class EposDataModelDAO<T> {
 				if (vs.getChangeTimestamp() == null) vs.setChangeTimestamp(OffsetDateTime.now());
 				em.merge(vs);
 			}
-		} catch (Exception ignored) {
-			// Expected for entities without version field
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to persist dependent version status for "
+					+ entity.getClass().getSimpleName(), e);
 		}
 	}
 
@@ -270,32 +276,12 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			List<J> result = null;
-
-			// Strategy 1: EmbeddedId path
-			try {
-				TypedQuery<J> query = em.createQuery(
-						"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c.id." + parentIdField + " = :pid",
-						joinClass);
-				query.setParameter("pid", parentId);
-				result = query.getResultList();
-			} catch (Exception e1) {
-				// Strategy 2: Relationship field with instanceId
-				try {
-					TypedQuery<J> query = em.createQuery(
-							"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :pid",
-							joinClass);
-					query.setParameter("pid", parentId);
-					result = query.getResultList();
-				} catch (Exception e2) {
-					// Strategy 3: Direct field access
-					TypedQuery<J> query = em.createQuery(
-							"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :pid",
-							joinClass);
-					query.setParameter("pid", parentId);
-					result = query.getResultList();
-				}
-			}
+			String path = joinParentPath(em, joinClass, parentIdField);
+			TypedQuery<J> query = em.createQuery(
+					"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + path + " = :pid",
+					joinClass);
+			query.setParameter("pid", parentId);
+			List<J> result = query.getResultList();
 
 			if (result != null && !result.isEmpty()) {
 				putInQueryCache(cacheKey, result);
@@ -309,6 +295,21 @@ public class EposDataModelDAO<T> {
 		} finally {
 			closeQuietly(em);
 		}
+	}
+
+	private String joinParentPath(EntityManager em, Class<?> joinClass, String parentIdField) {
+		ManagedType<?> managedType = em.getMetamodel().managedType(joinClass);
+		if (managedType instanceof IdentifiableType<?> identifiableType) {
+			if (identifiableType.getIdType() instanceof EmbeddableType<?> idType) {
+				try {
+					idType.getAttribute(parentIdField);
+					return "id." + parentIdField;
+				} catch (IllegalArgumentException ignored) {
+					// The parent key is represented by an entity attribute instead.
+				}
+			}
+		}
+		return specificKeyPath(em, joinClass, parentIdField);
 	}
 
 	/**
@@ -571,8 +572,9 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			em.clear();
+			String path = specificKeyPath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + ".instanceId = :val", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + path + " = :val", obj);
 			query.setParameter("val", value);
 			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
 			query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
@@ -585,6 +587,37 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+	/**
+	 * Resolves the historical relation-key convention without appending
+	 * instanceId to scalar or already-qualified paths.
+	 */
+	private String specificKeyPath(EntityManager em, Class<?> entityClass, String key) {
+		if (key == null || key.isBlank()) {
+			throw new IllegalArgumentException("Lookup key must not be blank");
+		}
+		validatePath(em, entityClass, key);
+		if (key.contains(".")) return key;
+
+		Attribute<?, ?> attribute = em.getMetamodel().managedType(entityClass).getAttribute(key);
+		Attribute.PersistentAttributeType type = attribute.getPersistentAttributeType();
+		boolean association = type == Attribute.PersistentAttributeType.MANY_TO_ONE
+				|| type == Attribute.PersistentAttributeType.ONE_TO_ONE
+				|| type == Attribute.PersistentAttributeType.MANY_TO_MANY
+				|| type == Attribute.PersistentAttributeType.ONE_TO_MANY;
+		return association ? key + ".instanceId" : key;
+	}
+
+	private void validatePath(EntityManager em, Class<?> entityClass, String path) {
+		String[] segments = path.split("\\.");
+		ManagedType<?> current = em.getMetamodel().managedType(entityClass);
+		for (int i = 0; i < segments.length; i++) {
+			Attribute<?, ?> attribute = current.getAttribute(segments[i]);
+			if (i < segments.length - 1) {
+				current = em.getMetamodel().managedType(attribute.getJavaType());
+			}
+		}
+	}
+
 	public List<T> getOneFromDBBySpecificKey(String key, String value, Class<T> obj) {
 		String cacheKey = generateCacheKey("specificKey", key, value, obj.getSimpleName());
 
@@ -594,8 +627,9 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
+			String path = specificKeyPath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + ".instanceId = :val", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + path + " = :val", obj);
 			query.setParameter("val", value);
 			List<T> result = query.getResultList();
 			putInQueryCache(cacheKey, result);
@@ -668,6 +702,7 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
+			validatePath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
 					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + " = :val", obj);
 			query.setParameter("val", value);
@@ -688,6 +723,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			em.clear();
+			validatePath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
 					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + " = :val", obj);
 			query.setParameter("val", value);
@@ -777,11 +813,10 @@ public class EposDataModelDAO<T> {
 				}
 			}
 
-			if (!predicates.isEmpty()) {
-				cq.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
-			} else {
-				cq.select(root);
+			if (predicates.isEmpty()) {
+				throw new IllegalArgumentException("No valid predicates for " + obj.getSimpleName());
 			}
+			cq.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
 
 			List<T> result = em.createQuery(cq).getResultList();
 			putInQueryCache(cacheKey, result);

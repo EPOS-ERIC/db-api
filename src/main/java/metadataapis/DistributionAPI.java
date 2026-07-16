@@ -142,19 +142,24 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         );
 
         /** ACCESSSERVICE **/
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getAccessService(), relationFromUpdate, relationToUpdate,
+        RelationSyncUtil.syncComplexRelationWithInverse(
+                edmobj, edmobj.getInstanceId(), obj.getAccessService(),
+                RelationSyncUtil.toLinkedEntity(previousObj), RelationSyncUtil.toLinkedEntity(obj),
                 WebserviceDistribution.class, Webservice.class,
                 "distributionInstance",
                 WebserviceDistribution::getWebserviceInstance,
                 WebserviceDistribution::setDistributionInstance,
                 WebserviceDistribution::setWebserviceInstance,
+                WebserviceDistribution::setWebserviceInstance,
+                WebserviceDistribution::setDistributionInstance,
+                "webserviceInstance",
                 obj, previousObj, overrideStatus, true
         );
 
         /** SUPPORTEDOPERATION **/
         RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(), relationFromUpdate, relationToUpdate,
+                edmobj, edmobj.getInstanceId(), obj.getSupportedOperation(),
+                RelationSyncUtil.toLinkedEntity(previousObj), RelationSyncUtil.toLinkedEntity(obj),
                 OperationDistribution.class, Operation.class,
                 "distributionInstance",
                 OperationDistribution::getOperationInstance,
