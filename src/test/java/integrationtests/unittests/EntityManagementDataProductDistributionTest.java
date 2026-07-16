@@ -86,12 +86,8 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
 
         List<Distribution> retrievedDistribution = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveAll();
 
-        for(Distribution dp : retrievedDistribution){
+        for (Distribution dp : retrievedDistribution) {
             System.out.println(dp);
-            if(dp.getStatus().equals(StatusType.DRAFT)){
-                distribution.setInstanceId(dp.getInstanceId());
-                distribution.setMetaId(dp.getMetaId());
-            }
         }
 
         Distribution publishedDistribution = retrievedDistribution.stream()
@@ -108,6 +104,9 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
                 publishedDistribution.getDataProduct().get(0).getInstanceId());
         assertEquals(firstDraftDataProduct.getInstanceId(),
                 firstDraftDistribution.getDataProduct().get(0).getInstanceId());
+        distribution.setInstanceId(firstDraftDistribution.getInstanceId());
+        distribution.setMetaId(firstDraftDistribution.getMetaId());
+        distribution.setEditorId(firstDraftDistribution.getEditorId());
 
         /**
          * USE DRAFT DISTRIBUTION TO CHANGE IT'S TITLE
@@ -148,12 +147,8 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
 
         retrievedDistribution = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name()).retrieveAll();
 
-        for(Distribution dp : retrievedDistribution){
+        for (Distribution dp : retrievedDistribution) {
             System.out.println(dp);
-            if(dp.getStatus().equals(StatusType.DRAFT)){
-                distribution.setInstanceId(dp.getInstanceId());
-                distribution.setMetaId(dp.getMetaId());
-            }
         }
 
         Distribution secondDraftDistribution = retrievedDistribution.stream()
@@ -163,6 +158,9 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
         assertEquals(1, secondDraftDistribution.getDataProduct().size());
         assertEquals(secondDraftDataProduct.getInstanceId(),
                 secondDraftDistribution.getDataProduct().get(0).getInstanceId());
+        distribution.setInstanceId(secondDraftDistribution.getInstanceId());
+        distribution.setMetaId(secondDraftDistribution.getMetaId());
+        distribution.setEditorId(secondDraftDistribution.getEditorId());
 
         /**
          * USE DRAFT DISTRIBUTION TO CHANGE IT'S TITLE
@@ -179,6 +177,10 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
         for(Distribution dp : retrievedDistribution){
             System.out.println(dp);
         }
+
+        retrievedDataProduct = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveAll();
+        assertEquals(3, retrievedDataProduct.size());
+        assertEquals(3, retrievedDistribution.size());
     }
 
 
