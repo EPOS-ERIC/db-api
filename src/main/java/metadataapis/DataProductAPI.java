@@ -68,8 +68,15 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            Dataproduct selectedEntity = VersioningStatusAPI.selectVersion(
-                    returnList, obj.getEditorId(), targetStatus, Dataproduct::getVersion);
+            String requestedInstanceId = obj.getInstanceId();
+            String requestedEditorId = obj.getEditorId();
+            Dataproduct selectedEntity = returnList.stream()
+                    .filter(item -> targetStatus != StatusType.DRAFT
+                            && requestedInstanceId != null
+                            && requestedInstanceId.equals(item.getInstanceId()))
+                    .findFirst()
+                    .orElseGet(() -> VersioningStatusAPI.selectVersion(
+                            returnList, requestedEditorId, targetStatus, Dataproduct::getVersion));
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());

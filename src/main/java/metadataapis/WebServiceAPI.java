@@ -59,8 +59,15 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            Webservice selectedEntity = VersioningStatusAPI.selectVersion(
-                    returnList, obj.getEditorId(), targetStatus, Webservice::getVersion);
+            String requestedInstanceId = obj.getInstanceId();
+            String requestedEditorId = obj.getEditorId();
+            Webservice selectedEntity = returnList.stream()
+                    .filter(item -> targetStatus != StatusType.DRAFT
+                            && requestedInstanceId != null
+                            && requestedInstanceId.equals(item.getInstanceId()))
+                    .findFirst()
+                    .orElseGet(() -> VersioningStatusAPI.selectVersion(
+                            returnList, requestedEditorId, targetStatus, Webservice::getVersion));
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());

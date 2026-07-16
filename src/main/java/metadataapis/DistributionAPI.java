@@ -52,7 +52,8 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             final StatusType requestedStatus = targetStatus;
             final String requestedEditorId = obj.getEditorId();
             Distribution selectedEntity = returnList.stream()
-                    .filter(item -> requestedInstanceId != null && requestedInstanceId.equals(item.getInstanceId()))
+                    .filter(item -> requestedStatus != StatusType.DRAFT
+                            && requestedInstanceId != null && requestedInstanceId.equals(item.getInstanceId()))
                     .findFirst()
                     .orElseGet(() -> VersioningStatusAPI.selectVersion(
                             returnList, requestedEditorId, requestedStatus, Distribution::getVersion));
