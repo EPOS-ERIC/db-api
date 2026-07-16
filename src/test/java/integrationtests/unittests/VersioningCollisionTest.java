@@ -173,6 +173,56 @@ class VersioningCollisionTest extends TestcontainersLifecycle {
     }
 
     @Test
+    @DisplayName("SUBMITTED promotes only the selected draft and rejects ambiguous requests")
+    void testSubmittedSelectsDraftOrRejectsAmbiguity() {
+        String uid = "DATAPRODUCT/" + UUID.randomUUID();
+
+        org.epos.eposdatamodel.DataProduct published = createDummyDataProduct();
+        published.setUid(uid);
+        published.setStatus(StatusType.PUBLISHED);
+        dataProductAPI.create(published, StatusType.PUBLISHED, null, null);
+
+        org.epos.eposdatamodel.DataProduct editorOneDraft = createDummyDataProduct();
+        editorOneDraft.setUid(uid);
+        editorOneDraft.setEditorId("editor-one");
+        editorOneDraft.setStatus(StatusType.DRAFT);
+        LinkedEntity editorOneDraftLE = dataProductAPI.create(editorOneDraft, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct editorTwoDraft = createDummyDataProduct();
+        editorTwoDraft.setUid(uid);
+        editorTwoDraft.setEditorId("editor-two");
+        editorTwoDraft.setStatus(StatusType.DRAFT);
+        LinkedEntity editorTwoDraftLE = dataProductAPI.create(editorTwoDraft, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct submitEditorOne = createDummyDataProduct();
+        submitEditorOne.setUid(uid);
+        submitEditorOne.setEditorId("editor-one");
+        submitEditorOne.setStatus(StatusType.DRAFT);
+        LinkedEntity submitted = dataProductAPI.create(submitEditorOne, StatusType.SUBMITTED, null, null);
+
+        assertEquals(editorOneDraftLE.getInstanceId(), submitted.getInstanceId());
+        assertEquals(StatusType.SUBMITTED,
+                dataProductAPI.retrieve(editorOneDraftLE.getInstanceId()).getStatus());
+        assertEquals(StatusType.DRAFT,
+                dataProductAPI.retrieve(editorTwoDraftLE.getInstanceId()).getStatus());
+
+        org.epos.eposdatamodel.DataProduct editorThreeDraft = createDummyDataProduct();
+        editorThreeDraft.setUid(uid);
+        editorThreeDraft.setEditorId("editor-three");
+        editorThreeDraft.setStatus(StatusType.DRAFT);
+        dataProductAPI.create(editorThreeDraft, StatusType.DRAFT, null, null);
+
+        org.epos.eposdatamodel.DataProduct ambiguousSubmit = createDummyDataProduct();
+        ambiguousSubmit.setUid(uid);
+        ambiguousSubmit.setStatus(StatusType.DRAFT);
+        assertThrows(IllegalArgumentException.class,
+                () -> dataProductAPI.create(ambiguousSubmit, StatusType.SUBMITTED, null, null));
+
+        assertEquals(StatusType.DRAFT,
+                dataProductAPI.retrieve(editorTwoDraftLE.getInstanceId()).getStatus());
+    }
+
+    @Test
     @DisplayName("Relations do not reuse another editor's draft")
     void testRelationsUsePublishedWhenEditorDraftDoesNotExist() {
         String distributionUid = "DISTRIBUTION/" + UUID.randomUUID();

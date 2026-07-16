@@ -112,6 +112,13 @@ public class VersioningStatusAPI {
             return findFirstNonPending(versions);
         }
 
+        if (targetStatus == SUBMITTED) {
+            Versioningstatus draft = findUnambiguousDraftForSubmission(versions, obj.getEditorId());
+            if (draft != null) {
+                return draft;
+            }
+        }
+
         Versioningstatus matching = findByStatus(versions, targetStatus);
         if (matching != null) {
             return matching;
@@ -126,8 +133,31 @@ public class VersioningStatusAPI {
      * when a published version is available.
      */
     public static <T> T selectVersion(List<T> versions, String editorId, StatusType targetStatus,
-                                      Function<T, Versioningstatus> versionGetter) {
+                                       Function<T, Versioningstatus> versionGetter) {
         if (versions == null || versions.isEmpty()) return null;
+
+        // SUBMITTED is a transition from a DRAFT, not a lookup for a previously
+        // submitted sibling. Without an instanceId, only an unambiguous draft can
+        // safely be promoted.
+        if (targetStatus == SUBMITTED) {
+            List<T> drafts = new java.util.ArrayList<>();
+            boolean hasDraft = false;
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && DRAFT.toString().equals(version.getStatus())) {
+                    hasDraft = true;
+                    if (editorId == null || sameEditor(editorId, version.getEditorId())) {
+                        drafts.add(entity);
+                    }
+                }
+            }
+            if (drafts.size() == 1) {
+                return drafts.get(0);
+            }
+            if (hasDraft) {
+                throw new IllegalArgumentException("Cannot submit an ambiguous DRAFT version; provide instanceId or editorId");
+            }
+        }
 
         if (targetStatus == DRAFT && editorId != null) {
             for (T entity : versions) {
@@ -170,6 +200,29 @@ public class VersioningStatusAPI {
             }
         }
         return null;
+    }
+
+    private static Versioningstatus findUnambiguousDraftForSubmission(List<Versioningstatus> versions, String editorId) {
+        Versioningstatus result = null;
+        boolean hasDraft = false;
+        for (Versioningstatus version : versions) {
+            if (version == null || isPendingRelationMarker(version)
+                    || !DRAFT.toString().equals(version.getStatus())) {
+                continue;
+            }
+            hasDraft = true;
+            if (editorId != null && !sameEditor(editorId, version.getEditorId())) {
+                continue;
+            }
+            if (result != null) {
+                throw new IllegalArgumentException("Cannot submit an ambiguous DRAFT version; provide instanceId or editorId");
+            }
+            result = version;
+        }
+        if (hasDraft && result == null) {
+            throw new IllegalArgumentException("Cannot submit a DRAFT owned by another editor; provide its instanceId");
+        }
+        return result;
     }
 
     private static Versioningstatus findPublishedVersion(List<Versioningstatus> versions) {
