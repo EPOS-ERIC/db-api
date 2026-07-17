@@ -258,6 +258,18 @@ public class RelationSyncUtil {
         }
     }
 
+    /** Archives the version-owned descendants of a superseded DataProduct. */
+    public static void archiveDataProductOwnedGraph(String dataProductInstanceId) {
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductIdentifier.class, model.DataproductIdentifier::getIdentifierInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductSpatial.class, model.DataproductSpatial::getSpatialInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductTemporal.class, model.DataproductTemporal::getTemporalInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DistributionDataproduct.class, model.DistributionDataproduct::getDistributionInstance);
+    }
+
     private static void updateChildEntityStatus(Object childEntity, StatusType newStatus) {
         if (childEntity == null || newStatus == null) {
             return;
@@ -308,6 +320,18 @@ public class RelationSyncUtil {
                 .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
         for (Object relation : relations) {
             updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), newStatus);
+        }
+    }
+
+    private static <J, T> void archiveRelationTargets(String parentInstanceId, String parentFieldName,
+                                                       Class<J> joinClass, Function<J, T> targetGetter) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), StatusType.ARCHIVED);
         }
     }
 
@@ -1162,7 +1186,6 @@ public class RelationSyncUtil {
             }
 
             dto.setInstanceChangedId(originalInstanceId);
-            dto.setInstanceId(null);
             dto.setStatus(newStatus);
             if (editorId != null) {
                 dto.setEditorId(editorId);

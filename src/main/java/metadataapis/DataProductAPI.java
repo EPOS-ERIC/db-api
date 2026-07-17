@@ -88,8 +88,8 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
 
-        String previousVersionInstanceId = obj.getInstanceChangedId();
         obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+        String previousVersionInstanceId = obj.getInstanceChangedId();
 
         if (obj.getInstanceId() == null) {
             obj.setInstanceId(UUID.randomUUID().toString());
@@ -288,12 +288,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         if (StatusType.PUBLISHED.equals(obj.getStatus())
                 && previousVersionInstanceId != null
                 && !previousVersionInstanceId.equals(obj.getInstanceId())) {
-            org.epos.eposdatamodel.DataProduct previousVersion = retrieve(previousVersionInstanceId);
-            if (previousVersion != null && previousVersion.getDistribution() != null) {
-                for (LinkedEntity distributionLink : previousVersion.getDistribution()) {
-                    RelationSyncUtil.archiveVersionByInstanceId(distributionLink.getInstanceId());
-                }
-            }
+            RelationSyncUtil.archiveDataProductOwnedGraph(previousVersionInstanceId);
         }
 
         
