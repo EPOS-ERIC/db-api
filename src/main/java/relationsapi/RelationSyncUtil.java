@@ -271,10 +271,43 @@ public class RelationSyncUtil {
                     EposDataModelDAO.getInstance().updateObject(vs);
                 }
             }
+            propagateStatusToOwnedRelations(childEntity, newStatus);
         } catch (NoSuchMethodError | IllegalStateException e) {
             updateChildStatusByInstanceId(childEntity, newStatus);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Child status update failed: {0}", e.getMessage());
+        }
+    }
+
+    private static void propagateStatusToOwnedRelations(Object entity, StatusType newStatus) {
+        if (entity instanceof model.Distribution distribution) {
+            updateRelationTargets(distribution.getInstanceId(), "distributionInstance",
+                    model.WebserviceDistribution.class, model.WebserviceDistribution::getWebserviceInstance, newStatus);
+            updateRelationTargets(distribution.getInstanceId(), "distributionInstance",
+                    model.OperationDistribution.class, model.OperationDistribution::getOperationInstance, newStatus);
+        } else if (entity instanceof model.Webservice webservice) {
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.OperationWebservice.class, model.OperationWebservice::getOperationInstance, newStatus);
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.WebserviceSpatial.class, model.WebserviceSpatial::getSpatialInstance, newStatus);
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.WebserviceTemporal.class, model.WebserviceTemporal::getTemporalInstance, newStatus);
+        } else if (entity instanceof model.Operation operation) {
+            updateRelationTargets(operation.getInstanceId(), "operationInstance",
+                    model.OperationMapping.class, model.OperationMapping::getMappingInstance, newStatus);
+        }
+    }
+
+    private static <J, T> void updateRelationTargets(String parentInstanceId, String parentFieldName,
+                                                       Class<J> joinClass, Function<J, T> targetGetter,
+                                                       StatusType newStatus) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), newStatus);
         }
     }
 
@@ -541,14 +574,20 @@ public class RelationSyncUtil {
                 Object rawTarget = null;
                 boolean cascadeSource = false;
 
-                // A status transition must promote the exact child currently
-                // attached to this parent version. Resolving by UID/status here
-                // would select a published sibling and orphan the edited draft.
+                // A status transition must promote the exact child selected by
+                // the caller. Resolving by UID/status here would select a
+                // published sibling and orphan the edited draft.
                 if ((effectiveStatus == StatusType.SUBMITTED || effectiveStatus == StatusType.PUBLISHED)
                         && link.getInstanceId() != null) {
-                    J currentJoin = existingMap.get(link.getInstanceId());
-                    if (currentJoin != null) {
-                        rawTarget = targetGetter.apply(currentJoin);
+                    List<Object> requestedTarget = EposDataModelDAO.getInstance()
+                            .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
+                    if (requestedTarget != null && !requestedTarget.isEmpty()) {
+                        rawTarget = requestedTarget.get(0);
+                    } else {
+                        J currentJoin = existingMap.get(link.getInstanceId());
+                        if (currentJoin != null) {
+                            rawTarget = targetGetter.apply(currentJoin);
+                        }
                     }
                 }
 
