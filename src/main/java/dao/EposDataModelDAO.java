@@ -485,9 +485,13 @@ public class EposDataModelDAO<T> {
 				}
 			}
 
-			em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
+			int deleted = em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
 					.setParameter("id", instanceId)
 					.executeUpdate();
+			if (deleted == 0) {
+				tx.rollback();
+				return false;
+			}
 			tx.commit();
 			evictCacheByPattern(entityClass.getSimpleName());
 			return true;

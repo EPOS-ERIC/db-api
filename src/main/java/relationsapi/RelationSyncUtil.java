@@ -535,17 +535,10 @@ public class RelationSyncUtil {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // A missing or empty relation collection means that the caller
-            // explicitly cleared the relation for this API update.
+            // A null or empty relation collection explicitly clears the relation.
+            // Lifecycle requests retain their loaded relations in the backoffice
+            // before reaching this point.
             if (inputLinks == null || inputLinks.isEmpty()) {
-                if (inputLinks == null && overrideStatus != null) {
-                    return;
-                }
-                if (inputLinks == null && previousInstanceId != null) {
-                    copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
-                            joinClass, targetClass, parentFieldName, targetGetter, effectiveStatus, mainEntity);
-                    return;
-                }
                 String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
                 List<?> existingRawList = EposDataModelDAO.getInstance()
                         .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
