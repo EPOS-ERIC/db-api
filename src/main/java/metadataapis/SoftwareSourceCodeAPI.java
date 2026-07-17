@@ -289,25 +289,18 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
     }
 
     @Override public Boolean delete(String instanceId) {
-        deleteRelations("softwaresourcecodeInstance", instanceId, SoftwaresourcecodeContactpoint.class);
-        deleteRelations("softwaresourcecodeInstance", instanceId, SoftwaresourcecodeIdentifier.class);
-        deleteRelations("softwaresourcecodeInstance", instanceId, SoftwaresourcecodeCategory.class);
-        deleteRelations("softwaresourcecodeInstance", instanceId, SoftwaresourcecodeElement.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeAuthor.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeContributor.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeFunder.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeMaintainer.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeProvider.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodePublisher.class);
-        deleteRelations("softwaresourcecode", instanceId, SoftwaresourcecodeCreator.class);
-        List<Softwaresourcecode> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwaresourcecode.class);
-        for (Softwaresourcecode object : elementList) EposDataModelDAO.getInstance().deleteObject(object);
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Softwaresourcecode.class, List.of(
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeContactpoint.class, "softwaresourcecodeInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeIdentifier.class, "softwaresourcecodeInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeCategory.class, "softwaresourcecodeInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeElement.class, "softwaresourcecodeInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeAuthor.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeContributor.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeFunder.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeMaintainer.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeProvider.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodePublisher.class, "softwaresourcecode"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeCreator.class, "softwaresourcecode")));
     }
 
     @Override public org.epos.eposdatamodel.SoftwareSourceCode retrieve(String instanceId) {

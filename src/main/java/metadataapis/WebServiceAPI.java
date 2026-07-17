@@ -363,31 +363,15 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("webserviceInstance", instanceId, WebserviceIdentifier.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceTemporal.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceElement.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceSpatial.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceContactpoint.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceDistribution.class);
-        deleteRelations("webserviceInstance", instanceId, WebserviceCategory.class);
-
-        for (Object object : getDbaccess().getAllFromDB(WebserviceRelation.class)) {
-            WebserviceRelation item = (WebserviceRelation) object;
-            if (item.getId().getWebserviceInstanceId().equals(instanceId)) {
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        List<Webservice> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Webservice.class);
-        for (Webservice object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getJoinEntitiesByParentId(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Webservice.class, List.of(
+                new EposDataModelDAO.RelationField(WebserviceIdentifier.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceTemporal.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceElement.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceSpatial.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceContactpoint.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceDistribution.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceCategory.class, "webserviceInstance"),
+                new EposDataModelDAO.RelationField(WebserviceRelation.class, "id.webserviceInstanceId")));
     }
 
     private void deleteWebserviceRelations(String instanceId) {

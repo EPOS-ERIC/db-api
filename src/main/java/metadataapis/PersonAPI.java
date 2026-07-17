@@ -271,21 +271,11 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("personInstance", instanceId, PersonContactpoint.class);
-        deleteRelations("personInstance", instanceId, PersonIdentifier.class);
-        deleteRelations("personInstance", instanceId, PersonElement.class);
-        deleteRelations("personInstance", instanceId, OrganizationAffiliation.class);
-
-        List<Person> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Person.class);
-        for (Person object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Person.class, List.of(
+                new EposDataModelDAO.RelationField(PersonContactpoint.class, "personInstance"),
+                new EposDataModelDAO.RelationField(PersonIdentifier.class, "personInstance"),
+                new EposDataModelDAO.RelationField(PersonElement.class, "personInstance"),
+                new EposDataModelDAO.RelationField(OrganizationAffiliation.class, "personInstance")));
     }
 
     @Override

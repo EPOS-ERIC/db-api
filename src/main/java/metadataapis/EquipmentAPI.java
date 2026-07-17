@@ -324,19 +324,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("equipmentInstance", instanceId, EquipmentContactpoint.class);
-        deleteRelations("equipmentInstance", instanceId, EquipmentTemporal.class);
-        deleteRelations("equipmentInstance", instanceId, EquipmentSpatial.class);
-        deleteRelations("equipment", instanceId, EquipmentRelation.class);
-        deleteRelations("equipment", instanceId, EquipmentIspartof.class);
-        deleteRelations("equipmentInstance", instanceId, EquipmentElement.class);
-        deleteRelations("equipmentInstance", instanceId, EquipmentCategory.class);
-
-        List<Equipment> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Equipment.class);
-        for (Equipment object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Equipment.class, List.of(
+                new EposDataModelDAO.RelationField(EquipmentContactpoint.class, "equipmentInstance"),
+                new EposDataModelDAO.RelationField(EquipmentTemporal.class, "equipmentInstance"),
+                new EposDataModelDAO.RelationField(EquipmentSpatial.class, "equipmentInstance"),
+                new EposDataModelDAO.RelationField(EquipmentRelation.class, "equipment"),
+                new EposDataModelDAO.RelationField(EquipmentIspartof.class, "equipment"),
+                new EposDataModelDAO.RelationField(EquipmentElement.class, "equipmentInstance"),
+                new EposDataModelDAO.RelationField(EquipmentCategory.class, "equipmentInstance")));
     }
 
     private void deleteRelations(String key, String instanceId, Class<?> clazz) {

@@ -58,11 +58,10 @@ public class EntityManagerService {
         hikariConfig.setInitializationFailTimeout(9000);
 
         // PostgreSQL specific optimizations
-        hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
-        hikariConfig.addDataSourceProperty("rewriteBatchedStatements", "true");
+        hikariConfig.addDataSourceProperty("prepareThreshold", "5");
+        hikariConfig.addDataSourceProperty("preparedStatementCacheQueries", "256");
+        hikariConfig.addDataSourceProperty("preparedStatementCacheSizeMiB", "8");
+        hikariConfig.addDataSourceProperty("reWriteBatchedInserts", "true");
 
         // Connection validation
         hikariConfig.setConnectionTestQuery("SELECT 1");

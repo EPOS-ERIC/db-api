@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.Optional;
@@ -221,19 +222,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("mappingInstance", instanceId, MappingElement.class);
-        deleteRelations("mappingInstance", instanceId, OperationMapping.class);
-
-        List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);
-        for (Mapping object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Mapping.class, Map.of(
+                MappingElement.class, "mappingInstance",
+                OperationMapping.class, "mappingInstance"));
     }
 
     @Override

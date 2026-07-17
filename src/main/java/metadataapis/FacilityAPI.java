@@ -254,18 +254,13 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("facilityInstance", instanceId, FacilityContactpoint.class);
-        deleteRelations("facility1Instance", instanceId, FacilityIspartof.class);
-        deleteRelations("facilityInstance", instanceId, FacilityElement.class);
-        deleteRelations("facilityInstance", instanceId, FacilitySpatial.class);
-        deleteRelations("facilityInstance", instanceId, FacilityCategory.class);
-        deleteRelations("facilityInstance", instanceId, FacilityAddress.class);
-
-        List<Facility> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Facility.class);
-        for (Facility object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Facility.class, List.of(
+                new EposDataModelDAO.RelationField(FacilityContactpoint.class, "facilityInstance"),
+                new EposDataModelDAO.RelationField(FacilityIspartof.class, "facility1Instance"),
+                new EposDataModelDAO.RelationField(FacilityElement.class, "facilityInstance"),
+                new EposDataModelDAO.RelationField(FacilitySpatial.class, "facilityInstance"),
+                new EposDataModelDAO.RelationField(FacilityCategory.class, "facilityInstance"),
+                new EposDataModelDAO.RelationField(FacilityAddress.class, "facilityInstance")));
     }
 
     private void deleteRelations(String key, String instanceId, Class<?> clazz) {

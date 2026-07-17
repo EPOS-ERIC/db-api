@@ -5,11 +5,16 @@ import dao.EposDataModelDAO;
 import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
+import usermanagementapis.UserGroupManagementAPI;
 import utilities.MemoryMonitor;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.function.Function;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.logging.Level;
@@ -31,6 +36,45 @@ public abstract class AbstractAPI<T> {
 
     public EposDataModelDAO getDbaccess() {
         return EposDataModelDAO.getInstance();
+    }
+
+    /**
+     * Loads entity rows, version metadata and groups in bulk. This avoids opening a
+     * persistence context for every item returned by retrieveAll/retrieveBunch.
+     */
+    protected <E, D extends EPOSDataModelEntity> List<D> retrieveBulk(
+            List<String> instanceIds, Class<E> entityClass, Function<E, D> mapper) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, E> entities = getDbaccess().batchFetchByInstanceIds(instanceIds, entityClass);
+        if (entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(new ArrayList<>(entities.keySet()));
+        List<String> metaIds = entities.values().stream()
+                .map(utilities.ReflectionCache::getMetaId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<String, List<String>> groups = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(metaIds);
+
+        List<D> results = new ArrayList<>(entities.size());
+        for (String instanceId : instanceIds) {
+            E entity = entities.get(instanceId);
+            if (entity == null) {
+                continue;
+            }
+            D dto = mapper.apply(entity);
+            if (dto == null) {
+                continue;
+            }
+            VersioningStatusAPI.applyVersion(dto, versions.get(instanceId), groups.get(dto.getMetaId()));
+            results.add(dto);
+        }
+        return results;
     }
 
     public void setEdmClass(Class<?> edmClass) {
@@ -63,6 +107,12 @@ public abstract class AbstractAPI<T> {
             return;
         }
 
+        // Full getter inspection is diagnostic work and can trigger expensive
+        // relation traversal; do it only when the diagnostic output is enabled.
+        if (!LOG.isLoggable(Level.FINE)) {
+            return;
+        }
+
         try {
             List<String> emptyFields = new java.util.ArrayList<>();
             List<String> populatedFields = new java.util.ArrayList<>();
@@ -87,10 +137,8 @@ public abstract class AbstractAPI<T> {
                     }
                 }
             }
-            if (LOG.isLoggable(Level.FINE)) {
-                LOG.log(Level.FINE, "[VALIDATION] Populated fields for {0}: {1}", new Object[]{entityName, populatedFields});
-                LOG.log(Level.FINE, "[VALIDATION] Null/Empty fields for {0}: {1}", new Object[]{entityName, emptyFields});
-            }
+            LOG.log(Level.FINE, "[VALIDATION] Populated fields for {0}: {1}", new Object[]{entityName, populatedFields});
+            LOG.log(Level.FINE, "[VALIDATION] Null/Empty fields for {0}: {1}", new Object[]{entityName, emptyFields});
             
             // Highlight missing key identifiers which could lead to empty or broken draft creations
             if (emptyFields.contains("instanceId") && emptyFields.contains("uid") && emptyFields.contains("metaId")) {

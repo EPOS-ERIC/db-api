@@ -116,19 +116,8 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
     @Override
     public Boolean delete(String instanceId) {
-        List<FacilityAddress> facilityAddresses = (List<FacilityAddress>) getDbaccess().getAllFromDB(FacilityAddress.class)
-                .stream()
-                .filter(item -> ((FacilityAddress) item).getAddressInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(facilityAddresses);
-
-        List<Address> addressesToDelete = (List<Address>) getDbaccess().getAllFromDB(Address.class)
-                .stream()
-                .filter(item -> ((Address)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(addressesToDelete);
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Address.class,
+                Map.of(FacilityAddress.class, "addressInstance"));
     }
 
     @Override
@@ -155,7 +144,18 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
 
     private List<org.epos.eposdatamodel.Address> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Address.class, entity -> {
+            org.epos.eposdatamodel.Address dto = new org.epos.eposdatamodel.Address();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setStreet(entity.getStreet());
+            dto.setCountry(entity.getCountry());
+            dto.setPostalCode(entity.getPostalCode());
+            dto.setCountryCode(entity.getCountrycode());
+            dto.setLocality(entity.getLocality());
+            return dto;
+        });
     }
 
     @Override

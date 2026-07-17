@@ -462,6 +462,33 @@ public class VersioningStatusAPI {
         return obj;
     }
 
+    /** Applies already-loaded version and group data during bulk retrieval. */
+    public static void applyVersion(EPOSDataModelEntity obj, Versioningstatus vs, List<String> groups) {
+        if (vs == null || isPendingRelationMarker(vs)) {
+            if (obj.getStatus() == null) {
+                obj.setStatus(DRAFT);
+            }
+            obj.setGroups(groups == null ? List.of() : groups);
+            return;
+        }
+
+        obj.setVersionId(vs.getVersionId());
+        obj.setChangeComment(vs.getChangeComment());
+        if (vs.getChangeTimestamp() != null) {
+            obj.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+        }
+        obj.setEditorId(vs.getEditorId());
+        obj.setFileProvenance(vs.getProvenance());
+        obj.setVersion(vs.getVersion());
+        obj.setInstanceChangedId(vs.getInstanceChangeId());
+        obj.setGroups(groups == null ? List.of() : groups);
+        try {
+            obj.setStatus(StatusType.valueOf(vs.getStatus()));
+        } catch (IllegalArgumentException e) {
+            obj.setStatus(DRAFT);
+        }
+    }
+
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
         List<Versioningstatus> returnList = null;
 

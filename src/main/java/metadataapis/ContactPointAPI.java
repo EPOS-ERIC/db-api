@@ -189,41 +189,17 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("contactpointInstance", instanceId, ContactpointElement.class);
-        deleteRelations("contactpointInstance", instanceId, WebserviceContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, DataproductContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, EquipmentContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, FacilityContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, SoftwaresourcecodeContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, SoftwareapplicationContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, ServiceContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, PersonContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, OrganizationContactpoint.class);
-        deleteElementRelations(instanceId);
-
-        List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
-        for (Contactpoint object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteElementRelations(String instanceId) {
-        List<ContactpointElement> list = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("contactpointInstance", instanceId, ContactpointElement.class);
-        if (list != null) {
-            for (ContactpointElement ce : list) {
-                if (ce.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(ce.getElementInstance());
-                }
-                EposDataModelDAO.getInstance().deleteObject(ce);
-            }
-        }
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getJoinEntitiesByParentId(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Contactpoint.class, Map.of(
+                ContactpointElement.class, "contactpointInstance",
+                WebserviceContactpoint.class, "contactpointInstance",
+                DataproductContactpoint.class, "contactpointInstance",
+                EquipmentContactpoint.class, "contactpointInstance",
+                FacilityContactpoint.class, "contactpointInstance",
+                SoftwaresourcecodeContactpoint.class, "contactpointInstance",
+                SoftwareapplicationContactpoint.class, "contactpointInstance",
+                ServiceContactpoint.class, "contactpointInstance",
+                PersonContactpoint.class, "contactpointInstance",
+                OrganizationContactpoint.class, "contactpointInstance"));
     }
 
     @Override

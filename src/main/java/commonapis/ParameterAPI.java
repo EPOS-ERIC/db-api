@@ -116,18 +116,8 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     }
     @Override
     public Boolean delete(String instanceId) {
-        // Batch delete for SoftwareApplicationParameter and Parameter
-        List<SoftwareapplicationParameter> parameterItemsToDelete = (List<SoftwareapplicationParameter>) getDbaccess().getAllFromDB(SoftwareapplicationParameter.class).stream()
-                .filter(item -> ((SoftwareapplicationParameter) item).getParameterInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterItemsToDelete);
-
-        List<Parameter> parameterListToDelete = (List<Parameter>) getDbaccess().getAllFromDB(Parameter.class).stream()
-                .filter(item -> ((Parameter)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(parameterListToDelete);
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Parameter.class,
+                java.util.Map.of(SoftwareapplicationParameter.class, "parameterInstance"));
     }
 
 
@@ -146,10 +136,17 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
 
     private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-
-        return dbEntities.parallelStream()
-                .map(item -> retrieve(item))
-                .collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Parameter.class, entity -> {
+            org.epos.eposdatamodel.SoftwareApplicationParameter dto =
+                    new org.epos.eposdatamodel.SoftwareApplicationParameter();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setEncodingformat(entity.getEncodingformat());
+            dto.setConformsto(entity.getConformsto());
+            dto.setAction(entity.getAction());
+            return dto;
+        });
     }
 
     @Override

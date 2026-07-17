@@ -293,11 +293,8 @@ public class AttributionAPI extends AbstractAPI<org.epos.eposdatamodel.Attributi
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Object> roles = getDbaccess().getJoinEntitiesByParentId("attributionInstance", instanceId, AttributionRole.class);
-        if (roles != null) for (Object object : roles) EposDataModelDAO.getInstance().deleteObject(object);
-        List<Attribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Attribution.class);
-        for (Attribution object : elementList) EposDataModelDAO.getInstance().deleteObject(object);
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Attribution.class,
+                Map.of(AttributionRole.class, "attributionInstance"));
     }
 
     @Override

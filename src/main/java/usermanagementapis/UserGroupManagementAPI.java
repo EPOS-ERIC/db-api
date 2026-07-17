@@ -421,8 +421,10 @@ public class UserGroupManagementAPI {
             return Collections.emptyMap();
         }
 
-        // Fetch all AuthorizationGroup entries for all metaIds in one query
-        List<AuthorizationGroup> allAuthGroups = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        // Query only the requested groups; loading the entire authorization table
+        // makes bulk metadata retrieval scale with unrelated users and groups.
+        List<AuthorizationGroup> allAuthGroups = getDbaccess().getListFromDBBySpecificKey(
+                "meta.metaId", metaIds, AuthorizationGroup.class);
 
         // Build a map from metaId to group IDs
         Map<String, List<String>> result = new HashMap<>();

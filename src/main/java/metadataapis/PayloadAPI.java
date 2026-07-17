@@ -12,6 +12,7 @@ import relationsapi.RelationChecker;
 import relationsapi.RelationSyncUtil;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -138,19 +139,9 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("payloadInstance", instanceId, PayloadOutputMapping.class);
-        deleteRelations("payloadInstance", instanceId, OperationPayload.class);
-
-        List<Payload> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Payload.class);
-        for (Payload object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Payload.class, Map.of(
+                PayloadOutputMapping.class, "payloadInstance",
+                OperationPayload.class, "payloadInstance"));
     }
 
     @Override

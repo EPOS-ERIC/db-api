@@ -377,32 +377,43 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     }
 
     private void handleElementRelations(DataProduct obj, Dataproduct edmobj, StatusType overrideStatus, boolean isNewVersion, String oldInstanceId) {
+        Set<ElementValue> existingElements = getExistingElementValues(edmobj.getInstanceId());
+
         // LANDING PAGE
         if (obj.getLandingPage() != null && !obj.getLandingPage().isEmpty()) {
-            for (String value : obj.getLandingPage()) {
-                createInnerElement(ElementType.LANDINGPAGE, value, edmobj, overrideStatus);
-            }
+            createInnerElements(ElementType.LANDINGPAGE, obj.getLandingPage(), edmobj, overrideStatus, existingElements);
         } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.LANDINGPAGE, overrideStatus);
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.LANDINGPAGE, overrideStatus, existingElements);
         }
 
         // REFERENCED BY
         if (obj.getReferencedBy() != null && !obj.getReferencedBy().isEmpty()) {
-            for (String value : obj.getReferencedBy()) {
-                createInnerElement(ElementType.REFERENCEDBY, value, edmobj, overrideStatus);
-            }
+            createInnerElements(ElementType.REFERENCEDBY, obj.getReferencedBy(), edmobj, overrideStatus, existingElements);
         } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.REFERENCEDBY, overrideStatus);
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.REFERENCEDBY, overrideStatus, existingElements);
         }
 
         // VARIABLE MEASURED
         if (obj.getVariableMeasured() != null && !obj.getVariableMeasured().isEmpty()) {
-            for (String value : obj.getVariableMeasured()) {
-                createInnerElement(ElementType.VARIABLEMEASURED, value, edmobj, overrideStatus);
-            }
+            createInnerElements(ElementType.VARIABLEMEASURED, obj.getVariableMeasured(), edmobj, overrideStatus, existingElements);
         } else if (isNewVersion && oldInstanceId != null) {
-            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.VARIABLEMEASURED, overrideStatus);
+            copyElementsFromPreviousVersion(oldInstanceId, edmobj, ElementType.VARIABLEMEASURED, overrideStatus, existingElements);
         }
+    }
+
+    private Set<ElementValue> getExistingElementValues(String dataproductInstanceId) {
+        List<DataproductElement> relations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("dataproductInstance", dataproductInstanceId, DataproductElement.class);
+        Set<ElementValue> values = new HashSet<>();
+        if (relations != null) {
+            for (DataproductElement relation : relations) {
+                Element element = relation.getElementInstance();
+                if (element != null && element.getType() != null) {
+                    values.add(new ElementValue(element.getType(), element.getValue()));
+                }
+            }
+        }
+        return values;
     }
 
     private void deleteExistingElements(String dataproductInstanceId) {
@@ -420,7 +431,8 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         }
     }
 
-    private void copyElementsFromPreviousVersion(String oldInstanceId, Dataproduct newEdmobj, ElementType elementType, StatusType overrideStatus) {
+    private void copyElementsFromPreviousVersion(String oldInstanceId, Dataproduct newEdmobj, ElementType elementType,
+                                                 StatusType overrideStatus, Set<ElementValue> existingElements) {
         List<Object> oldRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("dataproductInstance", oldInstanceId, DataproductElement.class);
 
@@ -430,7 +442,7 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             DataproductElement oldRelation = (DataproductElement) obj;
             Element oldElement = oldRelation.getElementInstance();
             if (oldElement != null && oldElement.getType().equals(elementType.name())) {
-                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
+                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus, existingElements);
             }
         }
     }
@@ -438,20 +450,18 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     // Dead code removed: copyDataproductCategoryRelations and copyDataproductContactPointRelations
     // These were replaced by RelationSyncUtil.syncComplexRelation()
 
-    private void createInnerElement(ElementType elementType, String value, Dataproduct edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("dataproductInstance", edmobj.getInstanceId(), DataproductElement.class);
+    private void createInnerElements(ElementType elementType, Collection<String> values, Dataproduct edmobj,
+                                     StatusType overrideStatus, Set<ElementValue> existingElements) {
+        for (String value : values) {
+            createInnerElement(elementType, value, edmobj, overrideStatus, existingElements);
+        }
+    }
 
-        if (existingRelations != null) {
-            for (Object obj : existingRelations) {
-                DataproductElement relation = (DataproductElement) obj;
-                Element existingElement = relation.getElementInstance();
-                if (existingElement != null &&
-                        existingElement.getType().equals(elementType.name()) &&
-                        existingElement.getValue().equals(value)) {
-                    return;
-                }
-            }
+    private void createInnerElement(ElementType elementType, String value, Dataproduct edmobj, StatusType overrideStatus,
+                                    Set<ElementValue> existingElements) {
+        ElementValue elementValue = new ElementValue(elementType.name(), value);
+        if (!existingElements.add(elementValue)) {
+            return;
         }
 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
@@ -473,7 +483,12 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             de.setDataproductInstance(edmobj);
             de.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(de);
+        } else {
+            existingElements.remove(elementValue);
         }
+    }
+
+    private record ElementValue(String type, String value) {
     }
 
     
@@ -482,35 +497,25 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("dataproductInstance", instanceId, DataproductTitle.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductDescription.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductProvenance.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductElement.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductIdentifier.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductSpatial.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductTemporal.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductCategory.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductContactpoint.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductPublisher.class);
-        deleteRelations("dataproductInstance", instanceId, DataproductAttribution.class);
-        deleteRelations("dataproductInstance", instanceId, DistributionDataproduct.class);
-        deleteRelations("dataproduct1Instance", instanceId, DataproductSource.class);
-        deleteRelations("dataproduct1Instance", instanceId, DataproductHaspart.class);
-        deleteRelations("dataproduct1Instance", instanceId, DataproductIspartof.class);
-        deleteRelations("dataproduct2Instance", instanceId, DataproductSource.class);
-        deleteRelations("dataproduct2Instance", instanceId, DataproductHaspart.class);
-        deleteRelations("dataproduct2Instance", instanceId, DataproductIspartof.class);
-
-        List<Dataproduct> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Dataproduct.class);
-        for (Dataproduct object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getJoinEntitiesByParentId(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Dataproduct.class, List.of(
+                new EposDataModelDAO.RelationField(DataproductTitle.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductDescription.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductProvenance.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductElement.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductIdentifier.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductSpatial.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductTemporal.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductCategory.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductContactpoint.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductPublisher.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductAttribution.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DistributionDataproduct.class, "dataproductInstance"),
+                new EposDataModelDAO.RelationField(DataproductSource.class, "dataproduct1Instance"),
+                new EposDataModelDAO.RelationField(DataproductHaspart.class, "dataproduct1Instance"),
+                new EposDataModelDAO.RelationField(DataproductIspartof.class, "dataproduct1Instance"),
+                new EposDataModelDAO.RelationField(DataproductSource.class, "dataproduct2Instance"),
+                new EposDataModelDAO.RelationField(DataproductHaspart.class, "dataproduct2Instance"),
+                new EposDataModelDAO.RelationField(DataproductIspartof.class, "dataproduct2Instance")));
     }
 
     @Override

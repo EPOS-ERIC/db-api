@@ -11,6 +11,7 @@ import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -106,73 +107,17 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
-            ContactpointElement item = (ContactpointElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
-            WebserviceElement item = (WebserviceElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
-            OrganizationElement item = (OrganizationElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
-            PersonElement item = (PersonElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
-            OperationElement item = (OperationElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
-            MappingElement item = (MappingElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
-            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
-            EquipmentElement item = (EquipmentElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
-            FacilityElement item = (FacilityElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
-        elementList.stream()
-                .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Element.class, Map.of(
+                ContactpointElement.class, "elementInstance",
+                DistributionElement.class, "elementInstance",
+                WebserviceElement.class, "elementInstance",
+                OrganizationElement.class, "elementInstance",
+                PersonElement.class, "elementInstance",
+                OperationElement.class, "elementInstance",
+                MappingElement.class, "elementInstance",
+                SoftwaresourcecodeElement.class, "elementInstance",
+                EquipmentElement.class, "elementInstance",
+                FacilityElement.class, "elementInstance"));
     }
 
     @Override
@@ -198,7 +143,15 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
 
     private List<org.epos.eposdatamodel.Element> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Element.class, entity -> {
+            org.epos.eposdatamodel.Element dto = new org.epos.eposdatamodel.Element();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setType(ElementType.valueOf(entity.getType()));
+            dto.setValue(entity.getValue());
+            return dto;
+        });
     }
 
     @Override

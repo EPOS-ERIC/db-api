@@ -12,6 +12,7 @@ import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -89,37 +90,12 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Object> relatedItems = (List<Object>) getDbaccess().getAllFromDB(DataproductSpatial.class).stream()
-                .filter(item -> ((DataproductSpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(WebserviceSpatial.class).stream()
-                .filter(item -> ((WebserviceSpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(FacilitySpatial.class).stream()
-                .filter(item -> ((FacilitySpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(EquipmentSpatial.class).stream()
-                .filter(item -> ((EquipmentSpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(ServiceSpatial.class).stream()
-                .filter(item -> ((ServiceSpatial) item).getSpatialInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        List<Spatial> spatialItems = (List<Spatial>) getDbaccess().getAllFromDB(Spatial.class).stream()
-                .filter(item -> ((Spatial)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(spatialItems);
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Spatial.class, Map.of(
+                DataproductSpatial.class, "spatialInstance",
+                WebserviceSpatial.class, "spatialInstance",
+                FacilitySpatial.class, "spatialInstance",
+                EquipmentSpatial.class, "spatialInstance",
+                ServiceSpatial.class, "spatialInstance"));
     }
 
     @Override
@@ -162,7 +138,14 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
 
     private List<org.epos.eposdatamodel.Location> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Spatial.class, entity -> {
+            org.epos.eposdatamodel.Location dto = new org.epos.eposdatamodel.Location();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setLocation(entity.getLocation());
+            return dto;
+        });
     }
 
     @Override

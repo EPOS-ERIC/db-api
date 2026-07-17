@@ -13,6 +13,7 @@ import usermanagementapis.UserGroupManagementAPI;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -90,32 +91,11 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Object> relatedItems = (List<Object>) getDbaccess().getAllFromDB(DataproductTemporal.class).stream()
-                .filter(item -> ((DataproductTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(WebserviceTemporal.class).stream()
-                .filter(item -> ((WebserviceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(EquipmentTemporal.class).stream()
-                .filter(item -> ((EquipmentTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        relatedItems = (List<Object>) getDbaccess().getAllFromDB(ServiceTemporal.class).stream()
-                .filter(item -> ((ServiceTemporal) item).getTemporalInstance().getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(relatedItems);
-
-        List<Temporal> temporalItems = (List<Temporal>) getDbaccess().getAllFromDB(Temporal.class).stream()
-                .filter(item -> ((Temporal)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(temporalItems);
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Temporal.class, Map.of(
+                DataproductTemporal.class, "temporalInstance",
+                WebserviceTemporal.class, "temporalInstance",
+                EquipmentTemporal.class, "temporalInstance",
+                ServiceTemporal.class, "temporalInstance"));
     }
 
     @Override
@@ -159,7 +139,15 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
 
     private List<org.epos.eposdatamodel.PeriodOfTime> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Temporal.class, entity -> {
+            org.epos.eposdatamodel.PeriodOfTime dto = new org.epos.eposdatamodel.PeriodOfTime();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setStartDate(entity.getStartdate());
+            dto.setEndDate(entity.getEnddate());
+            return dto;
+        });
     }
 
     @Override

@@ -87,11 +87,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Quantitativevalue> itemsToDelete = (List<Quantitativevalue>) getDbaccess().getAllFromDB(Quantitativevalue.class).stream()
-                .filter(item -> ((Quantitativevalue)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(itemsToDelete);
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Quantitativevalue.class, Collections.emptyMap());
     }
 
     @Override
@@ -136,7 +132,15 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Quantitativevalue.class, entity -> {
+            org.epos.eposdatamodel.QuantitativeValue dto = new org.epos.eposdatamodel.QuantitativeValue();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setUnit(entity.getUnitcode());
+            dto.setValue(entity.getValue());
+            return dto;
+        });
     }
 
     @Override

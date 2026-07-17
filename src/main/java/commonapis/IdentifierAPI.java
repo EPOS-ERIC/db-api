@@ -8,6 +8,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -83,36 +84,11 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
-            DataproductIdentifier item = (DataproductIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
-            WebserviceIdentifier item = (WebserviceIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
-            OrganizationIdentifier item = (OrganizationIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
-            PersonIdentifier item = (PersonIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        List<Identifier> identifierList = getDbaccess().getAllFromDB(Identifier.class);
-        identifierList.stream()
-                .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Identifier.class, Map.of(
+                DataproductIdentifier.class, "identifierInstance",
+                WebserviceIdentifier.class, "identifierInstance",
+                OrganizationIdentifier.class, "identifierInstance",
+                PersonIdentifier.class, "identifierInstance"));
     }
 
     @Override
@@ -155,7 +131,15 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     private List<org.epos.eposdatamodel.Identifier> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Identifier.class, entity -> {
+            org.epos.eposdatamodel.Identifier dto = new org.epos.eposdatamodel.Identifier();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setType(entity.getType());
+            dto.setIdentifier(entity.getValue());
+            return dto;
+        });
     }
 
     @Override

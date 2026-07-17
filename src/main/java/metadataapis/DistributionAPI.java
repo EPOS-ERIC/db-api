@@ -205,28 +205,37 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
     private void copyElementsFromPreviousVersion(String oldInstanceId, Distribution newEdmobj, ElementType type, StatusType overrideStatus) {
         List<Object> oldElements = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", oldInstanceId, DistributionElement.class);
+        Set<ElementValue> existingElements = getExistingElementValues(newEdmobj.getInstanceId());
         if (oldElements != null) {
             for (Object obj : oldElements) {
                 DistributionElement oldDe = (DistributionElement) obj;
                 if (oldDe.getElementInstance() != null && type.name().equals(oldDe.getElementInstance().getType())) {
-                    createInnerElement(type, oldDe.getElementInstance().getValue(), newEdmobj, overrideStatus);
+                    createInnerElement(type, oldDe.getElementInstance().getValue(), newEdmobj, overrideStatus, existingElements);
                 }
             }
         }
     }
 
-    private void createInnerElement(ElementType elementType, String value, Distribution edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", edmobj.getInstanceId(), DistributionElement.class);
-        if (existingRelations != null) {
-            for (Object obj : existingRelations) {
-                DistributionElement relation = (DistributionElement) obj;
-                Element existingElement = relation.getElementInstance();
-                if (existingElement != null &&
-                        existingElement.getType().equals(elementType.name()) &&
-                        existingElement.getValue().equals(value)) {
-                    return;
+    private Set<ElementValue> getExistingElementValues(String distributionInstanceId) {
+        List<DistributionElement> relations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("distributionInstance", distributionInstanceId, DistributionElement.class);
+        Set<ElementValue> values = new HashSet<>();
+        if (relations != null) {
+            for (DistributionElement relation : relations) {
+                Element element = relation.getElementInstance();
+                if (element != null && element.getType() != null) {
+                    values.add(new ElementValue(element.getType(), element.getValue()));
                 }
             }
+        }
+        return values;
+    }
+
+    private void createInnerElement(ElementType elementType, String value, Distribution edmobj, StatusType overrideStatus,
+                                    Set<ElementValue> existingElements) {
+        ElementValue elementValue = new ElementValue(elementType.name(), value);
+        if (!existingElements.add(elementValue)) {
+            return;
         }
 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
@@ -253,16 +262,22 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             ce.setDistributionInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
+        } else {
+            existingElements.remove(elementValue);
         }
     }
 
     private void replaceInnerElements(Distribution edmobj, List<String> values, ElementType elementType, StatusType overrideStatus) {
         deleteInnerElementsByType(edmobj.getInstanceId(), elementType);
         if (values != null && !values.isEmpty()) {
+            Set<ElementValue> existingElements = getExistingElementValues(edmobj.getInstanceId());
             for (String value : values) {
-                createInnerElement(elementType, value, edmobj, overrideStatus);
+                createInnerElement(elementType, value, edmobj, overrideStatus, existingElements);
             }
         }
+    }
+
+    private record ElementValue(String type, String value) {
     }
 
     private void deleteInnerElementsByType(String distributionInstanceId, ElementType type) {
@@ -285,23 +300,13 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("distributionInstance", instanceId, DistributionTitle.class);
-        deleteRelations("distributionInstance", instanceId, DistributionElement.class);
-        deleteRelations("distributionInstance", instanceId, DistributionDescription.class);
-        deleteRelations("distributionInstance", instanceId, DistributionDataproduct.class);
-        deleteRelations("distributionInstance", instanceId, OperationDistribution.class);
-        deleteRelations("distributionInstance", instanceId, WebserviceDistribution.class);
-
-        List<Distribution> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Distribution.class);
-        for (Distribution object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Distribution.class, Map.of(
+                DistributionTitle.class, "distributionInstance",
+                DistributionElement.class, "distributionInstance",
+                DistributionDescription.class, "distributionInstance",
+                DistributionDataproduct.class, "distributionInstance",
+                OperationDistribution.class, "distributionInstance",
+                WebserviceDistribution.class, "distributionInstance"));
     }
 
     @Override

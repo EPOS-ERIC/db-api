@@ -9,6 +9,7 @@ import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -115,17 +116,8 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("outputMappingInstance", instanceId, PayloadOutputMapping.class);
-        List<OutputMapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, OutputMapping.class);
-        for (OutputMapping object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, OutputMapping.class,
+                Map.of(PayloadOutputMapping.class, "outputMappingInstance"));
     }
 
     @Override

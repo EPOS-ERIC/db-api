@@ -183,26 +183,16 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("categoryInstance", instanceId, CategoryHastopconcept.class);
-        deleteRelations("category1Instance", instanceId, CategoryIspartof.class);
-        deleteRelations("category2Instance", instanceId, CategoryIspartof.class);
-        deleteRelations("categoryInstance", instanceId, DataproductCategory.class);
-        deleteRelations("categoryInstance", instanceId, WebserviceCategory.class);
-        deleteRelations("categoryInstance", instanceId, SoftwareapplicationCategory.class);
-        deleteRelations("categoryInstance", instanceId, SoftwaresourcecodeCategory.class);
-        deleteRelations("categoryInstance", instanceId, FacilityCategory.class);
-        deleteRelations("categoryInstance", instanceId, EquipmentCategory.class);
-
-        List<Category> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Category.class);
-        for(Category object : elementList){
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if(list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Category.class, List.of(
+                new EposDataModelDAO.RelationField(CategoryHastopconcept.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(CategoryIspartof.class, "category1Instance"),
+                new EposDataModelDAO.RelationField(CategoryIspartof.class, "category2Instance"),
+                new EposDataModelDAO.RelationField(DataproductCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(WebserviceCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(FacilityCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(EquipmentCategory.class, "categoryInstance")));
     }
 
     @Override

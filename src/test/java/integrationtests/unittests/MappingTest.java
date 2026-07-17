@@ -37,7 +37,7 @@ public class MappingTest extends TestcontainersLifecycle {
         operation.setStatus(StatusType.DRAFT);
         operation.setMethod("GET");
         operation.setTemplate("Template");
-        operation.setReturns(List.of("returns"));
+        operation.setReturns(List.of("returns", "returns", "application/json"));
         operation.setMapping(List.of(linkedEntity1));
 
         LinkedEntity linkedEntity2 = AbstractAPI.retrieveAPI(EntityNames.OPERATION.name()).create(operation, null, null, null);
@@ -50,7 +50,9 @@ public class MappingTest extends TestcontainersLifecycle {
 
         assertAll(
                 () -> assertEquals(1,operations.size()),
-                () -> assertEquals(1,mappings.size())
+                () -> assertEquals(1,mappings.size()),
+                () -> assertEquals(new HashSet<>(List.of("returns", "application/json")),
+                        new HashSet<>(operations.get(0).getReturns()))
         );
     }
 

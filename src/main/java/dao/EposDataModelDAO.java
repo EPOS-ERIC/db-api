@@ -457,6 +457,97 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+	/**
+	 * Deletes a principal entity and its referencing join rows in one transaction.
+	 * The relation fields are model property names and are supplied only by internal
+	 * API classes, so they are not derived from request input.
+	 */
+	public Boolean deleteByInstanceIdWithRelations(String instanceId, Class<?> entityClass,
+			Map<Class<?>, String> relationFields) {
+		if (instanceId == null || instanceId.isBlank() || entityClass == null) {
+			return false;
+		}
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+
+			if (relationFields != null) {
+				for (Map.Entry<Class<?>, String> relation : relationFields.entrySet()) {
+					em.createQuery("DELETE FROM " + relation.getKey().getSimpleName()
+							+ " r WHERE r." + relation.getValue() + ".instanceId = :id")
+							.setParameter("id", instanceId)
+							.executeUpdate();
+					evictCacheByPattern(relation.getKey().getSimpleName());
+				}
+			}
+
+			em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
+					.setParameter("id", instanceId)
+					.executeUpdate();
+			tx.commit();
+			evictCacheByPattern(entityClass.getSimpleName());
+			return true;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error deleting {} with relations", entityClass.getSimpleName(), e);
+			return false;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** A join entity and the parent-side property used for a targeted bulk delete. */
+	public record RelationField(Class<?> entityClass, String parentField) {
+	}
+
+	/**
+	 * Variant for principals referenced through multiple fields of the same join
+	 * entity, such as bidirectional self-relations.
+	 */
+	public Boolean deleteByInstanceIdWithRelations(String instanceId, Class<?> entityClass,
+			List<RelationField> relationFields) {
+		if (instanceId == null || instanceId.isBlank() || entityClass == null) {
+			return false;
+		}
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+
+			if (relationFields != null) {
+				for (RelationField relation : relationFields) {
+					String path = relation.parentField().startsWith("id.")
+							? "r." + relation.parentField()
+							: "r." + relation.parentField() + ".instanceId";
+					em.createQuery("DELETE FROM " + relation.entityClass().getSimpleName()
+							+ " r WHERE " + path + " = :id")
+							.setParameter("id", instanceId).executeUpdate();
+					evictCacheByPattern(relation.entityClass().getSimpleName());
+				}
+			}
+
+			em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
+					.setParameter("id", instanceId)
+					.executeUpdate();
+			tx.commit();
+			evictCacheByPattern(entityClass.getSimpleName());
+			return true;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error deleting {} with relations", entityClass.getSimpleName(), e);
+			return false;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
 	// =================== MULTI-LAYER CACHED QUERY METHODS ===================
 
 	public List<T> getOneFromDBByInstanceId(String instanceId, Class<T> obj) {
@@ -741,6 +832,28 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+	/** Fetches rows whose validated scalar or association path matches any supplied value. */
+	public <E> List<E> getListFromDBBySpecificKey(String key, List<?> values, Class<E> entityClass) {
+		if (values == null || values.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			String path = specificKeyPath(em, entityClass, key);
+			TypedQuery<E> query = em.createQuery(
+					"SELECT c FROM " + entityClass.getSimpleName() + " c WHERE c." + path + " IN :values", entityClass);
+			query.setParameter("values", values);
+			return query.getResultList();
+		} catch (Exception e) {
+			LOG.error("Error in getListFromDBBySpecificKey", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
 	/**
 	 * Checks if entity has PENDING status via version field or direct status field.
 	 * Uses cached reflection to minimize overhead.
@@ -900,7 +1013,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.metaId LIKE :mid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.metaId = :mid", obj);
 			query.setParameter("mid", metaId);
 			List<T> result = query.getResultList();
 			putInEntityCache(cacheKey, result);
@@ -926,7 +1039,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid LIKE :uid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid = :uid", obj);
 			query.setParameter("uid", uid);
 			List<T> result = query.getResultList();
 
@@ -954,7 +1067,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.versionId LIKE :vid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.versionId = :vid", obj);
 			query.setParameter("vid", versionId);
 			List<T> result = query.getResultList();
 			putInQueryCache(cacheKey, result);

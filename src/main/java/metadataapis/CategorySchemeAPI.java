@@ -362,20 +362,9 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
     @Override
     public Boolean delete(String instanceId) {
-
-        List<org.epos.eposdatamodel.Category> categories = AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).retrieveAll();
-        for(org.epos.eposdatamodel.Category category : categories) {
-            if(category.getInScheme() != null && category.getInScheme().getInstanceId().equals(instanceId)) {
-                category.setInScheme(null);
-                AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name()).create(category,null,null,null);
-            }
-        }
-
-        List<CategoryScheme> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, CategoryScheme.class);
-        for (CategoryScheme object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
+        getDbaccess().bulkUpdateField(Category.class, "inScheme", null, "inScheme.instanceId", instanceId);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, CategoryScheme.class,
+                Map.of(CategoryHastopconcept.class, "categorySchemeInstance"));
     }
 
     @Override
