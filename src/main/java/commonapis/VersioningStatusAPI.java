@@ -119,6 +119,17 @@ public class VersioningStatusAPI {
             }
         }
 
+        // Publishing is a state change of the submitted revision, not a lookup
+        // of an already-published sibling. API mappers call this before
+        // checkVersion, so choosing the published sibling here would otherwise
+        // discard the caller's submitted instance ID.
+        if (targetStatus == PUBLISHED) {
+            Versioningstatus submitted = findByStatus(versions, SUBMITTED);
+            if (submitted != null) {
+                return submitted;
+            }
+        }
+
         Versioningstatus matching = findByStatus(versions, targetStatus);
         if (matching != null) {
             return matching;
@@ -375,6 +386,7 @@ public class VersioningStatusAPI {
         obj.setVersionId(edmobj.getVersionId());
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse("entity/" + UUID.randomUUID().toString()));
+        obj.setUid(edmobj.getUid());
         edmobj.setInstanceChangeId(null);
         edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
         edmobj.setChangeComment(obj.getChangeComment());

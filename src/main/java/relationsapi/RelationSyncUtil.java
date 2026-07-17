@@ -266,9 +266,6 @@ public class RelationSyncUtil {
             Object versionObj = invokeGetter(childEntity, VERSION_GETTERS, "getVersion");
             if (versionObj instanceof Versioningstatus vs) {
                 if (!newStatus.name().equals(vs.getStatus())) {
-                    if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
-                        archiveOldPublishedVersions(vs.getUid(), vs.getVersionId());
-                    }
                     vs.setStatus(newStatus.name());
                     vs.setChangeTimestamp(OffsetDateTime.now());
                     EposDataModelDAO.getInstance().updateObject(vs);
@@ -278,40 +275,6 @@ public class RelationSyncUtil {
             updateChildStatusByInstanceId(childEntity, newStatus);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Child status update failed: {0}", e.getMessage());
-        }
-    }
-
-    private static void archiveOldPublishedVersions(String uid, String currentVersionId) {
-        if (uid == null) {
-            return;
-        }
-        try {
-            List<Versioningstatus> allVersions = EposDataModelDAO.getInstance()
-                    .getOneFromDBByUIDNoCache(uid, Versioningstatus.class);
-            OffsetDateTime now = OffsetDateTime.now(); // Single timestamp for batch consistency
-
-            for (Versioningstatus vs : allVersions) {
-                String versionId = vs.getVersionId();
-                if (versionId != null && versionId.equals(currentVersionId)) {
-                    continue;
-                }
-                String metaId = vs.getMetaId();
-                if (metaId != null && metaId.indexOf('.') >= 0) {
-                    continue;
-                }
-                String status = vs.getStatus();
-                if (STATUS_PENDING.equals(status)) {
-                    continue;
-                }
-                if (STATUS_PUBLISHED.equals(status)) {
-                    vs.setStatus(STATUS_ARCHIVED);
-                    vs.setChangeTimestamp(now);
-                    vs.setChangeComment("Auto-archived on status propagation");
-                    EposDataModelDAO.getInstance().updateObject(vs);
-                }
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Archive operation failed: {0}", e.getMessage());
         }
     }
 
@@ -326,9 +289,6 @@ public class RelationSyncUtil {
             if (vsList != null && !vsList.isEmpty()) {
                 Versioningstatus vs = vsList.get(0);
                 if (!newStatus.name().equals(vs.getStatus())) {
-                    if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
-                        archiveOldPublishedVersions(vs.getUid(), vs.getVersionId());
-                    }
                     vs.setStatus(newStatus.name());
                     vs.setChangeTimestamp(OffsetDateTime.now());
                     EposDataModelDAO.getInstance().updateObject(vs);
@@ -584,7 +544,8 @@ public class RelationSyncUtil {
                 // A status transition must promote the exact child currently
                 // attached to this parent version. Resolving by UID/status here
                 // would select a published sibling and orphan the edited draft.
-                if (effectiveStatus == StatusType.PUBLISHED && link.getInstanceId() != null) {
+                if ((effectiveStatus == StatusType.SUBMITTED || effectiveStatus == StatusType.PUBLISHED)
+                        && link.getInstanceId() != null) {
                     J currentJoin = existingMap.get(link.getInstanceId());
                     if (currentJoin != null) {
                         rawTarget = targetGetter.apply(currentJoin);
@@ -656,7 +617,11 @@ public class RelationSyncUtil {
                         // but must never be persisted as the target of a versioned
                         // draft relation. This also covers ordinary updates whose
                         // payload contains a stale published LinkedEntity.
-                        boolean materializeDraft = cascadeSource;
+                        boolean targetIsPublished = getStatusFromEntity(targetEntity) == StatusType.PUBLISHED;
+                        boolean materializeDraft = (cascadeSource
+                                && (isNewVersion || effectiveStatus != StatusType.DRAFT))
+                                || (isNewVersion && effectiveStatus == StatusType.DRAFT
+                                && targetIsPublished);
 
                         // Handle cascade versioning or status propagation
                         boolean isCurrentRelationTarget = sameLinkedEntity(link, relationToUpdate);
@@ -682,7 +647,10 @@ public class RelationSyncUtil {
                                     targetIdForJoin = getModelId(newVersionTarget);
                                 }
                             }
-                        } else if (effectiveStatus != null && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
+                        } else if (effectiveStatus != null
+                                && !(effectiveStatus == StatusType.DRAFT
+                                && targetIsPublished)
+                                && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                             updateChildEntityStatus(targetEntity, effectiveStatus);
                         }
 

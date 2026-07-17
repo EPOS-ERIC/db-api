@@ -281,39 +281,6 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
         /** ELEMENT-BASED RELATIONS (landingPage, referencedBy, variableMeasured) **/
         handleElementRelations(obj, edmobj, overrideStatus, isNewVersion, oldInstanceId);
 
-        if (StatusType.PUBLISHED.equals(obj.getStatus())) {
-            RelationSyncUtil.propagateStatusToChildren(
-                    edmobj, edmobj.getInstanceId(), DistributionDataproduct.class,
-                    "dataproductInstance", obj);
-            AbstractAPI distributionApi = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
-            if (distributionLinks != null) {
-                for (LinkedEntity distributionLink : distributionLinks) {
-                    org.epos.eposdatamodel.Distribution child =
-                            (org.epos.eposdatamodel.Distribution) distributionApi.retrieve(distributionLink.getInstanceId());
-                    if (child != null) {
-                        distributionApi.create(child, StatusType.PUBLISHED, null, null);
-                        for (Object rawChildVersion : getDbaccess()
-                                .getOneFromDBByInstanceIdNoCache(distributionLink.getInstanceId(), Versioningstatus.class)) {
-                            Versioningstatus childVersion = (Versioningstatus) rawChildVersion;
-                            if (!StatusType.PUBLISHED.name().equals(childVersion.getStatus())) {
-                                childVersion.setStatus(StatusType.PUBLISHED.name());
-                                getDbaccess().updateObject(childVersion);
-                            }
-                        }
-                        for (Object rawDistribution : getDbaccess().getOneFromDBByUIDNoCache(
-                                distributionLink.getUid(), Distribution.class)) {
-                            Distribution distribution = (Distribution) rawDistribution;
-                            if (distribution.getVersion() != null
-                                    && !StatusType.PUBLISHED.name().equals(distribution.getVersion().getStatus())) {
-                                distribution.getVersion().setStatus(StatusType.PUBLISHED.name());
-                                getDbaccess().updateObject(distribution.getVersion());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         getDbaccess().updateObject(edmobj);
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DATAPRODUCT.name(), edmobj);
