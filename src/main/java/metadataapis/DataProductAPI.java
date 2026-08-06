@@ -590,7 +590,9 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
     @Override
     public org.epos.eposdatamodel.DataProduct retrieveByUID(String uid) {
         List<Dataproduct> returnList = getDbaccess().getOneFromDBByUID(uid, Dataproduct.class);
-        return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
+        Dataproduct draft = VersioningStatusAPI.selectLatestDraftVersion(returnList, Dataproduct::getVersion);
+        Dataproduct selected = draft != null ? draft : (!returnList.isEmpty() ? returnList.get(0) : null);
+        return selected != null ? retrieve(selected.getInstanceId()) : null;
     }
 
     @Override

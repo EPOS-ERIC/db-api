@@ -201,6 +201,36 @@ public class VersioningStatusAPI {
         return versions.get(0);
     }
 
+    /**
+     * Selects the most recently changed draft when a read is not scoped to an editor.
+     */
+    public static <T> T selectLatestDraftVersion(List<T> versions,
+                                                  Function<T, Versioningstatus> versionGetter) {
+        T selected = null;
+        Versioningstatus selectedVersion = null;
+
+        if (versions == null) {
+            return null;
+        }
+
+        for (T candidate : versions) {
+            Versioningstatus candidateVersion = versionGetter.apply(candidate);
+            if (candidateVersion == null || !DRAFT.toString().equals(candidateVersion.getStatus())) {
+                continue;
+            }
+
+            if (selectedVersion == null
+                    || (candidateVersion.getChangeTimestamp() != null
+                    && (selectedVersion.getChangeTimestamp() == null
+                    || candidateVersion.getChangeTimestamp().isAfter(selectedVersion.getChangeTimestamp())))) {
+                selected = candidate;
+                selectedVersion = candidateVersion;
+            }
+        }
+
+        return selected;
+    }
+
     private static Versioningstatus findDraftForEditor(List<Versioningstatus> versions, String editorId) {
         for (Versioningstatus vs : versions) {
             if (vs == null || isPendingRelationMarker(vs)) {

@@ -465,14 +465,15 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
     @Override
     public Boolean delete(String instanceId) {
-        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Organization.class, Map.of(
-                OrganizationContactpoint.class, "organizationInstance",
-                OrganizationOwn.class, "organization",
-                DataproductPublisher.class, "organizationInstance",
-                OrganizationMemberof.class, "organization1Instance",
-                OrganizationIdentifier.class, "organizationInstance",
-                OrganizationElement.class, "organizationInstance",
-                OrganizationAffiliation.class, "organizationInstance"));
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Organization.class, List.of(
+                new EposDataModelDAO.RelationField(OrganizationContactpoint.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationOwn.class, "organization"),
+                new EposDataModelDAO.RelationField(DataproductPublisher.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationMemberof.class, "organization1Instance"),
+                new EposDataModelDAO.RelationField(OrganizationMemberof.class, "organization2Instance"),
+                new EposDataModelDAO.RelationField(OrganizationIdentifier.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationElement.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationAffiliation.class, "organizationInstance")));
     }
 
     private void deleteRelations(String key, String instanceId, Class<?> clazz) {

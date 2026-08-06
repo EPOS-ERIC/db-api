@@ -469,7 +469,9 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
     @Override
     public org.epos.eposdatamodel.WebService retrieveByUID(String uid) {
         List<Webservice> returnList = getDbaccess().getOneFromDBByUID(uid, Webservice.class);
-        return !returnList.isEmpty() ? retrieve(returnList.get(0).getInstanceId()) : null;
+        Webservice draft = VersioningStatusAPI.selectLatestDraftVersion(returnList, Webservice::getVersion);
+        Webservice selected = draft != null ? draft : (!returnList.isEmpty() ? returnList.get(0) : null);
+        return selected != null ? retrieve(selected.getInstanceId()) : null;
     }
 
     @Override
