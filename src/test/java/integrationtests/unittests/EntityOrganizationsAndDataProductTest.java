@@ -43,7 +43,7 @@ public class EntityOrganizationsAndDataProductTest extends TestcontainersLifecyc
                 () -> assertEquals(organization.getMetaId(), retrievedOrganization.getMetaId()),
                 () -> assertEquals(organization.getUid(), retrievedOrganization.getUid()),
                 () -> assertEquals(organization.getAcronym(), retrievedOrganization.getAcronym()),
-                () -> assertEquals(StatusType.DRAFT, retrievedOrganization.getStatus()),
+                () -> assertEquals(StatusType.PUBLISHED, retrievedOrganization.getStatus()),
                 () -> assertNotNull(retrievedOrganization.getChangeTimestamp())
         );
     }

@@ -12,6 +12,7 @@ import utilities.MemoryMonitor;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.function.Function;
@@ -21,6 +22,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class AbstractAPI<T> {
+
+    private static final Set<String> PUBLISHED_REFERENCE_ENTITIES = Set.of(
+            EntityNames.ADDRESS.name(),
+            EntityNames.CATEGORY.name(),
+            EntityNames.CATEGORYSCHEME.name(),
+            EntityNames.CONTACTPOINT.name(),
+            EntityNames.ORGANIZATION.name());
 
     protected final Logger LOG = Logger.getLogger(getClass().getName());
 
@@ -94,6 +102,17 @@ public abstract class AbstractAPI<T> {
     }
 
     public abstract LinkedEntity create(T obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate);
+
+    /**
+     * Reference entities are shared across drafts and must never acquire a draft version.
+     */
+    protected StatusType enforcePublishedReferenceStatus(EPOSDataModelEntity obj, StatusType overrideStatus) {
+        if (PUBLISHED_REFERENCE_ENTITIES.contains(entityName)) {
+            obj.setStatus(StatusType.PUBLISHED);
+            return StatusType.PUBLISHED;
+        }
+        return overrideStatus;
+    }
 
     protected void logCreateStart(T obj, StatusType overrideStatus) {
         if (LOG.isLoggable(Level.INFO)) {

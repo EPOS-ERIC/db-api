@@ -27,6 +27,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     public LinkedEntity create(org.epos.eposdatamodel.Category obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;

@@ -27,6 +27,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     public LinkedEntity create(ContactPoint obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         // Performance: Single retrieve call instead of potentially calling twice

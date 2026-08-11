@@ -64,7 +64,7 @@ public class CategoryCrudTest extends TestcontainersLifecycle {
         assertEquals("A scheme for CRUD testing", retrieved.getDescription());
         assertEquals("CTS", retrieved.getCode());
         assertEquals("#FF5733", retrieved.getColor());
-        assertEquals(StatusType.DRAFT, retrieved.getStatus());
+        assertEquals(StatusType.PUBLISHED, retrieved.getStatus());
 
         LOG.info("Created CategoryScheme: " + retrieved.getUid());
     }
@@ -182,7 +182,7 @@ public class CategoryCrudTest extends TestcontainersLifecycle {
         assertNotNull(retrieved);
         assertEquals("CRUD Test Category", retrieved.getName());
         assertEquals("A category for CRUD testing", retrieved.getDescription());
-        assertEquals(StatusType.DRAFT, retrieved.getStatus());
+        assertEquals(StatusType.PUBLISHED, retrieved.getStatus());
 
         LOG.info("Created Category: " + retrieved.getUid());
     }
@@ -602,14 +602,6 @@ public class CategoryCrudTest extends TestcontainersLifecycle {
     void testCategoryRetrieveAllWithStatus() {
         AbstractAPI api = AbstractAPI.retrieveAPI(EntityNames.CATEGORY.name());
 
-        // Create a DRAFT category
-        Category draftCategory = new Category();
-        draftCategory.setInstanceId(UUID.randomUUID().toString());
-        draftCategory.setMetaId(UUID.randomUUID().toString());
-        draftCategory.setUid("urn:epos:category:draft-status-" + UUID.randomUUID());
-        draftCategory.setName("Draft Status Category");
-        api.create(draftCategory, StatusType.DRAFT, null, null);
-
         // Create a PUBLISHED category
         Category publishedCategory = new Category();
         publishedCategory.setInstanceId(UUID.randomUUID().toString());
@@ -618,17 +610,12 @@ public class CategoryCrudTest extends TestcontainersLifecycle {
         publishedCategory.setName("Published Status Category");
         api.create(publishedCategory, StatusType.PUBLISHED, null, null);
 
-        // Retrieve only DRAFT
-        List<?> drafts = api.retrieveAllWithStatus(StatusType.DRAFT);
-        assertNotNull(drafts);
-        assertTrue(drafts.size() >= 1, "Should have at least 1 DRAFT category");
-
         // Retrieve only PUBLISHED
         List<?> published = api.retrieveAllWithStatus(StatusType.PUBLISHED);
         assertNotNull(published);
         assertTrue(published.size() >= 1, "Should have at least 1 PUBLISHED category");
 
-        LOG.info("Retrieved " + drafts.size() + " DRAFT and " + published.size() + " PUBLISHED categories");
+        LOG.info("Retrieved " + published.size() + " PUBLISHED categories");
     }
 
     // ==================== SUMMARY TEST ====================

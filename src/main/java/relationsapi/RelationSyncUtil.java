@@ -38,7 +38,7 @@ public class RelationSyncUtil {
 
     // Normalized to uppercase only - eliminates redundant storage and lookup overhead
     private static final Set<String> REFERENCE_ENTITIES = Set.of(
-            "CATEGORY", "CATEGORYSCHEME", "ORGANIZATION", "PERSON", "CONTACTPOINT"
+            "ADDRESS", "CATEGORY", "CATEGORYSCHEME", "ORGANIZATION", "PERSON", "CONTACTPOINT"
     );
 
     // Pre-interned status strings avoid repeated string creation in hot paths
@@ -164,6 +164,15 @@ public class RelationSyncUtil {
             }
         }
         return true;
+    }
+
+    private static boolean isIngestor(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        return entity != null && entity.getEditorId() != null
+                && INGESTOR.equalsIgnoreCase(entity.getEditorId().trim());
+    }
+
+    private static boolean canMaterializeReference(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        return entity == null || entity.getEditorId() == null || isIngestor(entity);
     }
 
     // ===== Self-Reference Check =====
@@ -644,8 +653,10 @@ public class RelationSyncUtil {
                     }
                 }
 
-                // Stub creation fallback for reference entities
-                if (rawTarget == null && isReferenceEntity(targetClass) && link.getUid() != null) {
+                // Only ingestion may materialize a missing shared reference. Backoffice
+                // users can link existing references but must not create them indirectly.
+                if (rawTarget == null && isReferenceEntity(targetClass) && canMaterializeReference(mainEntity)
+                        && link.getUid() != null) {
                     rawTarget = createStubEntity(targetClass, link.getUid(), effectiveStatus);
                 }
 

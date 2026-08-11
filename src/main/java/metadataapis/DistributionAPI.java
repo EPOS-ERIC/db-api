@@ -73,6 +73,14 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         obj = (org.epos.eposdatamodel.Distribution) VersioningStatusAPI.checkVersion(obj, overrideStatus);
 
+        // A status transition may contain only identity and status fields. Keep the
+        // owned access-service links unless the caller is performing a full update.
+        if (overrideStatus != null && obj.getAccessService() == null
+                && previousObj instanceof org.epos.eposdatamodel.Distribution previousDistribution
+                && previousDistribution.getAccessService() != null) {
+            obj.setAccessService(previousDistribution.getAccessService());
+        }
+
         if (obj.getInstanceChangedId() != null && obj.getAccessService() == null) {
             org.epos.eposdatamodel.Distribution previousVersion = retrieve(obj.getInstanceChangedId());
             if (previousVersion != null && previousVersion.getAccessService() != null) {

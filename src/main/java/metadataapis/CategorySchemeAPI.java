@@ -34,6 +34,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     public LinkedEntity create(org.epos.eposdatamodel.CategoryScheme obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         // Capture if fields were explicitly set BEFORE any processing

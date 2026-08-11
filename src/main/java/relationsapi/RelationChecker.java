@@ -96,6 +96,7 @@ public class RelationChecker {
      * unless explicitly in ingestor mode.
      */
     private static final Set<String> SHARED_REFERENCE_ENTITIES = Set.of(
+            EntityNames.ADDRESS.name(),
             EntityNames.CATEGORY.name(),
             EntityNames.CATEGORYSCHEME.name(),
             EntityNames.ORGANIZATION.name(),
@@ -135,6 +136,15 @@ public class RelationChecker {
             }
         }
         return true;
+    }
+
+    private static boolean isIngestor(EPOSDataModelEntity entity) {
+        return entity != null && entity.getEditorId() != null
+                && INGESTOR.equalsIgnoreCase(entity.getEditorId().trim());
+    }
+
+    private static boolean canMaterializeReference(EPOSDataModelEntity entity) {
+        return entity == null || entity.getEditorId() == null || isIngestor(entity);
     }
 
     /**
@@ -388,7 +398,8 @@ public class RelationChecker {
                     // WebService links are handled better as pending relations because
                     // the stub path does not reliably materialize the join table entry.
                     if (obj == null && Boolean.TRUE.equals(enableStore) && linkedEntityType != null
-                            && !EntityNames.WEBSERVICE.name().equals(linkedEntityTypeUpper)) {
+                            && !EntityNames.WEBSERVICE.name().equals(linkedEntityTypeUpper)
+                            && (!isSharedReferenceEntity(linkedEntityType) || canMaterializeReference(mainEntity))) {
                         obj = createStubEntity(linkedEntity, mainEntity, overrideStatus);
                     }
                 }

@@ -37,6 +37,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         boolean addressExplicitlySet = isFieldExplicitlySet(obj, "address");

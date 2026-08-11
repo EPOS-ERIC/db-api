@@ -136,8 +136,8 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         assertAll(
                 () -> assertEquals(2, distributionList.size()),
                 () -> assertEquals(2, webserviceList.size()),
-                () -> assertEquals(2, operationList.size()),
-                () -> assertEquals(2, mappingList.size())
+                () -> assertEquals(3, operationList.size()),
+                () -> assertEquals(3, mappingList.size())
         );
 
     }
@@ -173,8 +173,8 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         assertAll(
                 () -> assertEquals(2, distributionList.size()),
                 () -> assertEquals(2, webserviceList.size()),
-                () -> assertEquals(2, operationList.size()),
-                () -> assertEquals(2, mappingList.size())
+                () -> assertEquals(3, operationList.size()),
+                () -> assertEquals(3, mappingList.size())
         );
 
     }
