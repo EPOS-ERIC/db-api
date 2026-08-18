@@ -169,26 +169,14 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         }
 
         Set<String> newKeys = new HashSet<>();
-        for (LinkedEntity link : links) {
-            Object targetEntity = findEntityByLinkedEntity(link, overrideStatus);
-            if (targetEntity != null) {
-                String targetInstanceId = getInstanceId(targetEntity);
-                if (targetInstanceId != null) newKeys.add(link.getEntityType() + ":" + targetInstanceId);
-            }
-        }
-
-        if (!isNewVersion) {
-            for (Map.Entry<String, Object> entry : existingRelations.entrySet()) {
-                if (!newKeys.contains(entry.getKey())) EposDataModelDAO.getInstance().deleteObject(entry.getValue());
-            }
-        }
-
+        List<T> newRelations = new ArrayList<>();
         for (LinkedEntity link : links) {
             Object targetEntity = findEntityByLinkedEntity(link, overrideStatus);
             if (targetEntity != null) {
                 String targetInstanceId = getInstanceId(targetEntity);
                 if (targetInstanceId != null) {
                     String key = link.getEntityType() + ":" + targetInstanceId;
+                    newKeys.add(key);
                     if (!existingRelations.containsKey(key)) {
                         try {
                             T pi = joinClass.getDeclaredConstructor().newInstance();
@@ -198,10 +186,8 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                             utilities.ReflectionCache.invokeStringSetter(pi, "setResourceEntity", link.getEntityType());
                             utilities.ReflectionCache.invokeStringSetter(pi, "setEntityInstanceId", targetInstanceId);
 
-                            EposDataModelDAO.getInstance().updateObject(pi);
-
+                            newRelations.add(pi);
                         } catch (Exception e) {
-                            // Swallow duplicates or log warning
                             LOG.warning("Failed to create polymorphic relation (likely duplicate): " + e.getMessage());
                         }
                     }
@@ -209,6 +195,20 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             } else {
                 createPendingCreatorRelation(parent.getInstanceId(), link, joinClass.getName());
             }
+        }
+
+        List<Object> obsoleteRelations = new ArrayList<>();
+        if (!isNewVersion) {
+            for (Map.Entry<String, Object> entry : existingRelations.entrySet()) {
+                if (!newKeys.contains(entry.getKey())) obsoleteRelations.add(entry.getValue());
+            }
+        }
+
+        if (!EposDataModelDAO.getInstance().deleteListOfObjects(obsoleteRelations)) {
+            LOG.warning("Failed to delete obsolete polymorphic relations");
+        }
+        if (!EposDataModelDAO.getInstance().updateListOfObjects(newRelations)) {
+            LOG.warning("Failed to create polymorphic relations (likely duplicate)");
         }
     }
 
@@ -282,12 +282,18 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             }
         }
         if (!isNewVersion) {
+            List<SoftwareapplicationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (Map.Entry<String, SoftwareapplicationElement> entry : existingElements.entrySet()) {
                 if (!values.contains(entry.getKey())) {
-                    if (entry.getValue().getElementInstance() != null) EposDataModelDAO.getInstance().deleteObject(entry.getValue().getElementInstance());
-                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+                    relationsToDelete.add(entry.getValue());
+                    if (entry.getValue().getElementInstance() != null) {
+                        elementsToDelete.add(entry.getValue().getElementInstance());
+                    }
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
         for (String value : values) {
             if (!existingElements.containsKey(value)) {
@@ -392,6 +398,37 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) { return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Softwareapplication.class)); }
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() { return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Softwareapplication.class)); }
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllWithStatus(StatusType status) { return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Softwareapplication.class, status)); }
+    @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunchSummary(List<String> entities) { return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Softwareapplication.class)); }
+    @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllSummaryWithStatus(StatusType status) { return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Softwareapplication.class, status)); }
+
+    /**
+     * Returns list-oriented SoftwareApplication records without loading their
+     * relationship graph. Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Softwareapplication.class));
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.SoftwareApplicationSummaryRow> rows = dao
+                .fetchSoftwareApplicationSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.SoftwareApplicationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.SoftwareApplication> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.SoftwareApplicationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.SoftwareApplication dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
@@ -504,6 +541,19 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         dto.setSpatial(entity.getSpatial()); dto.setTemporal(entity.getTemporal()); dto.setMemoryrequirements(entity.getMemoryrequirements());
         dto.setProcessorRequirements(entity.getProcessorRequirements()); dto.setStorageRequirements(entity.getStorageRequirements());
         dto.setTimeRequired(entity.getTimeRequired());
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.SoftwareApplication toSummaryDto(EposDataModelDAO.SoftwareApplicationSummaryRow row) {
+        org.epos.eposdatamodel.SoftwareApplication dto = new org.epos.eposdatamodel.SoftwareApplication();
+        dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+        dto.setName(row.name()); dto.setDescription(row.description()); dto.setDownloadURL(row.downloadUrl());
+        dto.setInstallURL(row.installUrl()); dto.addKeywords(row.keywords()); dto.setLicenseURL(row.licenseUrl());
+        dto.setMainEntityOfPage(row.mainEntityOfPage()); dto.setRequirements(row.requirements());
+        dto.setSoftwareVersion(row.softwareVersion()); dto.setSoftwareStatus(row.softwareStatus()); dto.setFileSize(row.fileSize());
+        dto.setSpatial(row.spatial()); dto.setTemporal(row.temporal()); dto.setMemoryrequirements(row.memoryRequirements());
+        dto.setProcessorRequirements(row.processorRequirements()); dto.setStorageRequirements(row.storageRequirements());
+        dto.setTimeRequired(row.timeRequired());
         return dto;
     }
 

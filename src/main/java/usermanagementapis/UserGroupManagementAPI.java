@@ -76,9 +76,25 @@ public class UserGroupManagementAPI {
         List<MetadataUser> userList = getDbaccess().getAllFromDB(MetadataUser.class);
         if(userList.isEmpty()) return null;
 
-        List<User> returnList = new ArrayList<>();
+        Map<String, List<MetadataGroupUser>> membershipsByUser = new HashMap<>();
+        List<MetadataGroupUser> memberships = getDbaccess().getAllFromDB(MetadataGroupUser.class);
+        for (MetadataGroupUser membership : memberships) {
+            if (membership.getAuthIdentifier() != null && membership.getAuthIdentifier().getAuthIdentifier() != null) {
+                membershipsByUser.computeIfAbsent(membership.getAuthIdentifier().getAuthIdentifier(), ignored -> new ArrayList<>())
+                        .add(membership);
+            }
+        }
+
+        List<User> returnList = new ArrayList<>(userList.size());
         for(MetadataUser user : userList){
-            returnList.add(retrieveUserById(user.getAuthIdentifier()));
+            User dto = new User(user.getAuthIdentifier(), user.getFamilyname(), user.getGivenname(), user.getEmail(),
+                    Boolean.parseBoolean(user.getIsadmin()));
+            for (MetadataGroupUser membership : membershipsByUser.getOrDefault(user.getAuthIdentifier(), Collections.emptyList())) {
+                if (membership.getGroup() != null) {
+                    dto.getGroups().add(new UserGroup(RoleType.valueOf(membership.getRole()), membership.getGroup().getId()));
+                }
+            }
+            returnList.add(dto);
         }
 
         return returnList ;
@@ -202,9 +218,38 @@ public class UserGroupManagementAPI {
         List<MetadataGroup> metadataGroupList = getDbaccess().getAllFromDB(MetadataGroup.class);
         if(metadataGroupList.isEmpty()) return null;
 
-        List<Group> returnList = new ArrayList<>();
+        Map<String, List<AuthorizationGroup>> authorizationsByGroup = new HashMap<>();
+        List<AuthorizationGroup> authorizations = getDbaccess().getAllFromDB(AuthorizationGroup.class);
+        for (AuthorizationGroup authorization : authorizations) {
+            if (authorization.getGroup() != null && authorization.getGroup().getId() != null) {
+                authorizationsByGroup.computeIfAbsent(authorization.getGroup().getId(), ignored -> new ArrayList<>())
+                        .add(authorization);
+            }
+        }
+        Map<String, List<MetadataGroupUser>> membershipsByGroup = new HashMap<>();
+        List<MetadataGroupUser> memberships = getDbaccess().getAllFromDB(MetadataGroupUser.class);
+        for (MetadataGroupUser membership : memberships) {
+            if (membership.getGroup() != null && membership.getGroup().getId() != null) {
+                membershipsByGroup.computeIfAbsent(membership.getGroup().getId(), ignored -> new ArrayList<>())
+                        .add(membership);
+            }
+        }
+
+        List<Group> returnList = new ArrayList<>(metadataGroupList.size());
         for(MetadataGroup group : metadataGroupList){
-            returnList.add(retrieveGroupById(group.getId()));
+            Group dto = new Group(group.getId(), group.getName(), group.getDescription());
+            for (AuthorizationGroup authorization : authorizationsByGroup.getOrDefault(group.getId(), Collections.emptyList())) {
+                if (authorization.getMeta() != null) dto.getEntities().add(authorization.getMeta().getMetaId());
+            }
+            dto.setUsers(new ArrayList<>());
+            for (MetadataGroupUser membership : membershipsByGroup.getOrDefault(group.getId(), Collections.emptyList())) {
+                HashMap<String, String> item = new HashMap<>();
+                item.put("userId", membership.getAuthIdentifier().getAuthIdentifier());
+                item.put("role", membership.getRole());
+                item.put("requestStatus", membership.getRequestStatus());
+                dto.getUsers().add(item);
+            }
+            returnList.add(dto);
         }
 
         return returnList;
@@ -464,14 +509,7 @@ public class UserGroupManagementAPI {
     }
 
     public static List<String> retrieveMetaIdsFromGroups(){
-        List<AuthorizationGroup> authorizationGroupList = getDbaccess().getAllFromDB(AuthorizationGroup.class);
-        if(authorizationGroupList.isEmpty()) return new ArrayList<>();
-
-        // Use stream to collect unique metaIds efficiently
-        return authorizationGroupList.stream()
-                .map(group -> group.getMeta().getMetaId())
-                .distinct()
-                .collect(Collectors.toList());
+        return getDbaccess().getDistinctStringValues(AuthorizationGroup.class, "meta.metaId");
     }
     /**
      * Checks if a metadata element and a user are in the same group.

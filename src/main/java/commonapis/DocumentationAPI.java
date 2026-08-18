@@ -13,6 +13,7 @@ import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -151,6 +152,40 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Element.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Element.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Element.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Element.class));
+    }
+    private List<org.epos.eposdatamodel.Documentation> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.ElementSummaryRow> rows = dao.fetchElementSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.ElementSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Documentation> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.ElementSummaryRow row = rows.get(id);
+            if (row == null || !"DOCUMENTATION".equals(row.type())) continue;
+            JsonObject doc = new Gson().fromJson(row.value(), JsonObject.class);
+            org.epos.eposdatamodel.Documentation dto = new org.epos.eposdatamodel.Documentation();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setTitle(doc.has("Title") ? doc.get("Title").getAsString() : null);
+            dto.setDescription(doc.has("Description") ? doc.get("Description").getAsString() : null);
+            dto.setUri(doc.has("Uri") ? doc.get("Uri").getAsString() : null);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
     @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAllWithStatus(StatusType status) {

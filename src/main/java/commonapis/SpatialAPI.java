@@ -132,6 +132,37 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Spatial.class));
     }
     @Override
+    public List<org.epos.eposdatamodel.Location> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Spatial.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Location> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Spatial.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Location> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Spatial.class));
+    }
+    private List<org.epos.eposdatamodel.Location> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.SpatialSummaryRow> rows = dao.fetchSpatialSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.SpatialSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Location> results = new java.util.ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.SpatialSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Location dto = new org.epos.eposdatamodel.Location();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setLocation(row.location());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+    @Override
     public List<org.epos.eposdatamodel.Location> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Spatial.class, status));
     }

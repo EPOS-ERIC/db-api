@@ -203,13 +203,14 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
                 .getJoinEntitiesByRelationField("facilityInstance", facilityInstanceId, FacilityElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (FacilityElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
-                // Also delete the Element entity
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -341,12 +342,70 @@ public class FacilityAPI extends AbstractAPI<org.epos.eposdatamodel.Facility> {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Facility.class, status));
     }
 
+    /**
+     * Returns list-oriented Facility records without loading their relationship graph.
+     * Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    @Override
+    public List<org.epos.eposdatamodel.Facility> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Facility.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Facility> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Facility.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Facility> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Facility.class));
+    }
+    private List<org.epos.eposdatamodel.Facility> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.FacilitySummaryRow> rows = dao.fetchFacilitySummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.FacilitySummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Facility> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.FacilitySummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Facility dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.Facility> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.Facility toSummaryDto(Facility entity) {
+        org.epos.eposdatamodel.Facility dto = new org.epos.eposdatamodel.Facility();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setType(entity.getType());
+        dto.setIdentifier(entity.getIdentifier());
+        dto.setDescription(entity.getDescription());
+        dto.setTitle(entity.getTitle());
+        if (entity.getKeywords() != null && !entity.getKeywords().isEmpty()) {
+            dto.setKeywords(Arrays.asList(entity.getKeywords().split(",")));
+        }
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.Facility toSummaryDto(EposDataModelDAO.FacilitySummaryRow row) {
+        org.epos.eposdatamodel.Facility dto = new org.epos.eposdatamodel.Facility();
+        dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+        dto.setType(row.type()); dto.setIdentifier(row.identifier()); dto.setDescription(row.description()); dto.setTitle(row.title());
+        if (row.keywords() != null && !row.keywords().isEmpty()) dto.setKeywords(Arrays.asList(row.keywords().split(",")));
+        return dto;
     }
 
     /**

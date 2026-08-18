@@ -12,6 +12,7 @@ import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -128,6 +129,37 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Parameter.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Parameter.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Parameter.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Parameter.class));
+    }
+    private List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.ParameterSummaryRow> rows = dao.fetchParameterSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.ParameterSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.SoftwareApplicationParameter> results = new java.util.ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.ParameterSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.SoftwareApplicationParameter dto = new org.epos.eposdatamodel.SoftwareApplicationParameter();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setEncodingformat(row.encodingformat()); dto.setConformsto(row.conformsto()); dto.setAction(row.action());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
     @Override
     public List<org.epos.eposdatamodel.SoftwareApplicationParameter> retrieveAllWithStatus(StatusType status) {

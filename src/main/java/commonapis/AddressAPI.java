@@ -118,7 +118,9 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     @Override
     public Boolean delete(String instanceId) {
         return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Address.class,
-                Map.of(FacilityAddress.class, "addressInstance"));
+                Map.of(FacilityAddress.class, "addressInstance"), List.of(
+                        new EposDataModelDAO.RelationField(Organization.class, "address"),
+                        new EposDataModelDAO.RelationField(Person.class, "address")));
     }
 
     @Override
@@ -137,6 +139,38 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Address.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Address> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Address.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Address> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Address.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Address> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Address.class));
+    }
+    private List<org.epos.eposdatamodel.Address> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.AddressSummaryRow> rows = dao.fetchAddressSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.AddressSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Address> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.AddressSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Address dto = new org.epos.eposdatamodel.Address();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setStreet(row.street()); dto.setCountry(row.country()); dto.setPostalCode(row.postalCode());
+            dto.setCountryCode(row.countrycode()); dto.setLocality(row.locality());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
     @Override
     public List<org.epos.eposdatamodel.Address> retrieveAllWithStatus(StatusType status) {

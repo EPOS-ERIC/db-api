@@ -139,13 +139,14 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (OperationElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
-                // Also delete the Element entity
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -179,13 +180,17 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         List<OperationElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
         if (existingRelations != null) {
+            List<OperationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (OperationElement relation : existingRelations) {
                 Element element = relation.getElementInstance();
                 if (element != null && type.name().equals(element.getType())) {
-                    EposDataModelDAO.getInstance().deleteObject(relation);
-                    EposDataModelDAO.getInstance().deleteObject(element);
+                    relationsToDelete.add(relation);
+                    elementsToDelete.add(element);
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
@@ -317,6 +322,40 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Operation.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Operation.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Operation.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Operation.class));
+    }
+    private List<org.epos.eposdatamodel.Operation> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.OperationSummaryRow> rows = dao.fetchOperationSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.OperationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Operation> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.OperationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Operation dto = new org.epos.eposdatamodel.Operation();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setMethod(row.method()); dto.setTemplate(row.template());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override

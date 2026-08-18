@@ -272,6 +272,40 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     public List<org.epos.eposdatamodel.Category> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Category.class));
     }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Category.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Category.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Category.class));
+    }
+    private List<org.epos.eposdatamodel.Category> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.CategorySummaryRow> rows = dao.fetchCategorySummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.CategorySummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Category> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.CategorySummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Category dto = new org.epos.eposdatamodel.Category();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setName(row.name()); dto.setDescription(row.description());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Category.class, status));

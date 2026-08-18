@@ -531,6 +531,24 @@ public class VersioningStatusAPI {
         }
     }
 
+    /** Rebuilds a detached version value from a scalar summary projection. */
+    public static Versioningstatus summaryVersion(String versionId, String metaId, String changeComment,
+                                                  OffsetDateTime changeTimestamp, String editorId, String provenance,
+                                                  String version, String instanceChangeId, String status) {
+        if (versionId == null) return null;
+        Versioningstatus result = new Versioningstatus();
+        result.setVersionId(versionId);
+        result.setMetaId(metaId);
+        result.setChangeComment(changeComment);
+        result.setChangeTimestamp(changeTimestamp);
+        result.setEditorId(editorId);
+        result.setProvenance(provenance);
+        result.setVersion(version);
+        result.setInstanceChangeId(instanceChangeId);
+        result.setStatus(status);
+        return result;
+    }
+
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {
         List<Versioningstatus> returnList = null;
 

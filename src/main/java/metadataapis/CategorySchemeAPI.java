@@ -149,6 +149,7 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
         if (topConceptLinks == null || topConceptLinks.isEmpty()) return;
 
+        List<CategoryHastopconcept> relations = new ArrayList<>();
         for (LinkedEntity link : topConceptLinks) {
             Category categoryEntity = findOrCreateCategoryForRelation(link, overrideStatus, useReferenceEntityLogic);
 
@@ -165,19 +166,10 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
 
                 LOG.log(Level.FINE, "[CategorySchemeAPI] Creating topConcept relation: {0} -> {1}",
                         new Object[]{schemeEntity.getUid(), categoryEntity.getUid()});
-
-                try {
-                    getDbaccess().createObject(relation);
-                } catch (Exception e) {
-                    if (e.getMessage() != null && (e.getMessage().contains("duplicate key") ||
-                            e.getMessage().contains("already exists"))) {
-                        LOG.log(Level.FINE, "[CategorySchemeAPI] TopConcept relation already exists, skipping");
-                    } else {
-                        LOG.log(Level.WARNING, "[CategorySchemeAPI] Error creating topConcept relation: " + e.getMessage());
-                    }
-                }
+                relations.add(relation);
             }
         }
+        getDbaccess().updateListOfObjects(relations);
     }
 
     /**
@@ -186,7 +178,10 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     private void clearTopConceptsRelations(String schemeInstanceId) {
         List<Object> existing = getDbaccess().getJoinEntitiesByParentId("categorySchemeInstanceId", schemeInstanceId, CategoryHastopconcept.class);
         if (existing != null) {
-            for (Object o : existing) getDbaccess().deleteObject(o);
+            List<CategoryHastopconcept> relations = existing.stream()
+                    .map(CategoryHastopconcept.class::cast)
+                    .collect(Collectors.toList());
+            getDbaccess().deleteListOfObjects(relations);
         }
     }
 
@@ -417,6 +412,42 @@ public class CategorySchemeAPI extends AbstractAPI<org.epos.eposdatamodel.Catego
     @Override
     public List<org.epos.eposdatamodel.CategoryScheme> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(CategoryScheme.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.CategoryScheme> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, CategoryScheme.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.CategoryScheme> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(CategoryScheme.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.CategoryScheme> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(CategoryScheme.class));
+    }
+    private List<org.epos.eposdatamodel.CategoryScheme> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.CategorySchemeSummaryRow> rows = dao.fetchCategorySchemeSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.CategorySchemeSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.CategoryScheme> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.CategorySchemeSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.CategoryScheme dto = new org.epos.eposdatamodel.CategoryScheme();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setTitle(row.name()); dto.setDescription(row.description()); dto.setCode(row.code());
+            dto.setHomepage(row.homepage()); dto.setLogo(row.logo()); dto.setColor(row.color());
+            dto.setOrderitemnumber(row.orderitemnumber());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override

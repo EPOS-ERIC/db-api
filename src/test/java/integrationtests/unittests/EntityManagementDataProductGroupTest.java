@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EntityManagementDataProductGroupTest extends TestcontainersLifecycle {
 
@@ -44,6 +46,14 @@ public class EntityManagementDataProductGroupTest extends TestcontainersLifecycl
 
         assertNotNull(retrievedDataProduct);
         assertEquals(1,retrievedDataProduct.size());
+        assertFalse(retrievedDataProduct.get(0).getGroups().isEmpty());
+
+        List<DataProduct> summaries = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveAllSummary();
+        DataProduct summary = summaries.stream()
+                .filter(candidate -> le.getInstanceId().equals(candidate.getInstanceId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(summary.getGroups() == null || summary.getGroups().isEmpty());
     }
 
 

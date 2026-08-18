@@ -7,6 +7,8 @@ import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -123,6 +125,37 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Identifier.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Identifier.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Identifier.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Identifier.class));
+    }
+    private List<org.epos.eposdatamodel.Identifier> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.IdentifierSummaryRow> rows = dao.fetchIdentifierSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.IdentifierSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Identifier> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.IdentifierSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Identifier dto = new org.epos.eposdatamodel.Identifier();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setType(row.type()); dto.setIdentifier(row.value());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
     @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveAllWithStatus(StatusType status) {

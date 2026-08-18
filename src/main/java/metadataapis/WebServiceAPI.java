@@ -363,15 +363,16 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
 
     @Override
     public Boolean delete(String instanceId) {
-        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Webservice.class, List.of(
-                new EposDataModelDAO.RelationField(WebserviceIdentifier.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceTemporal.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceElement.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceSpatial.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceContactpoint.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceDistribution.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceCategory.class, "webserviceInstance"),
-                new EposDataModelDAO.RelationField(WebserviceRelation.class, "id.webserviceInstanceId")));
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Webservice.class, Map.of(
+                WebserviceIdentifier.class, "webserviceInstance",
+                WebserviceTemporal.class, "webserviceInstance",
+                WebserviceElement.class, "webserviceInstance",
+                WebserviceSpatial.class, "webserviceInstance",
+                WebserviceContactpoint.class, "webserviceInstance",
+                WebserviceDistribution.class, "webserviceInstance",
+                WebserviceCategory.class, "webserviceInstance",
+                WebserviceRelation.class, "webserviceInstance",
+                OperationWebservice.class, "webserviceInstance"));
     }
 
     private void deleteWebserviceRelations(String instanceId) {
@@ -489,12 +490,87 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Webservice.class, status));
     }
 
+    @Override
+    public List<org.epos.eposdatamodel.WebService> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Webservice.class));
+    }
+
+    @Override
+    public List<org.epos.eposdatamodel.WebService> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Webservice.class, status));
+    }
+
+    /**
+     * Returns list-oriented WebService records without loading their
+     * relationship graph. Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    public List<org.epos.eposdatamodel.WebService> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Webservice.class));
+    }
+
+    private List<org.epos.eposdatamodel.WebService> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.WebServiceSummaryRow> rows = dao.fetchWebServiceSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.WebServiceSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.WebService> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.WebServiceSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.WebService dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.WebService> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.WebService toSummaryDto(Webservice entity) {
+        org.epos.eposdatamodel.WebService dto = new org.epos.eposdatamodel.WebService();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setDateModified(entity.getDatamodified());
+        dto.setDatePublished(entity.getDatapublished());
+        dto.setDescription(entity.getDescription());
+        dto.setEntryPoint(entity.getEntrypoint());
+        dto.setLicense(entity.getLicense());
+        dto.setName(entity.getName());
+        dto.setAaaiTypes(entity.getAaaitypes());
+        if (entity.getKeywords() != null && !entity.getKeywords().isBlank()) {
+            for (String item : entity.getKeywords().split("\\|")) {
+                dto.addKeywords(item);
+            }
+        }
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.WebService toSummaryDto(EposDataModelDAO.WebServiceSummaryRow row) {
+        org.epos.eposdatamodel.WebService dto = new org.epos.eposdatamodel.WebService();
+        dto.setInstanceId(row.instanceId());
+        dto.setMetaId(row.metaId());
+        dto.setUid(row.uid());
+        dto.setDateModified(row.dateModified());
+        dto.setDatePublished(row.datePublished());
+        dto.setDescription(row.description());
+        dto.setEntryPoint(row.entryPoint());
+        dto.setLicense(row.license());
+        dto.setName(row.name());
+        dto.setAaaiTypes(row.aaaiTypes());
+        if (row.keywords() != null && !row.keywords().isBlank()) {
+            for (String item : row.keywords().split("\\|")) dto.addKeywords(item);
+        }
+        return dto;
     }
 
     /**

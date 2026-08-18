@@ -201,13 +201,17 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     private void deleteExistingElements(String instanceId) {
         List<Object> existingElements = getDbaccess().getOneFromDBBySpecificKey("distributionInstance", instanceId, DistributionElement.class);
         if (existingElements != null) {
+            List<DistributionElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (Object obj : existingElements) {
                 DistributionElement de = (DistributionElement) obj;
-                EposDataModelDAO.getInstance().deleteObject(de);
                 if (de.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(de.getElementInstance());
+                    elementsToDelete.add(de.getElementInstance());
                 }
+                relationsToDelete.add(de);
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
@@ -292,13 +296,17 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         List<DistributionElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("distributionInstance", distributionInstanceId, DistributionElement.class);
         if (existingRelations != null) {
+            List<DistributionElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (DistributionElement relation : existingRelations) {
                 Element element = relation.getElementInstance();
                 if (element != null && type.name().equals(element.getType())) {
-                    EposDataModelDAO.getInstance().deleteObject(relation);
-                    EposDataModelDAO.getInstance().deleteObject(element);
+                    relationsToDelete.add(relation);
+                    elementsToDelete.add(element);
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
@@ -395,6 +403,50 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
     @Override
     public List<org.epos.eposdatamodel.Distribution> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Distribution.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Distribution> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Distribution.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Distribution> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Distribution.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Distribution> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Distribution.class));
+    }
+    private List<org.epos.eposdatamodel.Distribution> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.DistributionSummaryRow> rows = dao.fetchDistributionSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.DistributionSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Distribution> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.DistributionSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Distribution dto = new org.epos.eposdatamodel.Distribution();
+            dto.setInstanceId(row.instanceId());
+            dto.setMetaId(row.metaId());
+            dto.setUid(row.uid());
+            dto.setType(row.type());
+            dto.setFormat(row.format());
+            dto.setLicence(row.license());
+            dto.setDataPolicy(row.datapolicy());
+            dto.setIssued(row.issued());
+            dto.setModified(row.modified());
+            dto.setByteSize(row.byteSize());
+            dto.setMaturity(row.maturity());
+            dto.setMediaType(row.mediaType());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override

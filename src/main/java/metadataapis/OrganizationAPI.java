@@ -360,19 +360,17 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     private void deleteExistingElements(String instanceId) {
         List<Object> elements = getDbaccess().getOneFromDBBySpecificKey("organizationInstance", instanceId, OrganizationElement.class);
         if (elements != null) {
+            List<OrganizationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (Object obj : elements) {
                 OrganizationElement oe = (OrganizationElement) obj;
-
-                EposDataModelDAO.getInstance().deleteObject(oe);
-
                 if (oe.getElementInstance() != null) {
-                    try {
-                        EposDataModelDAO.getInstance().deleteObject(oe.getElementInstance());
-                    } catch (Exception e) {
-                        // Ignore if element is used elsewhere
-                    }
+                    elementsToDelete.add(oe.getElementInstance());
                 }
+                relationsToDelete.add(oe);
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
@@ -541,12 +539,83 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status));
     }
 
+    /**
+     * Returns list-oriented Organization records without loading their
+     * relationship graph. Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Organization.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Organization.class));
+    }
+    private List<org.epos.eposdatamodel.Organization> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.OrganizationSummaryRow> rows = dao.fetchOrganizationSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.OrganizationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Organization> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.OrganizationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Organization dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.Organization toSummaryDto(Organization entity) {
+        org.epos.eposdatamodel.Organization dto = new org.epos.eposdatamodel.Organization();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setAcronym(entity.getAcronym());
+        dto.setLeiCode(entity.getLeicode());
+        dto.setLogo(entity.getLogo());
+        dto.setURL(entity.getUrl());
+        dto.setType(entity.getType());
+        dto.setMaturity(entity.getMaturity());
+        if (entity.getLegalname() != null && !entity.getLegalname().isBlank()) {
+            for (String item : entity.getLegalname().split("\\|")) {
+                dto.addLegalName(item);
+            }
+        }
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.Organization toSummaryDto(EposDataModelDAO.OrganizationSummaryRow row) {
+        org.epos.eposdatamodel.Organization dto = new org.epos.eposdatamodel.Organization();
+        dto.setInstanceId(row.instanceId());
+        dto.setMetaId(row.metaId());
+        dto.setUid(row.uid());
+        dto.setAcronym(row.acronym());
+        dto.setLeiCode(row.leicode());
+        dto.setLogo(row.logo());
+        dto.setURL(row.url());
+        dto.setType(row.type());
+        dto.setMaturity(row.maturity());
+        if (row.legalname() != null && !row.legalname().isBlank()) {
+            for (String item : row.legalname().split("\\|")) dto.addLegalName(item);
+        }
+        return dto;
     }
 
     /**

@@ -85,6 +85,35 @@ public abstract class AbstractAPI<T> {
         return results;
     }
 
+    /** Loads scalar list records and version metadata without resolving user groups. */
+    protected <E, D extends EPOSDataModelEntity> List<D> retrieveBulkSummary(
+            List<String> instanceIds, Class<E> entityClass, Function<E, D> mapper) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, E> entities = getDbaccess().batchFetchByInstanceIds(instanceIds, entityClass);
+        if (entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(new ArrayList<>(entities.keySet()));
+        List<D> results = new ArrayList<>(entities.size());
+        for (String instanceId : instanceIds) {
+            E entity = entities.get(instanceId);
+            if (entity == null) {
+                continue;
+            }
+            D dto = mapper.apply(entity);
+            if (dto == null) {
+                continue;
+            }
+            VersioningStatusAPI.applyVersion(dto, versions.get(instanceId), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     public void setEdmClass(Class<?> edmClass) {
         this.edmClass = edmClass;
     }
@@ -115,10 +144,10 @@ public abstract class AbstractAPI<T> {
     }
 
     protected void logCreateStart(T obj, StatusType overrideStatus) {
-        if (LOG.isLoggable(Level.INFO)) {
-            LOG.log(Level.INFO, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}", 
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}",
                     new Object[]{entityName, edmClass != null ? edmClass.getSimpleName() : "null"});
-            LOG.log(Level.INFO, "[RUNTIME SNAPSHOT] {0}", MemoryMonitor.snapshot());
+            LOG.log(Level.FINE, "[RUNTIME SNAPSHOT] {0}", MemoryMonitor.snapshot());
         }
 
         if (obj == null) {
@@ -196,8 +225,8 @@ public abstract class AbstractAPI<T> {
         if (error != null) {
             LOG.log(Level.SEVERE, "<== [CREATE ERROR] Entity Type: " + entityName + " creation failed with exception", error);
         } else if (result != null) {
-            if (LOG.isLoggable(Level.INFO)) {
-                LOG.log(Level.INFO, "<== [CREATE SUCCESS] Entity Type: {0}, LinkedEntity Result -> instanceId: {1}, metaId: {2}, uid: {3}", 
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "<== [CREATE SUCCESS] Entity Type: {0}, LinkedEntity Result -> instanceId: {1}, metaId: {2}, uid: {3}",
                         new Object[]{entityName, result.getInstanceId(), result.getMetaId(), result.getUid()});
             }
         } else {
@@ -249,6 +278,30 @@ public abstract class AbstractAPI<T> {
     public abstract List<T> retrieveBunch(List<String> entities);
 
     public abstract List<T> retrieveAll();
+
+    /**
+     * Returns an efficient list representation when the concrete API provides
+     * one. Scalar-only APIs use their regular bulk reader as the summary.
+     */
+    public List<T> retrieveAllSummary() {
+        return retrieveAll();
+    }
+
+    /**
+     * Returns an efficient representation for the requested instances when the
+     * concrete API provides one; otherwise falls back to {@link #retrieveBunch(List)}.
+     */
+    public List<T> retrieveBunchSummary(List<String> entities) {
+        return retrieveBunch(entities);
+    }
+
+    /**
+     * Returns an efficient representation for the requested status when the
+     * concrete API provides one; otherwise falls back to {@link #retrieveAllWithStatus(StatusType)}.
+     */
+    public List<T> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveAllWithStatus(status);
+    }
 
     public abstract List<T> retrieveAllWithStatus(StatusType status);
 

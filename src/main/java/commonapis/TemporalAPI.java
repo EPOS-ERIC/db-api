@@ -133,6 +133,37 @@ public class TemporalAPI extends AbstractAPI<org.epos.eposdatamodel.PeriodOfTime
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Temporal.class));
     }
     @Override
+    public List<org.epos.eposdatamodel.PeriodOfTime> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Temporal.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Temporal.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Temporal.class));
+    }
+    private List<org.epos.eposdatamodel.PeriodOfTime> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.TemporalSummaryRow> rows = dao.fetchTemporalSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.TemporalSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.PeriodOfTime> results = new java.util.ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.TemporalSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.PeriodOfTime dto = new org.epos.eposdatamodel.PeriodOfTime();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setStartDate(row.startdate()); dto.setEndDate(row.enddate());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+    @Override
     public List<org.epos.eposdatamodel.PeriodOfTime> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Temporal.class, status));
     }

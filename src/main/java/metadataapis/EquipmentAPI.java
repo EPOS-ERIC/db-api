@@ -258,14 +258,14 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 .getJoinEntitiesByRelationField("equipmentInstance", equipmentInstanceId, EquipmentElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (EquipmentElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
-                // Also delete the Element entity
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
-                EposDataModelDAO.getInstance().deleteObject(relation);
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -424,12 +424,80 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Equipment.class, status));
     }
 
+    /**
+     * Returns list-oriented Equipment records without loading their relationship graph.
+     * Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    @Override
+    public List<org.epos.eposdatamodel.Equipment> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Equipment.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Equipment> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Equipment.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Equipment> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Equipment.class));
+    }
+    private List<org.epos.eposdatamodel.Equipment> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.EquipmentSummaryRow> rows = dao.fetchEquipmentSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.EquipmentSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Equipment> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.EquipmentSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Equipment dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.Equipment> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.Equipment toSummaryDto(Equipment entity) {
+        org.epos.eposdatamodel.Equipment dto = new org.epos.eposdatamodel.Equipment();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setType(entity.getType());
+        dto.setResolution(entity.getResolution());
+        dto.setDescription(entity.getDescription());
+        dto.setDynamicRange(entity.getDynamicrange());
+        dto.setFilter(entity.getFilter());
+        dto.setIdentifier(entity.getIdentifier());
+        dto.setName(entity.getName());
+        dto.setPageURL(entity.getPageurl());
+        dto.setOrientation(entity.getOrientation());
+        dto.setSamplePeriod(entity.getSampleperiod());
+        dto.setSerialNumber(entity.getSerialnumber());
+        if (entity.getKeywords() != null && !entity.getKeywords().isEmpty()) {
+            dto.setKeywords(Arrays.asList(entity.getKeywords().split(",")));
+        }
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.Equipment toSummaryDto(EposDataModelDAO.EquipmentSummaryRow row) {
+        org.epos.eposdatamodel.Equipment dto = new org.epos.eposdatamodel.Equipment();
+        dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+        dto.setType(row.type()); dto.setResolution(row.resolution()); dto.setDescription(row.description());
+        dto.setDynamicRange(row.dynamicRange()); dto.setFilter(row.filter()); dto.setIdentifier(row.identifier());
+        dto.setName(row.name()); dto.setPageURL(row.pageUrl()); dto.setOrientation(row.orientation());
+        dto.setSamplePeriod(row.samplePeriod()); dto.setSerialNumber(row.serialNumber());
+        if (row.keywords() != null && !row.keywords().isEmpty()) dto.setKeywords(Arrays.asList(row.keywords().split(",")));
+        return dto;
     }
 
     /**

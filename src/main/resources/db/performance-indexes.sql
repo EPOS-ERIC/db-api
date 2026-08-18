@@ -5,6 +5,8 @@
 
 CREATE INDEX IF NOT EXISTS idx_versioningstatus_instance_status
     ON metadata_catalogue.versioningstatus (instance_id, status);
+CREATE INDEX IF NOT EXISTS idx_versioningstatus_status_instance
+    ON metadata_catalogue.versioningstatus (status, instance_id);
 CREATE INDEX IF NOT EXISTS idx_versioningstatus_uid
     ON metadata_catalogue.versioningstatus (uid);
 CREATE INDEX IF NOT EXISTS idx_authorization_group_meta_id

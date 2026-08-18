@@ -10,6 +10,8 @@ import relationsapi.RelationSyncUtil;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -158,12 +160,61 @@ public class OutputMappingAPI extends AbstractAPI<org.epos.eposdatamodel.OutputM
     }
 
     @Override
+    public List<org.epos.eposdatamodel.OutputMapping> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, OutputMapping.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.OutputMapping> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(OutputMapping.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.OutputMapping> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(OutputMapping.class));
+    }
+    private List<org.epos.eposdatamodel.OutputMapping> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.OutputMappingSummaryRow> rows = dao.fetchOutputMappingSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.OutputMappingSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.OutputMapping> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.OutputMappingSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.OutputMapping dto = new org.epos.eposdatamodel.OutputMapping();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setOutputLabel(row.label()); dto.setOutputValuePattern(row.valuepattern());
+            dto.setOutputRequired(row.required() != null ? Boolean.toString(row.required()) : null);
+            dto.setOutputRange(row.range()); dto.setOutputProperty(row.property()); dto.setOutputVariable(row.variable());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
+    @Override
     public List<org.epos.eposdatamodel.OutputMapping> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(OutputMapping.class, status));
     }
 
     private List<org.epos.eposdatamodel.OutputMapping> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        return retrieveBulk(instanceIds, OutputMapping.class, this::toDto);
+    }
+
+    private org.epos.eposdatamodel.OutputMapping toDto(OutputMapping entity) {
+        org.epos.eposdatamodel.OutputMapping dto = new org.epos.eposdatamodel.OutputMapping();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setOutputLabel(entity.getLabel());
+        dto.setOutputValuePattern(entity.getValuepattern());
+        dto.setOutputRequired(entity.getRequired() != null ? Boolean.toString(entity.getRequired()) : null);
+        dto.setOutputRange(entity.getRange());
+        dto.setOutputProperty(entity.getProperty());
+        dto.setOutputVariable(entity.getVariable());
+        return dto;
     }
 
     @Override

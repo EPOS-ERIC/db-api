@@ -76,6 +76,16 @@ public class RelationSyncUtil {
     private static final ConcurrentHashMap<String, Object> JOIN_LOCKS = new ConcurrentHashMap<>();
     private static final int MAX_JOIN_LOCKS = 10000;
 
+    private static final class QueuedJoin<J> {
+        private final J entity;
+        private final String parentFieldName;
+
+        private QueuedJoin(J entity, String parentFieldName) {
+            this.entity = entity;
+            this.parentFieldName = parentFieldName;
+        }
+    }
+
     private static Object getJoinLock(String joinClassName, String parentId, String targetId) {
         String key = joinClassName + ":" + parentId + ":" + targetId;
         return JOIN_LOCKS.computeIfAbsent(key, k -> new Object());
@@ -552,9 +562,7 @@ public class RelationSyncUtil {
                 List<?> existingRawList = EposDataModelDAO.getInstance()
                         .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
                 if (existingRawList != null) {
-                    for (Object o : existingRawList) {
-                        EposDataModelDAO.getInstance().deleteObject(o);
-                    }
+                    EposDataModelDAO.getInstance().deleteListOfObjects(existingRawList);
                 }
                 return;
             }
@@ -586,6 +594,8 @@ public class RelationSyncUtil {
             }
 
             Set<String> processedIds = new HashSet<>(inputLinks.size());
+            List<QueuedJoin<J>> queuedJoins = new ArrayList<>();
+            Set<String> queuedJoinKeys = new HashSet<>();
             String sourceEntityType = parentDbObject.getClass().getSimpleName().toUpperCase(Locale.ROOT);
             String parentUid = getUid(parentDbObject);
             StatusType cascadeStatus = isNewVersion ? effectiveStatus : null;
@@ -724,16 +734,17 @@ public class RelationSyncUtil {
                         processedIds.add(targetIdForJoin);
 
                         if (!existingMap.containsKey(targetIdForJoin)) {
-                            boolean created = createJoinEntity(joinClass, parentDbObject, targetForJoin,
-                                    parentSetter, targetSetter, parentFieldName);
+                            boolean created = queueJoinEntity(joinClass, parentDbObject, targetForJoin,
+                                    parentSetter, targetSetter, parentFieldName, queuedJoins, queuedJoinKeys);
                             if (!created) {
                                 createPendingRelation(parentId, sourceEntityType, link.getUid(),
                                         link.getEntityType(), joinClass.getName());
                             }
                         }
                         if (inverseParentSetter != null && inverseTargetSetter != null) {
-                            createJoinEntity(joinClass, targetForJoin, parentDbObject,
-                                    inverseParentSetter, inverseTargetSetter, inverseParentFieldName);
+                            queueJoinEntity(joinClass, targetForJoin, parentDbObject,
+                                    inverseParentSetter, inverseTargetSetter, inverseParentFieldName,
+                                    queuedJoins, queuedJoinKeys);
                         }
                     }
                 } else {
@@ -742,12 +753,16 @@ public class RelationSyncUtil {
                 }
             }
 
+            persistQueuedJoinEntities(joinClass, queuedJoins);
+
             // Delete joins no longer present
+            List<J> joinsToDelete = new ArrayList<>();
             for (Map.Entry<String, J> entry : existingMap.entrySet()) {
                 if (!processedIds.contains(entry.getKey())) {
-                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+                    joinsToDelete.add(entry.getValue());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(joinsToDelete);
 
         } finally {
             if (parentMetaId != null) {
@@ -865,9 +880,10 @@ public class RelationSyncUtil {
      * Uses double-check pattern: check existence, acquire lock, re-check, then insert.
      * Duplicate key exceptions are handled gracefully as they indicate concurrent success.
      */
-    private static <P, J, T> boolean createJoinEntity(Class<J> joinClass, P parentDbObject, T targetEntity,
+    private static <P, J, T> boolean queueJoinEntity(Class<J> joinClass, P parentDbObject, T targetEntity,
                                                       BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter,
-                                                      String parentFieldName) {
+                                                      String parentFieldName, List<QueuedJoin<J>> queuedJoins,
+                                                      Set<String> queuedJoinKeys) {
         String parentId = getModelId(parentDbObject);
         String targetId = getModelId(targetEntity);
 
@@ -891,6 +907,11 @@ public class RelationSyncUtil {
                     return true;
                 }
 
+                String joinKey = parentId + ":" + targetId + ":" + parentFieldName;
+                if (queuedJoinKeys.contains(joinKey)) {
+                    return true;
+                }
+
                 J newJoin = joinClass.getDeclaredConstructor().newInstance();
                 // Use the legacy initializer here because it infers both sides of the join
                 // from the entity types, which is more reliable than field-name derivation
@@ -909,7 +930,8 @@ public class RelationSyncUtil {
                     return true;
                 }
 
-                EposDataModelDAO.getInstance().updateObject(newJoin);
+                queuedJoins.add(new QueuedJoin<>(newJoin, parentFieldName));
+                queuedJoinKeys.add(joinKey);
                 cleanupJoinLocksIfNeeded();
                 return true;
 
@@ -925,6 +947,49 @@ public class RelationSyncUtil {
                         new Object[]{joinClass.getSimpleName(), e.getMessage()});
                 return false;
             }
+        }
+    }
+
+    /** Persists joins together, retaining the original per-join behavior on batch rollback. */
+    private static <J> void persistQueuedJoinEntities(Class<J> joinClass, List<QueuedJoin<J>> queuedJoins) {
+        if (queuedJoins.isEmpty()) {
+            return;
+        }
+        List<J> joinEntities = new ArrayList<>(queuedJoins.size());
+        for (QueuedJoin<J> queuedJoin : queuedJoins) {
+            joinEntities.add(queuedJoin.entity);
+        }
+        if (EposDataModelDAO.getInstance().updateListOfObjects(joinEntities)) {
+            return;
+        }
+
+        LOG.log(Level.WARNING, "Batch join creation failed for {0}; retrying joins individually", joinClass.getSimpleName());
+        for (QueuedJoin<J> queuedJoin : queuedJoins) {
+            J join = queuedJoin.entity;
+            String parentFieldName = queuedJoin.parentFieldName;
+            String parentId = getJoinId(join, parentFieldName);
+            String targetId = getJoinId(join, deriveTargetFieldName(parentFieldName));
+            Object lock = getJoinLock(joinClass.getName(), parentId, targetId);
+            synchronized (lock) {
+                if (joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+                    continue;
+                }
+                if (!EposDataModelDAO.getInstance().updateObject(join)
+                        && !joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+                    LOG.log(Level.WARNING, "Join creation failed for {0}: parent={1}, target={2}",
+                            new Object[]{joinClass.getSimpleName(), parentId, targetId});
+                }
+            }
+        }
+    }
+
+    private static String getJoinId(Object joinEntity, String relationFieldName) {
+        try {
+            Method getter = joinEntity.getClass().getMethod("get" + capitalize(relationFieldName));
+            Object entity = getter.invoke(joinEntity);
+            return getModelId(entity);
+        } catch (Exception e) {
+            return null;
         }
     }
 

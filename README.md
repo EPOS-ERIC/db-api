@@ -53,6 +53,18 @@ You can configure the database connection using either a connection string or in
 
 ## Core Classes
 
+## Performance Benchmark
+
+The manual bulk-read benchmark validates 100, 500, and 1,000 record retrievals
+without slowing normal CI runs:
+
+```bash
+mvn -Dtest=integrationtests.performance.BulkReadPerformanceTest -DrunPerformanceTests=true test
+```
+
+Record the printed `elapsedMs` values from a stable database environment and
+compare the 500-record result before and after performance changes.
+
 The DB-API is built around a central interface and implementation classes for different entity types.
 
 ### EPOSDataModel Interface
