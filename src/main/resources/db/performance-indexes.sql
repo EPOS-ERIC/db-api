@@ -11,6 +11,19 @@ CREATE INDEX IF NOT EXISTS idx_versioningstatus_uid
     ON metadata_catalogue.versioningstatus (uid);
 CREATE INDEX IF NOT EXISTS idx_authorization_group_meta_id
     ON usergroup_catalogue.authorization_group (meta_id);
+-- Keep this non-unique until a migration explicitly deduplicates existing rows.
+CREATE INDEX IF NOT EXISTS idx_authorization_group_group_id_meta_id
+    ON usergroup_catalogue.authorization_group (group_id, meta_id);
+CREATE INDEX IF NOT EXISTS idx_authorization_group_group_id
+    ON usergroup_catalogue.authorization_group (group_id);
+CREATE INDEX IF NOT EXISTS idx_metadata_group_user_group_id_auth_identifier
+    ON usergroup_catalogue.metadata_group_user (group_id, auth_identifier);
+CREATE INDEX IF NOT EXISTS idx_metadata_group_user_group_id
+    ON usergroup_catalogue.metadata_group_user (group_id);
+CREATE INDEX IF NOT EXISTS idx_metadata_group_user_auth_identifier
+    ON usergroup_catalogue.metadata_group_user (auth_identifier);
+CREATE INDEX IF NOT EXISTS idx_metadata_group_name
+    ON usergroup_catalogue.metadata_group (name);
 
 -- Reverse lookup indexes for targeted deletion of common values.
 CREATE INDEX IF NOT EXISTS idx_contactpoint_element_element

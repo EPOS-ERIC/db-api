@@ -21,8 +21,8 @@ public class Group {
     @Schema(name = "users", description = "This property refers to the list of users id of a group", example = "[\"authidentifier\"]",  required = false)
     private List<Map<String,String>> users;
 
-    @Schema(name = "entities", description = "This property refers to the list of entities id of a group", example = "[\"entitymetaid\"]", required = false)
-    private List<String> entities;
+    @Schema(name = "entities", description = "This property refers to the list of entities of a group. It contains metaIds by default and LinkedEntity objects when extended data is requested.", example = "[\"entitymetaid\"]", required = false)
+    private List<Object> entities;
 
 
     public Group(){}
@@ -67,12 +67,12 @@ public class Group {
         this.users = users;
     }
 
-    public List<String> getEntities() {
+    public List<Object> getEntities() {
         return entities;
     }
 
-    public void setEntities(List<String> entities) {
-        this.entities = entities;
+    public void setEntities(List<?> entities) {
+        this.entities = new ArrayList<>(entities);
     }
 
     @Override

@@ -288,6 +288,15 @@ public class RelationChecker {
             StatusType targetStatus = overrideStatus != null ? overrideStatus :
                     (mainEntity != null ? mainEntity.getStatus() : null);
 
+            if (targetStatus == StatusType.DRAFT
+                    && StatusType.DRAFT.equals(relationEntity.getStatus())
+                    && linkedEntity.getInstanceId() != null
+                    && linkedEntity.getInstanceId().equals(relationEntity.getInstanceId())) {
+                List<Object> explicitDraft = EposDataModelDAO.getInstance()
+                        .getOneFromDBByInstanceIdNoCache(linkedEntity.getInstanceId(), clazz);
+                return explicitDraft.isEmpty() ? null : explicitDraft.get(0);
+            }
+
             if (targetStatus != null) {
                 String relationUid = relationEntity.getUid();
                 List<Object> allVersions = EposDataModelDAO.getInstance()

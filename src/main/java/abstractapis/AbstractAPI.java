@@ -24,7 +24,6 @@ import java.util.logging.Logger;
 public abstract class AbstractAPI<T> {
 
     private static final Set<String> PUBLISHED_REFERENCE_ENTITIES = Set.of(
-            EntityNames.ADDRESS.name(),
             EntityNames.CATEGORY.name(),
             EntityNames.CATEGORYSCHEME.name(),
             EntityNames.CONTACTPOINT.name(),

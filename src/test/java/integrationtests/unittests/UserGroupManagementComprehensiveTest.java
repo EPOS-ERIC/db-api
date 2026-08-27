@@ -679,6 +679,23 @@ public class UserGroupManagementComprehensiveTest extends TestcontainersLifecycl
     }
 
     @Test
+    @Order(89)
+    @DisplayName("5.9 Retrieve extended group entities")
+    void testRetrieveExtendedGroupEntities() {
+        Group extended = UserGroupManagementAPI.retrieveGroupById(group1.getId(), true);
+        assertNotNull(extended);
+        assertEquals(2, extended.getEntities().size());
+        assertTrue(extended.getEntities().stream().allMatch(entity -> entity instanceof LinkedEntity));
+
+        LinkedEntity linkedEntity = (LinkedEntity) extended.getEntities().get(0);
+        assertNotNull(linkedEntity.getMetaId());
+        assertEquals(EntityNames.IDENTIFIER.name(), linkedEntity.getEntityType());
+
+        Group defaultResponse = UserGroupManagementAPI.retrieveGroupById(group1.getId(), false);
+        assertTrue(defaultResponse.getEntities().stream().allMatch(entity -> entity instanceof String));
+    }
+
+    @Test
     @Order(88)
     @DisplayName("5.9 Check if metaId and userId are in same group - should find common group")
     void testCheckMetaIdAndUserIdInSameGroup() {
@@ -733,6 +750,37 @@ public class UserGroupManagementComprehensiveTest extends TestcontainersLifecycl
     void testRemoveMetadataElementNullParams() {
         assertFalse(UserGroupManagementAPI.removeMetadataElementFromGroup(null, group1.getId()));
         assertFalse(UserGroupManagementAPI.removeMetadataElementFromGroup(identifierLe1.getMetaId(), null));
+    }
+
+    @Test
+    @Order(93)
+    @DisplayName("5.14 Bulk metadata association adds valid IDs idempotently")
+    void testBulkAddMetadataElementsToGroup() {
+        int inserted = UserGroupManagementAPI.addMetadataElementsToGroup(
+                List.of(identifierLe1.getMetaId(), identifierLe2.getMetaId(), identifierLe2.getMetaId(), "unknown-meta-id"),
+                group1.getId());
+
+        assertEquals(1, inserted, "Only the removed valid association should be inserted");
+        assertEquals(0, UserGroupManagementAPI.addMetadataElementsToGroup(
+                List.of(identifierLe1.getMetaId(), identifierLe2.getMetaId(), "unknown-meta-id"), group1.getId()));
+
+        Group retrieved = UserGroupManagementAPI.retrieveGroupById(group1.getId());
+        assertTrue(retrieved.getEntities().contains(identifierLe1.getMetaId()));
+        assertTrue(retrieved.getEntities().contains(identifierLe2.getMetaId()));
+        assertFalse(retrieved.getEntities().contains("unknown-meta-id"));
+    }
+
+    @Test
+    @Order(94)
+    @DisplayName("5.15 Metadata lookup returns complete results for multiple groups")
+    void testMultiGroupMetadataLookupAfterBatching() {
+        List<Group> groups = UserGroupManagementAPI.retrieveGroupsFromMetaId(identifierLe1.getMetaId());
+
+        assertEquals(2, groups.size());
+        assertTrue(groups.stream().anyMatch(group -> group.getId().equals(group1.getId())
+                && group.getEntities().contains(identifierLe1.getMetaId())));
+        assertTrue(groups.stream().anyMatch(group -> group.getId().equals(group2.getId())
+                && group.getEntities().contains(identifierLe1.getMetaId())));
     }
 
     // =================== SECTION 6: CACHE BEHAVIOR ===================

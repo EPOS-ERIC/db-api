@@ -19,6 +19,9 @@ import model.Person;
 import model.StatusType;
 import model.Versioningstatus;
 import model.Webservice;
+import model.AuthorizationGroup;
+import model.EdmEntityId;
+import model.MetadataGroup;
 
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
@@ -70,6 +73,12 @@ public class EposDataModelDAO<T> {
 			String editorId, String provenance, String version, String instanceChangeId, String status) {}
 
 	public static record DataProductTitleRow(String dataProductInstanceId, String title) {}
+
+	/** Lightweight authorization relation used where neither side needs hydration. */
+    public static record AuthorizationGroupRow(String metaId, String groupId, String entityType) {}
+
+	/** Lightweight group membership relation used while assembling full group DTOs. */
+	public static record MetadataGroupUserRow(String groupId, String authIdentifier, String role, String requestStatus) {}
 
 	public static record WebServiceSummaryRow(String instanceId, String metaId, String uid,
 			java.time.LocalDateTime dateModified, java.time.LocalDateTime datePublished, String description,
@@ -844,6 +853,210 @@ public class EposDataModelDAO<T> {
 		} catch (Exception e) {
 			LOG.error("Error retrieving distinct {} from {}", propertyPath, entityClass.getSimpleName(), e);
 			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches authorization keys without materializing eager AuthorizationGroup associations. */
+	public List<AuthorizationGroupRow> getAuthorizationGroupRowsByMetaIds(List<String> metaIds) {
+		if (metaIds == null || metaIds.isEmpty()) return Collections.emptyList();
+
+		List<AuthorizationGroupRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < metaIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = metaIds.subList(i, Math.min(i + READ_BATCH_SIZE, metaIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
+						+ "FROM AuthorizationGroup ag WHERE ag.meta.metaId IN :metaIds", AuthorizationGroupRow.class)
+						.setParameter("metaIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving authorization group rows by metadata IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches authorization keys for groups without loading metadata entities. */
+	public List<AuthorizationGroupRow> getAuthorizationGroupRowsByGroupIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<AuthorizationGroupRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
+						+ "FROM AuthorizationGroup ag WHERE ag.group.id IN :groupIds", AuthorizationGroupRow.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving authorization group rows by group IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches membership values without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getMetadataGroupUserRowsByGroupIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroupUserRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+						+ "FROM MetadataGroupUser mgu WHERE mgu.group.id IN :groupIds", MetadataGroupUserRow.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving group membership rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches membership values for users without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getMetadataGroupUserRowsByUserIds(List<String> userIds) {
+		if (userIds == null || userIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroupUserRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < userIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = userIds.subList(i, Math.min(i + READ_BATCH_SIZE, userIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+						+ "FROM MetadataGroupUser mgu WHERE mgu.authIdentifier.authIdentifier IN :userIds", MetadataGroupUserRow.class)
+						.setParameter("userIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving group membership rows by user IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches all authorization keys without materializing eager AuthorizationGroup associations. */
+	public List<AuthorizationGroupRow> getAllAuthorizationGroupRows() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			return em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
+					+ "FROM AuthorizationGroup ag", AuthorizationGroupRow.class).getResultList();
+		} catch (Exception e) {
+			LOG.error("Error retrieving all authorization group rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches all membership values without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getAllMetadataGroupUserRows() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			return em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+					+ "FROM MetadataGroupUser mgu", MetadataGroupUserRow.class).getResultList();
+		} catch (Exception e) {
+			LOG.error("Error retrieving all group membership rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches groups by ID in bounded queries; MetadataGroup has no eager relations. */
+	public List<MetadataGroup> getMetadataGroupsByIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroup> groups = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				groups.addAll(em.createQuery("SELECT g FROM MetadataGroup g WHERE g.id IN :groupIds", MetadataGroup.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return groups;
+		} catch (Exception e) {
+			LOG.error("Error retrieving metadata groups by IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Creates missing group-metadata associations in one transaction. Null and unknown metadata IDs are ignored;
+	 * the return value is the number of rows inserted.
+	 */
+	public int addMetadataElementsToGroup(List<String> metaIds, String groupId) {
+		if (groupId == null || metaIds == null || metaIds.isEmpty()) return 0;
+		List<String> requestedIds = metaIds.stream().filter(Objects::nonNull).distinct().toList();
+		if (requestedIds.isEmpty()) return 0;
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			if (em.find(MetadataGroup.class, groupId) == null) {
+				tx.commit();
+				return 0;
+			}
+
+			Set<String> validIds = new LinkedHashSet<>();
+			Set<String> existingIds = new HashSet<>();
+			for (int i = 0; i < requestedIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = requestedIds.subList(i, Math.min(i + READ_BATCH_SIZE, requestedIds.size()));
+				validIds.addAll(em.createQuery("SELECT e.metaId FROM EdmEntityId e WHERE e.metaId IN :metaIds", String.class)
+						.setParameter("metaIds", batch).getResultList());
+				existingIds.addAll(em.createQuery("SELECT ag.meta.metaId FROM AuthorizationGroup ag "
+						+ "WHERE ag.group.id = :groupId AND ag.meta.metaId IN :metaIds", String.class)
+						.setParameter("groupId", groupId).setParameter("metaIds", batch).getResultList());
+			}
+
+			int inserted = 0;
+			MetadataGroup group = em.getReference(MetadataGroup.class, groupId);
+			for (String metaId : validIds) {
+				if (existingIds.contains(metaId)) continue;
+				AuthorizationGroup authorization = new AuthorizationGroup();
+				authorization.setId(UUID.randomUUID().toString());
+				authorization.setGroup(group);
+				authorization.setMeta(em.getReference(EdmEntityId.class, metaId));
+				em.persist(authorization);
+				inserted++;
+				if (inserted % BATCH_SIZE == 0) {
+					em.flush();
+					em.clear();
+					group = em.getReference(MetadataGroup.class, groupId);
+				}
+			}
+			em.flush();
+			tx.commit();
+			evictCacheByPattern(AuthorizationGroup.class.getSimpleName());
+			return inserted;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error adding metadata elements to group {}", groupId, e);
+			return 0;
 		} finally {
 			closeQuietly(em);
 		}
