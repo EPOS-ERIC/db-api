@@ -372,8 +372,8 @@ public class EposDataModelDAO<T> {
 
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			tx = em.getTransaction();
-			tx.begin();
+			 tx = em.getTransaction();
+			 tx.begin();
 
 			Object parent = em.find(pClass, parentId);
 			Object target = em.find(tClass, targetId);
@@ -680,6 +680,7 @@ public class EposDataModelDAO<T> {
 			em = EntityManagerService.getInstance().createEntityManager();
 			tx = em.getTransaction();
 			tx.begin();
+			String metaId = findMetaId(em, entityClass, instanceId);
 
 			if (relationFields != null) {
 				for (Map.Entry<Class<?>, String> relation : relationFields.entrySet()) {
@@ -709,6 +710,7 @@ public class EposDataModelDAO<T> {
 				tx.rollback();
 				return false;
 			}
+			cleanupMetaId(em, entityClass, metaId);
 			tx.commit();
 			evictCacheByPattern(entityClass.getSimpleName());
 			return true;
@@ -719,6 +721,36 @@ public class EposDataModelDAO<T> {
 		} finally {
 			closeQuietly(em);
 		}
+	}
+
+	private String findMetaId(EntityManager em, Class<?> entityClass, String instanceId) {
+		List<String> metaIds = em.createQuery(
+				"SELECT e.metaId FROM " + entityClass.getSimpleName()
+						+ " e WHERE e.instanceId = :id", String.class)
+				.setParameter("id", instanceId)
+				.setMaxResults(1)
+				.getResultList();
+		return metaIds.isEmpty() ? null : metaIds.get(0);
+	}
+
+	/** Remove group/index metadata only after the last version is gone. */
+	private void cleanupMetaId(EntityManager em, Class<?> entityClass, String metaId) {
+		if (metaId == null) return;
+		Long remaining = em.createQuery(
+				"SELECT COUNT(e) FROM " + entityClass.getSimpleName()
+						+ " e WHERE e.metaId = :metaId", Long.class)
+				.setParameter("metaId", metaId)
+				.getSingleResult();
+		if (remaining != 0) return;
+
+		em.createQuery("DELETE FROM AuthorizationGroup a WHERE a.meta.metaId = :metaId")
+				.setParameter("metaId", metaId)
+				.executeUpdate();
+		em.createQuery("DELETE FROM EdmEntityId e WHERE e.metaId = :metaId")
+				.setParameter("metaId", metaId)
+				.executeUpdate();
+		evictCacheByPattern(AuthorizationGroup.class.getSimpleName());
+		evictCacheByPattern(EdmEntityId.class.getSimpleName());
 	}
 
 	/** A join entity and the parent-side property used for a targeted bulk delete. */
@@ -741,6 +773,7 @@ public class EposDataModelDAO<T> {
 			em = EntityManagerService.getInstance().createEntityManager();
 			tx = em.getTransaction();
 			tx.begin();
+			String metaId = findMetaId(em, entityClass, instanceId);
 
 			if (relationFields != null) {
 				for (RelationField relation : relationFields) {
@@ -757,6 +790,7 @@ public class EposDataModelDAO<T> {
 			em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
 					.setParameter("id", instanceId)
 					.executeUpdate();
+			cleanupMetaId(em, entityClass, metaId);
 			tx.commit();
 			evictCacheByPattern(entityClass.getSimpleName());
 			return true;
