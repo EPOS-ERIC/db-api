@@ -868,8 +868,8 @@ public class EposDataModelDAO<T> {
 			em = EntityManagerService.getInstance().createEntityManager();
 			for (int i = 0; i < metaIds.size(); i += READ_BATCH_SIZE) {
 				List<String> batch = metaIds.subList(i, Math.min(i + READ_BATCH_SIZE, metaIds.size()));
-				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
-						+ "FROM AuthorizationGroup ag WHERE ag.meta.metaId IN :metaIds", AuthorizationGroupRow.class)
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+						+ "FROM AuthorizationGroup ag JOIN ag.meta meta WHERE meta.metaId IN :metaIds", AuthorizationGroupRow.class)
 						.setParameter("metaIds", batch).getResultList());
 			}
 			return rows;
@@ -891,8 +891,8 @@ public class EposDataModelDAO<T> {
 			em = EntityManagerService.getInstance().createEntityManager();
 			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
 				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
-				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
-						+ "FROM AuthorizationGroup ag WHERE ag.group.id IN :groupIds", AuthorizationGroupRow.class)
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+						+ "FROM AuthorizationGroup ag JOIN ag.meta meta WHERE ag.group.id IN :groupIds", AuthorizationGroupRow.class)
 						.setParameter("groupIds", batch).getResultList());
 			}
 			return rows;
@@ -955,8 +955,8 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			return em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(ag.meta.metaId, ag.group.id, ag.meta.tableName) "
-					+ "FROM AuthorizationGroup ag", AuthorizationGroupRow.class).getResultList();
+			return em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+					+ "FROM AuthorizationGroup ag JOIN ag.meta meta", AuthorizationGroupRow.class).getResultList();
 		} catch (Exception e) {
 			LOG.error("Error retrieving all authorization group rows", e);
 			return Collections.emptyList();
