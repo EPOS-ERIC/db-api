@@ -71,7 +71,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             obj.setMetaId(UUID.randomUUID().toString());
         }
 
-        EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+        if (!EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName)) {
+            throw new IllegalStateException("Unable to register operation meta_id " + obj.getMetaId());
+        }
 
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
@@ -81,7 +83,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
-        getDbaccess().updateObject(edmobj);
+        if (!getDbaccess().updateObject(edmobj)) {
+            throw new IllegalStateException("Unable to persist operation " + edmobj.getInstanceId());
+        }
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setMethod(obj.getMethod());
