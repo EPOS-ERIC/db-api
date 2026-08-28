@@ -28,6 +28,7 @@ import org.epos.handler.dbapi.service.EntityManagerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -255,6 +256,103 @@ public class EposDataModelDAO<T> {
 	private String generateCacheKey(String method, Object... params) { return method; }
 
 	// =================== OPTIMIZED CRUD OPERATIONS ===================
+
+	/** Repoints persisted associations from a superseded version to its replacement. */
+	public int repointVersionReferences(String oldInstanceId, String newInstanceId, Class<?> targetClass) {
+		if (oldInstanceId == null || newInstanceId == null || targetClass == null
+				|| oldInstanceId.equals(newInstanceId)) return 0;
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		int updated = 0;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			for (Class<?> entityClass : managedEntityClasses(em)) {
+				Table table = entityClass.getAnnotation(Table.class);
+				if (table == null) continue;
+				for (Field field : allFields(entityClass)) {
+					if (!field.isAnnotationPresent(ManyToOne.class)
+							|| !targetClass.isAssignableFrom(field.getType())) continue;
+					JoinColumn joinColumn = field.getAnnotation(JoinColumn.class);
+					if (joinColumn == null || joinColumn.name().isBlank()) continue;
+					String tableName = (table.schema().isBlank() ? "" : table.schema() + ".") + table.name();
+					String column = joinColumn.name();
+					removeConflictingRelation(em, table, tableName, column, oldInstanceId, newInstanceId);
+					updated += em.createNativeQuery("UPDATE " + tableName + " SET " + column + " = ?1 WHERE " + column + " = ?2")
+							.setParameter(1, newInstanceId)
+							.setParameter(2, oldInstanceId)
+							.executeUpdate();
+				}
+			}
+			tx.commit();
+			return updated;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			throw new IllegalStateException("Unable to repoint version references", e);
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	private void removeConflictingRelation(EntityManager em, Table table, String tableName, String targetColumn,
+			String oldInstanceId, String newInstanceId) {
+		List<?> primaryKeyColumns = em.createNativeQuery("SELECT kcu.column_name FROM information_schema.table_constraints tc "
+				+ "JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name "
+				+ "AND tc.table_schema = kcu.table_schema AND tc.table_name = kcu.table_name "
+				+ "WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = ?1 AND tc.table_name = ?2 "
+				+ "ORDER BY kcu.ordinal_position")
+				.setParameter(1, table.schema()).setParameter(2, table.name()).getResultList();
+		List<String> otherKeys = primaryKeyColumns.stream().map(Object::toString)
+				.filter(key -> !key.equals(targetColumn)).toList();
+		if (otherKeys.isEmpty()) return;
+
+		String matchingKeys = otherKeys.stream()
+				.map(key -> "new_row." + key + " = old_row." + key)
+				.collect(java.util.stream.Collectors.joining(" AND "));
+		em.createNativeQuery("DELETE FROM " + tableName + " old_row WHERE old_row." + targetColumn + " = ?1 "
+				+ "AND EXISTS (SELECT 1 FROM " + tableName + " new_row WHERE new_row." + targetColumn + " = ?2 AND "
+				+ matchingKeys + ")")
+				.setParameter(1, oldInstanceId).setParameter(2, newInstanceId).executeUpdate();
+	}
+
+	/** Repoints all archived versions of the same logical entity to its published version. */
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public int repointArchivedVersionReferences(String uid, String newInstanceId, Class<?> targetClass) {
+		if (uid == null || newInstanceId == null || targetClass == null) return 0;
+		List<?> candidates = getOneFromDBByUIDNoCache(uid, (Class) targetClass);
+		int updated = 0;
+		for (Object candidate : candidates) {
+			try {
+				if (newInstanceId.equals(candidate.getClass().getMethod("getInstanceId").invoke(candidate))) continue;
+				Object version = candidate.getClass().getMethod("getVersion").invoke(candidate);
+				if (version != null && StatusType.ARCHIVED.name().equals(version.getClass().getMethod("getStatus").invoke(version))) {
+					updated += repointVersionReferences((String) candidate.getClass().getMethod("getInstanceId").invoke(candidate),
+							newInstanceId, targetClass);
+				}
+			} catch (ReflectiveOperationException ignored) {
+				// Non-versioned model entities are not candidates for version repointing.
+			}
+		}
+		return updated;
+	}
+
+	private Set<Class<?>> managedEntityClasses(EntityManager em) {
+		Set<Class<?>> result = new LinkedHashSet<>();
+		em.getMetamodel().getManagedTypes().forEach(type -> {
+			if (type.getJavaType().isAnnotationPresent(Entity.class)) result.add(type.getJavaType());
+		});
+		return result;
+	}
+
+	private List<Field> allFields(Class<?> type) {
+		List<Field> fields = new ArrayList<>();
+		for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+			fields.addAll(Arrays.asList(current.getDeclaredFields()));
+		}
+		return fields;
+	}
 
 	public Boolean createObject(T entity) {
 		if (entity == null) return false;

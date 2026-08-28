@@ -110,6 +110,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

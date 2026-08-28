@@ -99,6 +99,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

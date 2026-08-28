@@ -231,7 +231,6 @@ public class StatusTransitionTest extends TestcontainersLifecycle {
         Distribution distribution = createTestDistribution("Test Distribution for PUBLISHED");
         distribution.setStatus(StatusType.DRAFT);
         LinkedEntity distLE = distributionAPI.create(distribution, null, null, null);
-        distributionAPI.create(distributionAPI.retrieve(distLE.getInstanceId()), StatusType.SUBMITTED, null, null);
 
         DataProduct dataProduct = createTestDataProduct("Test DataProduct for PUBLISHED");
         dataProduct.setStatus(StatusType.DRAFT);
@@ -285,8 +284,6 @@ public class StatusTransitionTest extends TestcontainersLifecycle {
         LinkedEntity distLE = distributionAPI.create(distribution, null, null, null);
 
         Distribution distDraft = distributionAPI.retrieve(distLE.getInstanceId());
-        distDraft.setStatus(StatusType.SUBMITTED);
-        distributionAPI.create(distDraft, null, null, null);
 
         DataProduct dataProduct = createTestDataProduct("Test DataProduct for PUBLISHED DTO");
         dataProduct.setStatus(StatusType.DRAFT);

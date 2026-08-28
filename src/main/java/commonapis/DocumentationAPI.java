@@ -88,6 +88,7 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Documentation.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

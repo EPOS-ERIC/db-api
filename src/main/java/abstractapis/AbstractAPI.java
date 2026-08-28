@@ -142,6 +142,17 @@ public abstract class AbstractAPI<T> {
         return overrideStatus;
     }
 
+    protected void repointPublishedVersion(EPOSDataModelEntity obj, String oldInstanceId, Class<?> modelClass) {
+        if (obj == null || obj.getStatus() != StatusType.PUBLISHED || obj.getInstanceId() == null) {
+            return;
+        }
+        if (oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId())) {
+            getDbaccess().repointVersionReferences(oldInstanceId, obj.getInstanceId(), modelClass);
+        } else if (obj.getUid() != null) {
+            getDbaccess().repointArchivedVersionReferences(obj.getUid(), obj.getInstanceId(), modelClass);
+        }
+    }
+
     protected void logCreateStart(T obj, StatusType overrideStatus) {
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}",

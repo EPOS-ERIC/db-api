@@ -31,6 +31,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
+        String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
@@ -125,6 +126,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

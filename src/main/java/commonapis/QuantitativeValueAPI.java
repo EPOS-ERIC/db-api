@@ -78,6 +78,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Quantitativevalue.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

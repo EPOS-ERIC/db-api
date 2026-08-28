@@ -348,8 +348,11 @@ public class RelationChecker {
 
                     if (obj == null) {
                         String apiName = EntityNames.valueOf(linkedEntityTypeUpper).name();
+                        StatusType relationStatus = overrideStatus != null
+                                ? overrideStatus
+                                : mainEntity.getStatus();
                         obj = AbstractAPI.retrieveAPI(apiName)
-                                .create(relationEntity, overrideStatus, oldLinkedEntityMainEntity, newLinkedEntityMainEntity);
+                                .create(relationEntity, relationStatus, oldLinkedEntityMainEntity, newLinkedEntityMainEntity);
 
                         if (Boolean.TRUE.equals(enableStore)) {
                             OperationWebserviceInDistributionSingleton.getInstance()
@@ -532,7 +535,7 @@ public class RelationChecker {
         return le;
     }
 
-    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus, String editorId) {
+    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus, String ignoredEditorId) {
         if (versions == null || versions.isEmpty()) {
             return null;
         }
@@ -541,9 +544,9 @@ public class RelationChecker {
         }
 
         String targetStatusStr = targetStatus.toString();
-        if (StatusType.DRAFT.equals(targetStatus) && editorId != null) {
+        if (StatusType.DRAFT.equals(targetStatus)) {
             for (Object v : versions) {
-                if (StatusType.DRAFT.toString().equals(getModelVersionStatus(v)) && sameEditor(editorId, getModelStrProperty(v, "getEditorId"))) {
+                if (StatusType.DRAFT.toString().equals(getModelVersionStatus(v))) {
                     return v;
                 }
             }
@@ -563,13 +566,6 @@ public class RelationChecker {
         }
 
         return versions.get(0);
-    }
-
-    private static boolean sameEditor(String left, String right) {
-        if (left == null || right == null) {
-            return false;
-        }
-        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     /**

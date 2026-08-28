@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -119,7 +121,7 @@ public class EntityManagerService {
     }
 
     private void applyPerformanceIndexesIfEnabled() {
-        if (!Boolean.parseBoolean(System.getenv("APPLY_PERFORMANCE_INDEXES"))) {
+        if ("false".equalsIgnoreCase(System.getenv("APPLY_PERFORMANCE_INDEXES"))) {
             return;
         }
 
@@ -142,7 +144,7 @@ public class EntityManagerService {
             transaction.begin();
             // Concurrent instances serialize the DDL to prevent index-creation races at startup.
             entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(88017421)").getSingleResult();
-            for (String statement : sql.split(";")) {
+            for (String statement : splitSqlStatements(sql)) {
                 if (!statement.isBlank()) {
                     entityManager.createNativeQuery(statement).executeUpdate();
                 }
@@ -159,6 +161,28 @@ public class EntityManagerService {
                 entityManager.close();
             }
         }
+    }
+
+    private static List<String> splitSqlStatements(String sql) {
+        List<String> statements = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inDollarQuote = false;
+        for (int i = 0; i < sql.length(); i++) {
+            if (sql.startsWith("$$", i)) {
+                inDollarQuote = !inDollarQuote;
+                current.append("$$");
+                i++;
+            } else if (sql.charAt(i) == ';' && !inDollarQuote) {
+                statements.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(sql.charAt(i));
+            }
+        }
+        if (!current.isEmpty()) {
+            statements.add(current.toString());
+        }
+        return statements;
     }
 
     /**

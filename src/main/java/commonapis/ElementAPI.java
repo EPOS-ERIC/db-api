@@ -79,6 +79,7 @@ public class ElementAPI extends AbstractAPI<org.epos.eposdatamodel.Element> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Element.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

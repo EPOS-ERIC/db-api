@@ -80,6 +80,7 @@ public class SpatialAPI extends AbstractAPI<org.epos.eposdatamodel.Location> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Spatial.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

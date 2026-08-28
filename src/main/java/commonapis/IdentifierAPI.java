@@ -76,6 +76,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Identifier.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

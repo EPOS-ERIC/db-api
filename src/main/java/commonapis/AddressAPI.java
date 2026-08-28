@@ -92,6 +92,7 @@ public class AddressAPI extends AbstractAPI<org.epos.eposdatamodel.Address> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Address.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

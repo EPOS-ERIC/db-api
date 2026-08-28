@@ -1,5 +1,6 @@
 package integrationtests.unittests;
 
+import dao.EposDataModelDAO;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.DataProductAPI;
 import metadataapis.DistributionAPI;
@@ -7,6 +8,7 @@ import metadataapis.EntityNames;
 import metadataapis.OperationAPI;
 import metadataapis.WebServiceAPI;
 import model.StatusType;
+import model.WebserviceDistribution;
 import org.epos.eposdatamodel.DataProduct;
 import org.epos.eposdatamodel.Distribution;
 import org.epos.eposdatamodel.LinkedEntity;
@@ -132,6 +134,41 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
                 operationApi.retrieve(draftedOperation1.getInstanceId()).getTemplate());
     }
 
+    @Test
+    void repointsEveryDistributionWhenSharedWebServiceIsPublished() {
+        WebServiceAPI webServiceApi = new WebServiceAPI(EntityNames.WEBSERVICE.name(), model.Webservice.class);
+        DistributionAPI distributionApi = new DistributionAPI(EntityNames.DISTRIBUTION.name(), model.Distribution.class);
+
+        LinkedEntity webServiceV1 = createWebService(webServiceApi, "versioned-webservice", null);
+        createDistribution(distributionApi, "distribution-a", webServiceV1, null);
+        createDistribution(distributionApi, "distribution-b", webServiceV1, null);
+
+        WebService draft = webServiceApi.retrieve(webServiceV1.getInstanceId());
+        draft.setName("versioned-webservice-v2");
+        draft.setStatus(StatusType.DRAFT);
+        LinkedEntity webServiceV2 = webServiceApi.create(draft, StatusType.DRAFT, null, null);
+
+        WebService submitted = webServiceApi.retrieve(webServiceV2.getInstanceId());
+        submitted.setStatus(StatusType.SUBMITTED);
+        webServiceApi.create(submitted, StatusType.SUBMITTED, null, null);
+
+        WebService published = webServiceApi.retrieve(webServiceV2.getInstanceId());
+        published.setStatus(StatusType.PUBLISHED);
+        webServiceApi.create(published, StatusType.PUBLISHED, null, null);
+
+        List<Object> relations = EposDataModelDAO.getInstance().getAllFromDB(WebserviceDistribution.class);
+        List<WebserviceDistribution> sharedRelations = relations.stream()
+                .map(WebserviceDistribution.class::cast)
+                .filter(relation -> relation.getDistributionInstance() != null)
+                .filter(relation -> relation.getDistributionInstance().getUid().startsWith("test:distribution-"))
+                .toList();
+
+        assertEquals(2, sharedRelations.size(), "both Distribution relations must be retained");
+        assertTrue(sharedRelations.stream().allMatch(relation ->
+                        webServiceV2.getInstanceId().equals(relation.getWebserviceInstance().getInstanceId())),
+                "all shared Distribution relations must point to the published WebService version");
+    }
+
     private LinkedEntity createOperation(OperationAPI api, String name) {
         Operation operation = new Operation();
         operation.setUid("test:" + name + ":" + UUID.randomUUID());
@@ -146,7 +183,7 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
         webService.setUid("test:" + name + ":" + UUID.randomUUID());
         webService.setName(name);
         webService.setEntryPoint("https://example.org/" + name);
-        webService.setSupportedOperation(List.of(operation));
+        if (operation != null) webService.setSupportedOperation(List.of(operation));
         webService.setStatus(StatusType.PUBLISHED);
         return api.create(webService, StatusType.PUBLISHED, null, null);
     }
@@ -158,7 +195,7 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
         distribution.setTitle(List.of(name));
         distribution.setFormat("application/json");
         distribution.setAccessService(List.of(webService));
-        distribution.setSupportedOperation(List.of(operation));
+        if (operation != null) distribution.setSupportedOperation(List.of(operation));
         distribution.setStatus(StatusType.PUBLISHED);
         return api.create(distribution, StatusType.PUBLISHED, null, null);
     }

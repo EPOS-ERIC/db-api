@@ -9,6 +9,42 @@ CREATE INDEX IF NOT EXISTS idx_versioningstatus_status_instance
     ON metadata_catalogue.versioningstatus (status, instance_id);
 CREATE INDEX IF NOT EXISTS idx_versioningstatus_uid
     ON metadata_catalogue.versioningstatus (uid);
+
+CREATE OR REPLACE FUNCTION metadata_catalogue.enforce_single_working_version()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.meta_id IS NOT NULL AND NEW.uid IS NOT NULL AND NEW.status IN ('DRAFT', 'SUBMITTED')
+       THEN
+        -- Advisory locking keeps the check atomic without requiring a
+        -- cleanup migration for duplicate legacy rows.
+        PERFORM pg_advisory_xact_lock(
+            hashtextextended(NEW.meta_id || E'\x1f' || NEW.uid, 0)
+        );
+
+        IF EXISTS (
+            SELECT 1
+            FROM metadata_catalogue.versioningstatus existing
+            WHERE existing.meta_id = NEW.meta_id
+             AND existing.uid = NEW.uid
+             AND existing.status IN ('DRAFT', 'SUBMITTED')
+              AND existing.instance_id <> NEW.instance_id
+        ) THEN
+            RAISE EXCEPTION 'A DRAFT or SUBMITTED version already exists for meta_id %, uid %', NEW.meta_id, NEW.uid;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_single_working_version
+    ON metadata_catalogue.versioningstatus;
+CREATE TRIGGER trg_single_working_version
+    BEFORE INSERT OR UPDATE OF meta_id, status, instance_id
+    ON metadata_catalogue.versioningstatus
+    FOR EACH ROW
+    EXECUTE FUNCTION metadata_catalogue.enforce_single_working_version();
 CREATE INDEX IF NOT EXISTS idx_authorization_group_meta_id
     ON usergroup_catalogue.authorization_group (meta_id);
 -- Keep this non-unique until a migration explicitly deduplicates existing rows.

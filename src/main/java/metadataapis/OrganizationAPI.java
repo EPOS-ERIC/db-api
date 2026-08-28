@@ -201,6 +201,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.ORGANIZATION.name());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

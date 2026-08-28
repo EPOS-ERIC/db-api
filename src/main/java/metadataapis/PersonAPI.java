@@ -139,6 +139,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

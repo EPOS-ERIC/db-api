@@ -80,6 +80,7 @@ public class ParameterAPI extends AbstractAPI<org.epos.eposdatamodel.SoftwareApp
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Parameter.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

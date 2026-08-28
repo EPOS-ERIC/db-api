@@ -1222,8 +1222,7 @@ public class RelationSyncUtil {
         if (metaId == null) {
             metaId = originalInstanceId;
         }
-        String editorKey = editorId != null ? editorId.trim().toLowerCase(Locale.ROOT) : "";
-        String cacheKey = metaId + "_" + newStatus.name() + "_" + editorKey;
+        String cacheKey = metaId + "_" + newStatus.name();
 
         Map<String, String> createdVersions = cascadeCreatedVersions.get();
         String existingNewInstanceId = createdVersions.get(cacheKey);

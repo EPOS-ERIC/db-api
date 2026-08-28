@@ -127,6 +127,7 @@ public class SoftwareSourceCodeAPI extends AbstractAPI<org.epos.eposdatamodel.So
 
         
             LinkedEntity result = new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

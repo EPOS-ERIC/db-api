@@ -191,6 +191,7 @@ public class EquipmentAPI extends AbstractAPI<org.epos.eposdatamodel.Equipment> 
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {

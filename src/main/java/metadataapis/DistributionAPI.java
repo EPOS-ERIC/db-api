@@ -190,6 +190,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.DISTRIBUTION.name());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -655,7 +656,7 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
      * Legacy data can contain joins to both a published WebService and a draft
      * of the same logical WebService. A Distribution version may expose only one
      * access service per logical UID; prefer the version compatible with the
-     * Distribution status and draft editor.
+     * Distribution status.
      */
     private List<WebserviceDistribution> selectAccessServiceRelations(
             Collection<WebserviceDistribution> relations, Versioningstatus distributionVersion) {
@@ -685,16 +686,6 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         String parentStatus = distributionVersion != null ? distributionVersion.getStatus() : null;
         String candidateStatus = candidate.getVersion().getStatus();
         String currentStatus = current.getVersion().getStatus();
-        if (StatusType.DRAFT.name().equals(parentStatus)) {
-            String editorId = distributionVersion.getEditorId();
-            boolean candidateOwnedDraft = StatusType.DRAFT.name().equals(candidateStatus)
-                    && editorId != null && editorId.equalsIgnoreCase(candidate.getVersion().getEditorId());
-            boolean currentOwnedDraft = StatusType.DRAFT.name().equals(currentStatus)
-                    && editorId != null && editorId.equalsIgnoreCase(current.getVersion().getEditorId());
-            if (candidateOwnedDraft != currentOwnedDraft) {
-                return candidateOwnedDraft;
-            }
-        }
         boolean candidateMatchesParent = parentStatus != null && parentStatus.equals(candidateStatus);
         boolean currentMatchesParent = parentStatus != null && parentStatus.equals(currentStatus);
         if (candidateMatchesParent != currentMatchesParent) {

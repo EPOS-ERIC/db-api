@@ -27,6 +27,8 @@ public class VersioningStatusAPI {
         }
 
         Versioningstatus edmobj = null;
+        StatusType targetStatus = overrideStatus != null ? overrideStatus :
+                (obj.getStatus() != null ? obj.getStatus() : DRAFT);
 
         if (obj.getInstanceId() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
@@ -38,24 +40,30 @@ public class VersioningStatusAPI {
             }
         }
 
-        if (edmobj == null && obj.getUid() != null) {
+        if (obj.getUid() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
-            edmobj = selectVersionForTransition(list, obj, overrideStatus);
+            Versioningstatus submitted = findByStatus(list, SUBMITTED);
+            Versioningstatus draft = findByStatus(list, DRAFT);
+            if (targetStatus == DRAFT && submitted != null) {
+                throw new VersionPolicyException("Cannot create a DRAFT while a SUBMITTED version exists");
+            }
+            if (targetStatus == SUBMITTED && submitted != null
+                    && (edmobj == null || !submitted.getInstanceId().equals(edmobj.getInstanceId()))) {
+                throw new VersionPolicyException("A SUBMITTED version already exists for this entity");
+            }
+            if (edmobj == null || (targetStatus == DRAFT && draft != null)) {
+                edmobj = selectVersionForTransition(list, obj, overrideStatus);
+            }
         }
 
         if (edmobj != null) {
-            StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
-            if (targetStatus == null) targetStatus = DRAFT;
-            boolean editorWasOmitted = obj.getEditorId() == null;
-            // Requests may omit version metadata on updates. Keep the persisted
-            // editor so draft ownership and relation resolution remain stable.
+            // editorId is audit data only; it never selects or protects a version.
             if (obj.getEditorId() == null) {
                 obj.setEditorId(edmobj.getEditorId());
             }
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
             boolean reuseExistingDraft = targetStatus == DRAFT
-                    && currentDbStatus == DRAFT
-                    && (editorWasOmitted || sameEditor(obj.getEditorId(), edmobj.getEditorId()));
+                    && currentDbStatus == DRAFT;
 
             if (LOG.isLoggable(java.util.logging.Level.FINE)) {
                 LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}, reuseExistingDraft={2}",
@@ -99,10 +107,8 @@ public class VersioningStatusAPI {
         }
 
         if (targetStatus == DRAFT) {
-            Versioningstatus sameEditorDraft = findDraftForEditor(versions, obj.getEditorId());
-            if (sameEditorDraft != null) {
-                return sameEditorDraft;
-            }
+            Versioningstatus draft = findByStatus(versions, DRAFT);
+            if (draft != null) return draft;
 
             Versioningstatus published = findPublishedVersion(versions);
             if (published != null) {
@@ -113,7 +119,7 @@ public class VersioningStatusAPI {
         }
 
         if (targetStatus == SUBMITTED) {
-            Versioningstatus draft = findUnambiguousDraftForSubmission(versions, obj.getEditorId());
+            Versioningstatus draft = findByStatus(versions, DRAFT);
             if (draft != null) {
                 return draft;
             }
@@ -138,47 +144,10 @@ public class VersioningStatusAPI {
         return findFirstNonPending(versions);
     }
 
-    /**
-     * Selects the source version before an API mutates the incoming DTO.
-     * Drafts are scoped by editor; another editor's draft is never a source
-     * when a published version is available.
-     */
-    public static <T> T selectVersion(List<T> versions, String editorId, StatusType targetStatus,
+    /** Selects the single shared draft or submitted version for an entity. */
+    public static <T> T selectVersion(List<T> versions, String ignoredEditorId, StatusType targetStatus,
                                        Function<T, Versioningstatus> versionGetter) {
         if (versions == null || versions.isEmpty()) return null;
-
-        // SUBMITTED is a transition from a DRAFT, not a lookup for a previously
-        // submitted sibling. Without an instanceId, only an unambiguous draft can
-        // safely be promoted.
-        if (targetStatus == SUBMITTED) {
-            List<T> drafts = new java.util.ArrayList<>();
-            boolean hasDraft = false;
-            for (T entity : versions) {
-                Versioningstatus version = versionGetter.apply(entity);
-                if (version != null && DRAFT.toString().equals(version.getStatus())) {
-                    hasDraft = true;
-                    if (editorId == null || sameEditor(editorId, version.getEditorId())) {
-                        drafts.add(entity);
-                    }
-                }
-            }
-            if (drafts.size() == 1) {
-                return drafts.get(0);
-            }
-            if (hasDraft) {
-                throw new IllegalArgumentException("Cannot submit an ambiguous DRAFT version; provide instanceId or editorId");
-            }
-        }
-
-        if (targetStatus == DRAFT && editorId != null) {
-            for (T entity : versions) {
-                Versioningstatus version = versionGetter.apply(entity);
-                if (version != null && DRAFT.toString().equals(version.getStatus())
-                        && sameEditor(editorId, version.getEditorId())) {
-                    return entity;
-                }
-            }
-        }
 
         if (targetStatus != null) {
             for (T entity : versions) {
@@ -231,41 +200,6 @@ public class VersioningStatusAPI {
         return selected;
     }
 
-    private static Versioningstatus findDraftForEditor(List<Versioningstatus> versions, String editorId) {
-        for (Versioningstatus vs : versions) {
-            if (vs == null || isPendingRelationMarker(vs)) {
-                continue;
-            }
-            if (DRAFT.toString().equals(vs.getStatus()) && sameEditor(editorId, vs.getEditorId())) {
-                return vs;
-            }
-        }
-        return null;
-    }
-
-    private static Versioningstatus findUnambiguousDraftForSubmission(List<Versioningstatus> versions, String editorId) {
-        Versioningstatus result = null;
-        boolean hasDraft = false;
-        for (Versioningstatus version : versions) {
-            if (version == null || isPendingRelationMarker(version)
-                    || !DRAFT.toString().equals(version.getStatus())) {
-                continue;
-            }
-            hasDraft = true;
-            if (editorId != null && !sameEditor(editorId, version.getEditorId())) {
-                continue;
-            }
-            if (result != null) {
-                throw new IllegalArgumentException("Cannot submit an ambiguous DRAFT version; provide instanceId or editorId");
-            }
-            result = version;
-        }
-        if (hasDraft && result == null) {
-            throw new IllegalArgumentException("Cannot submit a DRAFT owned by another editor; provide its instanceId");
-        }
-        return result;
-    }
-
     private static Versioningstatus findPublishedVersion(List<Versioningstatus> versions) {
         return findByStatus(versions, PUBLISHED);
     }
@@ -294,11 +228,6 @@ public class VersioningStatusAPI {
         return null;
     }
 
-    private static boolean sameEditor(String left, String right) {
-        if (left == null || right == null) return false;
-        return left.trim().equalsIgnoreCase(right.trim());
-    }
-
     private static boolean isPendingRelationMarker(Versioningstatus vs) {
         if (vs == null) return false;
 
@@ -322,6 +251,13 @@ public class VersioningStatusAPI {
         }
 
         return false;
+    }
+
+    /** Expected lifecycle rejection, handled by the API boundary without error logging. */
+    public static final class VersionPolicyException extends IllegalStateException {
+        public VersionPolicyException(String message) {
+            super(message);
+        }
     }
 
     private static void archiveOldPublishedVersions(String uid, String currentVersionId) {
@@ -493,8 +429,6 @@ public class VersioningStatusAPI {
         obj.setInstanceChangedId(vs.getInstanceChangeId());
 
         obj.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(obj.getMetaId()));
-
-        //TODO: reviewerid and reviewercomment
 
         try {
             obj.setStatus(StatusType.valueOf(vs.getStatus()));

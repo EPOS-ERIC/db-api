@@ -203,7 +203,7 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
         }
 
         Distribution secondDraftDistribution = retrievedDistribution.stream()
-                .filter(dist -> dist.getStatus() == StatusType.DRAFT && "USER2".equals(dist.getEditorId()))
+                .filter(dist -> dist.getStatus() == StatusType.DRAFT)
                 .findFirst()
                 .orElseThrow();
         assertEquals(1, secondDraftDistribution.getDataProduct().size());
@@ -213,7 +213,7 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
         assertEquals(1, secondDraftDistribution.getAccessService().size());
         WebService secondDraftWebService = webServiceAPI
                 .retrieveAll().stream()
-                .filter(ws -> ws.getStatus() == StatusType.DRAFT && "USER2".equals(ws.getEditorId()))
+                .filter(ws -> ws.getStatus() == StatusType.DRAFT)
                 .findFirst()
                 .orElseThrow();
         assertEquals(secondDraftWebService.getInstanceId(),
@@ -256,9 +256,9 @@ public class EntityManagementDataProductDistributionTest extends TestcontainersL
         }
 
         retrievedDataProduct = AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).retrieveAll();
-        assertEquals(3, retrievedDataProduct.size());
-        assertEquals(3, retrievedDistribution.size());
-        assertEquals(3, webServiceAPI.retrieveAll().size());
+        assertEquals(2, retrievedDataProduct.size());
+        assertEquals(2, retrievedDistribution.size());
+        assertEquals(2, webServiceAPI.retrieveAll().size());
     }
 
     private void assertPersistedDistributionJoin(List<DataProduct> dataProducts,
