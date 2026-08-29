@@ -261,6 +261,9 @@ public class EposDataModelDAO<T> {
 	public int repointVersionReferences(String oldInstanceId, String newInstanceId, Class<?> targetClass) {
 		if (oldInstanceId == null || newInstanceId == null || targetClass == null
 				|| oldInstanceId.equals(newInstanceId)) return 0;
+		// A DataProduct owns a versioned graph. Moving inverse references from
+		// the archived parent would mutate its historical snapshot.
+		if ("Dataproduct".equals(targetClass.getSimpleName())) return 0;
 
 		EntityManager em = null;
 		EntityTransaction tx = null;
@@ -270,6 +273,10 @@ public class EposDataModelDAO<T> {
 			tx = em.getTransaction();
 			tx.begin();
 			for (Class<?> entityClass : managedEntityClasses(em)) {
+				// Versioned graph joins belong to the snapshot that owns them. The
+				// version APIs create the replacement joins explicitly; moving these
+				// inverse rows would mutate an archived graph.
+				if (isVersionedGraphJoin(targetClass, entityClass)) continue;
 				Table table = entityClass.getAnnotation(Table.class);
 				if (table == null) continue;
 				for (Field field : allFields(entityClass)) {
@@ -294,6 +301,21 @@ public class EposDataModelDAO<T> {
 		} finally {
 			closeQuietly(em);
 		}
+	}
+
+	private boolean isVersionedGraphJoin(Class<?> targetClass, Class<?> relationClass) {
+		String target = targetClass.getSimpleName();
+		String relation = relationClass.getSimpleName();
+		return switch (target) {
+		case "Distribution" -> relation.equals("DistributionDataproduct")
+				|| relation.equals("WebserviceDistribution") || relation.equals("OperationDistribution");
+		case "Webservice" -> relation.equals("WebserviceDistribution")
+				|| relation.equals("OperationWebservice");
+		case "Operation" -> relation.equals("OperationWebservice")
+				|| relation.equals("OperationDistribution") || relation.equals("OperationMapping");
+		case "Mapping" -> relation.equals("OperationMapping");
+		default -> false;
+		};
 	}
 
 	private void removeConflictingRelation(EntityManager em, Table table, String tableName, String targetColumn,

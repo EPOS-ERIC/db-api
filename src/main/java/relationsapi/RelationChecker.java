@@ -302,6 +302,18 @@ public class RelationChecker {
                 List<Object> allVersions = EposDataModelDAO.getInstance()
                         .getOneFromDBByUIDNoCache(relationUid, clazz);
 
+                // A draft parent may reference a submitted child. Keep that
+                // exact child; creating a draft sibling would violate the
+                // single-submitted-version policy.
+                if (targetStatus == StatusType.DRAFT
+                        && StatusType.SUBMITTED.equals(relationEntity.getStatus())) {
+                    for (Object version : allVersions) {
+                        if (StatusType.SUBMITTED.toString().equals(getModelVersionStatus(version))) {
+                            return version;
+                        }
+                    }
+                }
+
                 // For shared reference entities, prioritize PUBLISHED
                 if (shouldUsePublishedVersion(linkedEntityType, mainEntity)) {
                     for (Object v : allVersions) {
@@ -494,11 +506,9 @@ public class RelationChecker {
         String uid = linkedEntity.getUid();
         if (uid != null) {
             List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, clazz);
-            for (Object v : allVersions) {
-                String status = getModelVersionStatus(v);
-                if (STATUS_PUBLISHED.equals(status)) {
-                    return v;
-                }
+            Object published = findBestMatchingVersion(allVersions, StatusType.PUBLISHED, null);
+            if (published != null && STATUS_PUBLISHED.equals(getModelVersionStatus(published))) {
+                return published;
             }
         }
 
@@ -513,11 +523,9 @@ public class RelationChecker {
                 if (foundUid != null) {
                     List<Object> allVersions = EposDataModelDAO.getInstance()
                             .getOneFromDBByUIDNoCache(foundUid, clazz);
-                    for (Object v : allVersions) {
-                        String status = getModelVersionStatus(v);
-                        if (STATUS_PUBLISHED.equals(status)) {
-                            return v;
-                        }
+                    Object published = findBestMatchingVersion(allVersions, StatusType.PUBLISHED, null);
+                    if (published != null && STATUS_PUBLISHED.equals(getModelVersionStatus(published))) {
+                        return published;
                     }
                 }
             }
@@ -558,14 +566,54 @@ public class RelationChecker {
             return null;
         }
 
+        Object bestPublished = null;
+        String bestTimestamp = null;
         for (Object v : versions) {
             String status = getModelVersionStatus(v);
-            if (targetStatusStr.equals(status)) {
-                return v;
+            if (!targetStatusStr.equals(status)) {
+                continue;
             }
+            String timestamp = getModelVersionTimestamp(v);
+            if (bestPublished == null || (timestamp != null
+                    && (bestTimestamp == null || timestamp.compareTo(bestTimestamp) > 0
+                    || (timestamp.equals(bestTimestamp) && getInstanceChangedId(v) != null
+                    && getInstanceChangedId(bestPublished) == null)))) {
+                bestPublished = v;
+                bestTimestamp = timestamp;
+            }
+        }
+        if (bestPublished != null) {
+            // DAO ordering is undefined. Prefer the version that is not the
+            // predecessor of another matching published version.
+            for (Object candidate : versions) {
+                if (targetStatusStr.equals(getModelVersionStatus(candidate))
+                        && Objects.equals(getInstanceChangedId(candidate), getModelStrProperty(bestPublished, "getInstanceId"))) {
+                    bestPublished = candidate;
+                }
+            }
+            return bestPublished;
         }
 
         return versions.get(0);
+    }
+
+    private static String getModelVersionTimestamp(Object modelEntity) {
+        try {
+            Object versionObj = invokeGetter(modelEntity, VERSION_GETTERS, "getVersion");
+            Object timestamp = versionObj != null
+                    ? versionObj.getClass().getMethod("getChangeTimestamp").invoke(versionObj) : null;
+            return timestamp != null ? timestamp.toString() : null;
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private static String getInstanceChangedId(Object modelEntity) {
+        try {
+            return (String) modelEntity.getClass().getMethod("getInstanceChangedId").invoke(modelEntity);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     /**

@@ -88,8 +88,11 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
             }
         }
 
-        obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
         String previousVersionInstanceId = obj.getInstanceChangedId();
+        obj = (org.epos.eposdatamodel.DataProduct) VersioningStatusAPI.checkVersion(obj, overrideStatus);
+        if (previousVersionInstanceId == null) {
+            previousVersionInstanceId = obj.getInstanceChangedId();
+        }
 
         if (obj.getInstanceId() == null) {
             obj.setInstanceId(UUID.randomUUID().toString());
@@ -285,23 +288,67 @@ public class DataProductAPI extends AbstractAPI<org.epos.eposdatamodel.DataProdu
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DATAPRODUCT.name(), edmobj);
 
-        if (StatusType.PUBLISHED.equals(obj.getStatus())
-                && previousVersionInstanceId != null
-                && !previousVersionInstanceId.equals(obj.getInstanceId())) {
-            RelationSyncUtil.archiveDataProductOwnedGraph(previousVersionInstanceId);
-        }
-
-        
             LinkedEntity result = new LinkedEntity().entityType(entityName)
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            if (obj.getStatus() == StatusType.PUBLISHED && previousVersionInstanceId != null) {
+                RelationSyncUtil.archiveDataProductOwnedGraph(previousVersionInstanceId);
+            }
             repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
+            // Repointing the parent can move inverse joins from the superseded
+            // graph back onto this version. Reconcile the logical child UIDs
+            // after that operation so only the selected child versions remain.
+            if (obj.getStatus() == StatusType.PUBLISHED && distributionLinks != null) {
+                RelationSyncUtil.syncComplexRelation(
+                        edmobj, edmobj.getInstanceId(), distributionLinks, relationFromUpdate, relationToUpdate,
+                        DistributionDataproduct.class, Distribution.class,
+                        "dataproductInstance",
+                        DistributionDataproduct::getDistributionInstance,
+                        DistributionDataproduct::setDataproductInstance,
+                        DistributionDataproduct::setDistributionInstance,
+                         obj, previousObj, overrideStatus, false
+                );
+                for (LinkedEntity distributionLink : distributionLinks) {
+                    if (distributionLink != null && distributionLink.getInstanceId() != null) {
+                        RelationSyncUtil.reconcilePublishedDistributionWebservices(
+                                distributionLink.getInstanceId());
+                    }
+                }
+                archiveCurrentDistributionTargets(distributionLinks);
+            }
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
             logCreateEnd(null, t);
             throw t;
+        }
+    }
+
+    private void archiveCurrentDistributionTargets(List<LinkedEntity> distributionLinks) {
+        for (LinkedEntity currentLink : distributionLinks) {
+            if (currentLink == null || currentLink.getInstanceId() == null) {
+                continue;
+            }
+            org.epos.eposdatamodel.Distribution currentDistribution = new DistributionAPI(
+                    EntityNames.DISTRIBUTION.name(), model.Distribution.class)
+                    .retrieve(currentLink.getInstanceId());
+            if (currentDistribution != null) {
+                if (currentDistribution.getSupportedOperation() != null) {
+                    for (LinkedEntity operation : currentDistribution.getSupportedOperation()) {
+                        if (operation != null) {
+                             RelationSyncUtil.archivePublishedVersionStatusesByUid(operation.getUid(), operation.getInstanceId());
+                        }
+                    }
+                }
+            }
+            for (Object rawVersion : getDbaccess().getOneFromDBByInstanceIdNoCache(
+                    currentLink.getInstanceId(), Versioningstatus.class)) {
+                Versioningstatus version = (Versioningstatus) rawVersion;
+                if (version.getInstanceChangeId() != null) {
+                    RelationSyncUtil.archiveVersionByInstanceId(version.getInstanceChangeId());
+                }
+            }
         }
     }
 

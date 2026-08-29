@@ -76,8 +76,7 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
         assertNotNull(retrievedDataset2.getDistribution(), "dataset2 lost distribution");
         assertEquals(distribution2.getInstanceId(), retrievedDataset2.getDistribution().get(0).getInstanceId());
 
-        // Drafting dataset1 must draft its complete reachable graph, including both
-        // operations exposed by the shared WebService.
+        // Drafting dataset1 versions only the operation selected by its Distribution.
         DataProduct dataset1DraftRequest = dataProductApi.retrieve(dataset1InstanceId);
         dataset1DraftRequest.setStatus(StatusType.DRAFT);
         dataset1DraftRequest.setEditorId("draft-owner");
@@ -100,11 +99,17 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
         assertEquals(2, draftedWebService1.getSupportedOperation().size(),
                 "draft WebService lost one of its operations");
 
-        for (LinkedEntity operationLink : draftedWebService1.getSupportedOperation()) {
-            Operation draftedOperation = operationApi.retrieve(operationLink.getInstanceId());
-            assertEquals(StatusType.DRAFT, draftedOperation.getStatus());
-            assertEquals("GET", draftedOperation.getMethod());
-        }
+        String draftedOperation1InstanceId = draftedDistribution1.getSupportedOperation().stream()
+                .filter(operation -> !operation2InstanceId.equals(operation.getInstanceId()))
+                .findFirst()
+                .orElseThrow()
+                .getInstanceId();
+        Operation draftedOperation1 = operationApi.retrieve(draftedOperation1InstanceId);
+        assertEquals(StatusType.DRAFT, draftedOperation1.getStatus());
+        assertEquals("GET", draftedOperation1.getMethod());
+        Operation publishedOperation2 = operationApi.retrieve(operation2InstanceId);
+        assertEquals(StatusType.PUBLISHED, publishedOperation2.getStatus());
+        assertEquals("GET", publishedOperation2.getMethod());
 
         // Update draft properties and prove that the published graph is not overwritten.
         draftedDataset1.setTitle(List.of("dataset1-draft"));
@@ -114,8 +119,12 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
         draftedWebService1.setName("webservice1-draft");
         webServiceApi.create(draftedWebService1, StatusType.DRAFT, null, null);
 
-        Operation draftedOperation1 = operationApi.retrieve(
-                draftedWebService1.getSupportedOperation().get(0).getInstanceId());
+        draftedOperation1 = operationApi.retrieve(
+                draftedWebService1.getSupportedOperation().stream()
+                        .filter(operation -> draftedOperation1InstanceId.equals(operation.getInstanceId()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getInstanceId());
         draftedOperation1.setTemplate("https://example.org/operation1-draft");
         operationApi.create(draftedOperation1, StatusType.DRAFT, null, null);
 

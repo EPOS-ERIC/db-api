@@ -6,6 +6,7 @@ import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.eposdatamodel.EPOSDataModelEntity;
+import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 import utilities.MemoryMonitor;
 
@@ -146,10 +147,24 @@ public abstract class AbstractAPI<T> {
         if (obj == null || obj.getStatus() != StatusType.PUBLISHED || obj.getInstanceId() == null) {
             return;
         }
-        if (oldInstanceId != null && !oldInstanceId.equals(obj.getInstanceId())) {
-            getDbaccess().repointVersionReferences(oldInstanceId, obj.getInstanceId(), modelClass);
-        } else if (obj.getUid() != null) {
+        String newInstanceId = obj.getInstanceId();
+        String previousInstanceId = obj.getInstanceChangedId();
+        if (previousInstanceId != null && !previousInstanceId.equals(newInstanceId)) {
+            getDbaccess().repointVersionReferences(previousInstanceId, newInstanceId, modelClass);
+        }
+        if (oldInstanceId != null && !oldInstanceId.equals(newInstanceId)
+                && !oldInstanceId.equals(previousInstanceId)) {
+            getDbaccess().repointVersionReferences(oldInstanceId, newInstanceId, modelClass);
+        }
+        if (previousInstanceId == null && (oldInstanceId == null || oldInstanceId.equals(newInstanceId))
+                && obj.getUid() != null) {
             getDbaccess().repointArchivedVersionReferences(obj.getUid(), obj.getInstanceId(), modelClass);
+        }
+        if (obj.getUid() != null) {
+            RelationSyncUtil.archivePublishedVersionsByUid(obj.getUid(), newInstanceId);
+        }
+        if (previousInstanceId != null && !previousInstanceId.equals(newInstanceId)) {
+            RelationSyncUtil.archiveVersionByInstanceId(previousInstanceId);
         }
     }
 

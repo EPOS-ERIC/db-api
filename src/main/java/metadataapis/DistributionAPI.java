@@ -184,13 +184,15 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
 
         RelationSyncUtil.resolvePendingRelations(edmobj.getUid(), EntityNames.DISTRIBUTION.name(), edmobj);
 
-        
             LinkedEntity result = new LinkedEntity()
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.DISTRIBUTION.name());
             repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
+            if (obj.getStatus() == StatusType.PUBLISHED) {
+                RelationSyncUtil.reconcilePublishedDistributionWebservices(edmobj.getInstanceId());
+            }
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -690,6 +692,16 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
         boolean currentMatchesParent = parentStatus != null && parentStatus.equals(currentStatus);
         if (candidateMatchesParent != currentMatchesParent) {
             return candidateMatchesParent;
+        }
+        if (StatusType.PUBLISHED.name().equals(candidateStatus)
+                && StatusType.PUBLISHED.name().equals(currentStatus)) {
+            if (candidate.getVersion().getChangeTimestamp() != null
+                    && current.getVersion().getChangeTimestamp() != null) {
+                return candidate.getVersion().getChangeTimestamp()
+                        .isAfter(current.getVersion().getChangeTimestamp());
+            }
+            return candidate.getInstanceId() != null
+                    && current.getInstanceId() == null;
         }
         return StatusType.PUBLISHED.name().equals(candidateStatus)
                 && !StatusType.PUBLISHED.name().equals(currentStatus);

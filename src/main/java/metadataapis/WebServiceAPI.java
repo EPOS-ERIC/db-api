@@ -240,6 +240,9 @@ public class WebServiceAPI extends AbstractAPI<org.epos.eposdatamodel.WebService
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
             repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
+            if (obj.getStatus() == StatusType.PUBLISHED) {
+                RelationSyncUtil.reconcilePublishedDistributionsForWebservice(edmobj.getUid());
+            }
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
