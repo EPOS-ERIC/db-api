@@ -274,19 +274,18 @@ public class RelationSyncUtil {
     private static void archiveOwnedGraphByInstanceId(String instanceId) {
         for (Object entity : EposDataModelDAO.getInstance()
                 .getOneFromDBByInstanceIdNoCache(instanceId, model.Distribution.class)) {
-            archiveRelationTargets(instanceId, "distributionInstance",
+            archiveRelationTargetsPreservingPublished(instanceId, "distributionInstance",
                     model.WebserviceDistribution.class, relation -> {
                         Object target = model.WebserviceDistribution.class.cast(relation).getWebserviceInstance();
-                        archiveVersionStatusByInstanceId(getModelId(target));
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
                         return target;
                     });
-            archiveRelationTargets(instanceId, "distributionInstance",
+            archiveRelationTargetsPreservingPublished(instanceId, "distributionInstance",
                     model.OperationDistribution.class, relation -> {
                         Object target = model.OperationDistribution.class.cast(relation).getOperationInstance();
-                        archiveVersionStatusByInstanceId(getModelId(target));
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
                         return target;
                     });
-            propagateStatusToOwnedRelations(entity, StatusType.ARCHIVED);
         }
         for (Object entity : EposDataModelDAO.getInstance()
                 .getOneFromDBByInstanceIdNoCache(instanceId, model.Webservice.class)) {
@@ -294,10 +293,10 @@ public class RelationSyncUtil {
         }
         for (Object entity : EposDataModelDAO.getInstance()
                 .getOneFromDBByInstanceIdNoCache(instanceId, model.Operation.class)) {
-            archiveRelationTargets(instanceId, "operationInstance",
+            archiveRelationTargetsPreservingPublished(instanceId, "operationInstance",
                     model.OperationMapping.class, relation -> {
                         Object target = model.OperationMapping.class.cast(relation).getMappingInstance();
-                        archiveVersionStatusByInstanceId(getModelId(target));
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
                         return target;
                     });
             propagateStatusToOwnedRelations(entity, StatusType.ARCHIVED);
@@ -445,6 +444,8 @@ public class RelationSyncUtil {
                     model.OperationDistribution.class, model.OperationDistribution::getOperationInstance, newStatus);
         } else if (entity instanceof model.Webservice webservice) {
             updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.OperationWebservice.class, model.OperationWebservice::getOperationInstance, newStatus);
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
                     model.WebserviceSpatial.class, model.WebserviceSpatial::getSpatialInstance, newStatus);
             updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
                     model.WebserviceTemporal.class, model.WebserviceTemporal::getTemporalInstance, newStatus);
@@ -476,6 +477,23 @@ public class RelationSyncUtil {
                 .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
         for (Object relation : relations) {
             updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), StatusType.ARCHIVED);
+        }
+    }
+
+    private static <J, T> void archiveRelationTargetsPreservingPublished(String parentInstanceId,
+                                                                           String parentFieldName,
+                                                                           Class<J> joinClass,
+                                                                           Function<J, T> targetGetter) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            T target = targetGetter.apply(joinClass.cast(relation));
+            if (getStatusFromEntity(target) != StatusType.PUBLISHED) {
+                updateChildEntityStatus(target, StatusType.ARCHIVED);
+            }
         }
     }
 
@@ -2023,9 +2041,10 @@ public class RelationSyncUtil {
             replacement.setWebserviceInstance(latest);
             replacement.setDistributionInstance(retrieveDistribution(distributionInstanceId));
             dao.createObject(replacement);
-            archiveVersionByInstanceId(current.getInstanceId());
+            // The old version may still be used by another published Distribution.
+            // Archive it only after all published references have moved away from it.
+            archivePublishedVersionStatusesByUid(current.getUid(), latest.getInstanceId());
         }
-        reconcilePublishedDistributionOperations(distributionInstanceId);
     }
 
     public static void reconcilePublishedDistributionsForWebservice(String webserviceUid) {
@@ -2042,6 +2061,49 @@ public class RelationSyncUtil {
         }
         for (String distributionId : distributionIds) {
             reconcilePublishedDistributionWebservices(distributionId);
+        }
+    }
+
+    /** Keeps operations shared with another published Distribution on their published version. */
+    public static void preserveOperationsSharedByPublishedDistributions(String webserviceInstanceId,
+                                                                          String excludedDistributionInstanceId) {
+        if (webserviceInstanceId == null) return;
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        model.Webservice webservice = retrieveWebservice(webserviceInstanceId);
+        if (webservice == null) return;
+
+        for (Object raw : dao.getJoinEntitiesByParentId("webserviceInstance", webserviceInstanceId,
+                model.OperationWebservice.class)) {
+            model.OperationWebservice relation = (model.OperationWebservice) raw;
+            model.Operation operation = relation.getOperationInstance();
+            if (operation == null || operation.getUid() == null) continue;
+
+            boolean sharedByOtherPublishedDistribution = false;
+            for (Object distributionRaw : dao.getJoinEntitiesByParentId("operationInstance",
+                    operation.getInstanceId(), model.OperationDistribution.class)) {
+                model.OperationDistribution distributionRelation = (model.OperationDistribution) distributionRaw;
+                model.Distribution distribution = distributionRelation.getDistributionInstance();
+                if (distribution != null
+                        && !Objects.equals(excludedDistributionInstanceId, distribution.getInstanceId())
+                        && getStatusFromEntity(distribution) == StatusType.PUBLISHED) {
+                    sharedByOtherPublishedDistribution = true;
+                    break;
+                }
+            }
+            if (!sharedByOtherPublishedDistribution) continue;
+
+            model.Operation published = latestPublished(operation, model.Operation.class);
+            if (published == null || Objects.equals(operation.getInstanceId(), published.getInstanceId())) continue;
+
+            dao.deleteObject(relation);
+            model.OperationWebservice replacement = new model.OperationWebservice();
+            model.OperationWebserviceId id = new model.OperationWebserviceId();
+            id.setWebserviceInstanceId(webserviceInstanceId);
+            id.setOperationInstanceId(published.getInstanceId());
+            replacement.setId(id);
+            replacement.setWebserviceInstance(webservice);
+            replacement.setOperationInstance(published);
+            dao.createObject(replacement);
         }
     }
 
@@ -2124,6 +2186,12 @@ public class RelationSyncUtil {
         List<Object> distributions = EposDataModelDAO.getInstance()
                 .getOneFromDBByInstanceIdNoCache(instanceId, model.Distribution.class);
         return distributions.isEmpty() ? null : (model.Distribution) distributions.get(0);
+    }
+
+    private static model.Webservice retrieveWebservice(String instanceId) {
+        List<Object> webservices = EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Webservice.class);
+        return webservices.isEmpty() ? null : (model.Webservice) webservices.get(0);
     }
 
     private static boolean isLaterVersion(model.Webservice candidate, model.Webservice current) {

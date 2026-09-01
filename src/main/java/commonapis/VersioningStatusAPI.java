@@ -92,6 +92,9 @@ public class VersioningStatusAPI {
             }
 
             createFirstVersion(obj, initialStatus);
+            if (initialStatus == PUBLISHED) {
+                archiveOldPublishedVersions(obj.getUid(), obj.getVersionId());
+            }
             return obj;
         }
     }

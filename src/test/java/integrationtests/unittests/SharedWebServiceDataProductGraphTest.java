@@ -178,6 +178,57 @@ class SharedWebServiceDataProductGraphTest extends TestcontainersLifecycle {
                 "all shared Distribution relations must point to the published WebService version");
     }
 
+    @Test
+    void versionsOnlyTheOperationOwnedByDistributionBeingDrafted() {
+        OperationAPI operationApi = new OperationAPI(EntityNames.OPERATION.name(), model.Operation.class);
+        WebServiceAPI webServiceApi = new WebServiceAPI(EntityNames.WEBSERVICE.name(), model.Webservice.class);
+        DistributionAPI distributionApi = new DistributionAPI(EntityNames.DISTRIBUTION.name(), model.Distribution.class);
+
+        LinkedEntity operation1V1 = createOperation(operationApi, "shared-operation-1");
+        LinkedEntity operation2V1 = createOperation(operationApi, "shared-operation-2");
+        WebService webService = new WebService();
+        webService.setUid("test:shared-webservice:" + UUID.randomUUID());
+        webService.setName("shared-webservice");
+        webService.setSupportedOperation(List.of(operation1V1, operation2V1));
+        LinkedEntity webServiceV1 = webServiceApi.create(webService, StatusType.PUBLISHED, null, null);
+
+        LinkedEntity distribution1V1 = createDistribution(distributionApi, "sharedscenario-one", webServiceV1, operation1V1);
+        LinkedEntity distribution2V1 = createDistribution(distributionApi, "sharedscenario-two", webServiceV1, operation2V1);
+
+        Distribution distribution1DraftRequest = distributionApi.retrieve(distribution1V1.getInstanceId());
+        distribution1DraftRequest.setTitle(List.of("distribution-one-draft"));
+        distribution1DraftRequest.setStatus(StatusType.DRAFT);
+        LinkedEntity distribution1V2 = distributionApi.create(distribution1DraftRequest, StatusType.DRAFT, null, null);
+
+        Distribution draft = distributionApi.retrieve(distribution1V2.getInstanceId());
+        assertEquals(StatusType.DRAFT, draft.getStatus());
+        String webServiceV2Id = draft.getAccessService().get(0).getInstanceId();
+        String operation1V2Id = draft.getSupportedOperation().get(0).getInstanceId();
+        assertNotEquals(webServiceV1.getInstanceId(), webServiceV2Id);
+        assertNotEquals(operation1V1.getInstanceId(), operation1V2Id);
+        WebService webServiceDraft = webServiceApi.retrieve(webServiceV2Id);
+        LinkedEntity operation2V2 = webServiceDraft.getSupportedOperation().stream()
+                .filter(link -> link.getUid().equals(operation2V1.getUid()))
+                .findFirst().orElseThrow();
+        assertNotEquals(operation2V1.getInstanceId(), operation2V2.getInstanceId());
+        assertEquals(StatusType.DRAFT, operationApi.retrieve(operation2V2.getInstanceId()).getStatus());
+
+        Distribution submitted = distributionApi.retrieve(distribution1V2.getInstanceId());
+        distributionApi.create(submitted, StatusType.SUBMITTED, null, null);
+        Distribution published = distributionApi.retrieve(distribution1V2.getInstanceId());
+        distributionApi.create(published, StatusType.PUBLISHED, null, null);
+
+        Distribution distribution1After = distributionApi.retrieve(distribution1V2.getInstanceId());
+        assertEquals(StatusType.PUBLISHED, distribution1After.getStatus());
+        assertEquals(webServiceV2Id, distribution1After.getAccessService().get(0).getInstanceId());
+        assertEquals(operation1V2Id, distribution1After.getSupportedOperation().get(0).getInstanceId());
+        Distribution distribution2After = distributionApi.retrieve(distribution2V1.getInstanceId());
+        assertEquals(StatusType.PUBLISHED, distribution2After.getStatus());
+        assertEquals(webServiceV2Id, distribution2After.getAccessService().get(0).getInstanceId());
+        assertEquals(operation2V1.getInstanceId(), distribution2After.getSupportedOperation().get(0).getInstanceId());
+        assertEquals(StatusType.PUBLISHED, operationApi.retrieve(operation2V1.getInstanceId()).getStatus());
+    }
+
     private LinkedEntity createOperation(OperationAPI api, String name) {
         Operation operation = new Operation();
         operation.setUid("test:" + name + ":" + UUID.randomUUID());

@@ -165,6 +165,14 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
                 OperationDistribution::setOperationInstance,
                 obj, previousObj, overrideStatus, false
         );
+        if (isNewVersion && obj.getAccessService() != null) {
+            for (LinkedEntity accessService : obj.getAccessService()) {
+                if (accessService != null && accessService.getInstanceId() != null) {
+                    RelationSyncUtil.preserveOperationsSharedByPublishedDistributions(
+                            accessService.getInstanceId(), oldInstanceId);
+                }
+            }
+        }
 
         /** ACCESSURL **/
         if (isNewVersion && oldInstanceId != null) {
@@ -192,6 +200,13 @@ public class DistributionAPI extends AbstractAPI<org.epos.eposdatamodel.Distribu
             repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             if (obj.getStatus() == StatusType.PUBLISHED) {
                 RelationSyncUtil.reconcilePublishedDistributionWebservices(edmobj.getInstanceId());
+                if (obj.getAccessService() != null) {
+                    for (LinkedEntity accessService : obj.getAccessService()) {
+                        if (accessService != null && accessService.getUid() != null) {
+                            RelationSyncUtil.reconcilePublishedDistributionsForWebservice(accessService.getUid());
+                        }
+                    }
+                }
             }
             logCreateEnd(result, null);
             return result;
