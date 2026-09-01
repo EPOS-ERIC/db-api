@@ -366,15 +366,15 @@ public class RelationSyncTest extends TestcontainersLifecycle{
         payloadDto.setUid(TEST_UID_PREFIX + "payload-001");
         payloadDto.setEditorId("test");
         payloadDto.setFileProvenance("test");
-        payloadDto.setSupportedOperation(new LinkedEntity()
-                .instanceId(op.getInstanceId())
-                .uid(op.getUid())
-                .entityType(EntityNames.OPERATION.name()));
 
         LinkedEntity payload = assertDoesNotThrow(() ->
                         payloadApi.create(payloadDto, StatusType.PUBLISHED, null, null),
                 "Should NOT throw ClassCastException"
         );
+
+        // Operation is the canonical owner of its payload collection.
+        opDto.addPayload(payload);
+        assertDoesNotThrow(() -> opApi.create(opDto, StatusType.PUBLISHED, null, null));
 
         Payload retrieved = payloadApi.retrieve(payload.getInstanceId());
 
@@ -939,5 +939,136 @@ public class RelationSyncTest extends TestcontainersLifecycle{
         assertFalse(retrieved.getKeywords().contains("neural-network"), "Should NOT have neural-network");
 
         System.out.println("   ✓ SoftwareApplication keywords elements synced correctly");
+    }
+
+    @Test
+    @Order(19)
+    @DisplayName("19. WebService - GET by UID returns the draft without contact points after PUT null")
+    void webService_ContactPointsRemovedWithNull_AreReturnedFromDraft() {
+        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
+        WebServiceAPI webServiceAPI = new WebServiceAPI(EntityNames.WEBSERVICE.name(), Webservice.class);
+
+        ContactPoint contactPoint = new ContactPoint();
+        contactPoint.setUid(TEST_UID_PREFIX + "ws-clear-cp");
+        contactPoint.setEditorId("test");
+        contactPoint.setFileProvenance("test");
+        contactPoint.addEmail("ws-clear@example.org");
+        LinkedEntity contactPointEntity = contactPointAPI.create(contactPoint, StatusType.PUBLISHED, null, null);
+
+        WebService published = new WebService();
+        published.setUid(TEST_UID_PREFIX + "ws-clear");
+        published.setEditorId("test");
+        published.setFileProvenance("test");
+        published.setName("WebService contact point removal");
+        published.addContactPoint(contactPointEntity);
+        LinkedEntity publishedEntity = webServiceAPI.create(published, StatusType.PUBLISHED, null, null);
+
+        WebService draftUpdate = new WebService();
+        draftUpdate.setInstanceId(publishedEntity.getInstanceId());
+        draftUpdate.setMetaId(publishedEntity.getMetaId());
+        draftUpdate.setUid(publishedEntity.getUid());
+        draftUpdate.setEditorId("test");
+        draftUpdate.setFileProvenance("test");
+        draftUpdate.setName("WebService contact point removal");
+        LinkedEntity draftEntity = webServiceAPI.create(draftUpdate, StatusType.DRAFT, null, null);
+
+        WebService retrieved = webServiceAPI.retrieveByUID(publishedEntity.getUid());
+        assertEquals(draftEntity.getInstanceId(), retrieved.getInstanceId(), "GET by UID should return the draft created by PUT");
+        assertEquals(StatusType.DRAFT, retrieved.getStatus(), "GET by UID should return a draft");
+        assertTrue(retrieved.getContactPoint() == null || retrieved.getContactPoint().isEmpty(),
+                "A null contactPoint payload should remove all draft contact points");
+
+        WebService originalPublished = webServiceAPI.retrieve(publishedEntity.getInstanceId());
+        assertEquals(1, originalPublished.getContactPoint().size(), "The published revision must remain unchanged");
+    }
+
+    @Test
+    @Order(20)
+    @DisplayName("20. DataProduct - GET by UID returns the draft without contact points after PUT empty list")
+    void dataProduct_ContactPointsRemovedWithEmptyList_AreReturnedFromDraft() {
+        ContactPointAPI contactPointAPI = new ContactPointAPI(EntityNames.CONTACTPOINT.name(), Contactpoint.class);
+        DataProductAPI dataProductAPI = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
+
+        ContactPoint contactPoint = new ContactPoint();
+        contactPoint.setUid(TEST_UID_PREFIX + "dp-clear-cp");
+        contactPoint.setEditorId("test");
+        contactPoint.setFileProvenance("test");
+        contactPoint.addEmail("dp-clear@example.org");
+        LinkedEntity contactPointEntity = contactPointAPI.create(contactPoint, StatusType.PUBLISHED, null, null);
+
+        DataProduct published = new DataProduct();
+        published.setUid(TEST_UID_PREFIX + "dp-clear");
+        published.setEditorId("test");
+        published.setFileProvenance("test");
+        published.addTitle("DataProduct contact point removal");
+        published.addContactPoint(contactPointEntity);
+        LinkedEntity publishedEntity = dataProductAPI.create(published, StatusType.PUBLISHED, null, null);
+
+        DataProduct draftUpdate = new DataProduct();
+        draftUpdate.setInstanceId(publishedEntity.getInstanceId());
+        draftUpdate.setMetaId(publishedEntity.getMetaId());
+        draftUpdate.setUid(publishedEntity.getUid());
+        draftUpdate.setEditorId("test");
+        draftUpdate.setFileProvenance("test");
+        draftUpdate.addTitle("DataProduct contact point removal");
+        draftUpdate.setContactPoint(Collections.emptyList());
+        LinkedEntity draftEntity = dataProductAPI.create(draftUpdate, StatusType.DRAFT, null, null);
+
+        DataProduct retrieved = dataProductAPI.retrieveByUID(publishedEntity.getUid());
+        assertEquals(draftEntity.getInstanceId(), retrieved.getInstanceId(), "GET by UID should return the draft created by PUT");
+        assertEquals(StatusType.DRAFT, retrieved.getStatus(), "GET by UID should return a draft");
+        assertTrue(retrieved.getContactPoint() == null || retrieved.getContactPoint().isEmpty(),
+                "An empty contactPoint payload should remove all draft contact points");
+
+        DataProduct originalPublished = dataProductAPI.retrieve(publishedEntity.getInstanceId());
+        assertEquals(1, originalPublished.getContactPoint().size(), "The published revision must remain unchanged");
+    }
+
+    @Test
+    @Order(99)
+    @DisplayName("99. DataProduct - Spatial relation is removed on PUT without spatial")
+    void dataProduct_SpatialExtentRemoved_OnUpdateWithoutSpatial() {
+        SpatialAPI spatialAPI = new SpatialAPI(EntityNames.LOCATION.name(), Spatial.class);
+        DataProductAPI dataProductAPI = new DataProductAPI(EntityNames.DATAPRODUCT.name(), Dataproduct.class);
+
+        Location spatial = new Location();
+        spatial.setUid(TEST_UID_PREFIX + "dp-spatial-001");
+        spatial.setEditorId("test");
+        spatial.setFileProvenance("test");
+        spatial.setStatus(StatusType.DRAFT);
+        spatial.setLocation("POLYGON((0 0, 1 0, 1 1, 0 0))");
+        LinkedEntity spatialEntity = spatialAPI.create(spatial, StatusType.DRAFT, null, null);
+
+        DataProduct dto = new DataProduct();
+        dto.setUid(TEST_UID_PREFIX + "dp-spatial-remove-001");
+        dto.setEditorId("test");
+        dto.setFileProvenance("test");
+        dto.addTitle("DataProduct with spatial");
+        dto.addSpatialExtentItem(new LinkedEntity()
+                .instanceId(spatialEntity.getInstanceId())
+                .uid(spatialEntity.getUid())
+                .entityType(EntityNames.LOCATION.name()));
+
+        LinkedEntity created = dataProductAPI.create(dto, StatusType.DRAFT, null, null);
+
+        DataProduct updateDto = new DataProduct();
+        updateDto.setInstanceId(created.getInstanceId());
+        updateDto.setMetaId(created.getMetaId());
+        updateDto.setUid(created.getUid());
+        updateDto.setEditorId("test");
+        updateDto.setFileProvenance("test");
+        updateDto.addTitle("DataProduct with spatial");
+
+        dataProductAPI.create(updateDto, StatusType.DRAFT, null, null);
+
+        DataProduct retrieved = dataProductAPI.retrieve(created.getInstanceId());
+        assertTrue(retrieved.getSpatialExtent() == null || retrieved.getSpatialExtent().isEmpty(),
+                "SpatialExtent should be removed when omitted from PUT");
+
+        List<Object> joins = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId("dataproductInstance", created.getInstanceId(), DataproductSpatial.class);
+        assertTrue(joins == null || joins.isEmpty(), "DataproductSpatial join should be deleted");
+
+        System.out.println("   ✓ DataProduct spatial relation removed correctly on update without spatial");
     }
 }

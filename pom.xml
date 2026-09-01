@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.epos-eu.ics-c</groupId>
 	<artifactId>db-api</artifactId>
-	<version>4.2.45</version>
+	<version>4.2.69</version>
 	<name>EPOS Database APIs</name>
 	<description>EPOS Database APIs useful to interact with EPOS Metadata Catalogue</description>
 	<url>https://epos-ci.brgm.fr/epos/db-api.git</url>
@@ -22,7 +22,6 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 
-		<caffeine.version>3.2.0</caffeine.version>
 		<logback.version>1.5.18</logback.version>
 		<micrometer.version>1.15.0</micrometer.version>
 	</properties>
@@ -68,24 +67,6 @@
 				<version>3.5.3</version>
 			</plugin>
 
-
-			<!-- SIGNATURE -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-gpg-plugin</artifactId>
-				<version>3.2.7</version>
-				<executions>
-					<execution>
-						<id>sign-artifacts</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>sign</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- END SIGNATURE -->
-
 			<plugin>
 				<groupId>org.sonatype.central</groupId>
 				<artifactId>central-publishing-maven-plugin</artifactId>
@@ -117,14 +98,6 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.3.1</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
 			<!-- END SOURCE -->
 			<plugin>
@@ -266,12 +239,6 @@
 			<version>4.0.0-M3</version>
 		</dependency>
 
-		<!-- Caffeine Cache - High-performance caching -->
-		<dependency>
-			<groupId>com.github.ben-manes.caffeine</groupId>
-			<artifactId>caffeine</artifactId>
-			<version>${caffeine.version}</version>
-		</dependency>
 
 		<!-- Logback for better logging performance -->
 		<dependency>

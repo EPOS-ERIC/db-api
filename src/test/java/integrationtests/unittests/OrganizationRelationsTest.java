@@ -555,6 +555,33 @@ public class OrganizationRelationsTest extends TestcontainersLifecycle {
         System.out.println("✓ Test 6.3 PASSED: Delete Organization cascade behavior verified");
     }
 
+    @Test
+    @Order(53)
+    @DisplayName("6.4 Delete Organization removes memberOf relation where it is the child")
+    void testDeleteOrganizationReferencedByMemberOf() {
+        LinkedEntity parent = organizationAPI.create(
+                createTestOrganization(TEST_PREFIX + "ORG_PARENT_DELETE_" + UUID.randomUUID(), "Parent Organization"),
+                StatusType.PUBLISHED, null, null);
+
+        Organization childOrganization = createTestOrganization(
+                TEST_PREFIX + "ORG_CHILD_DELETE_" + UUID.randomUUID(), "Child Organization");
+        childOrganization.setMemberOf(List.of(parent));
+        LinkedEntity child = organizationAPI.create(childOrganization, StatusType.PUBLISHED, null, null);
+
+        assertFalse(EposDataModelDAO.getInstance().getOneFromDBBySpecificKey(
+                "organization2Instance", child.getInstanceId(), OrganizationMemberof.class).isEmpty(),
+                "memberOf relation should exist before delete");
+
+        assertTrue(organizationAPI.delete(child.getInstanceId()),
+                "Deleting an Organization referenced as organization2Instance should succeed");
+
+        assertNull(organizationAPI.retrieve(child.getInstanceId()), "Child Organization should be deleted");
+        assertTrue(EposDataModelDAO.getInstance().getOneFromDBBySpecificKey(
+                "organization2Instance", child.getInstanceId(), OrganizationMemberof.class).isEmpty(),
+                "memberOf relation should be deleted with the child Organization");
+        assertNotNull(organizationAPI.retrieve(parent.getInstanceId()), "Parent Organization should remain");
+    }
+
     // ========================================================================
     // HELPER METHODS
     // ========================================================================

@@ -30,6 +30,7 @@ public class EntityManagementPersonTest extends TestcontainersLifecycle {
         person.setUid(UUID.randomUUID().toString());
         person.setFamilyName("FamilyName");
         person.setGivenName("GivenName");
+        person.setEditorId("ingestor");
 
         LinkedEntity le = new LinkedEntity();
         le.setEntityType(EntityNames.CONTACTPOINT.name());

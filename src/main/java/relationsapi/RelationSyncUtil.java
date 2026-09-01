@@ -38,7 +38,7 @@ public class RelationSyncUtil {
 
     // Normalized to uppercase only - eliminates redundant storage and lookup overhead
     private static final Set<String> REFERENCE_ENTITIES = Set.of(
-            "CATEGORY", "CATEGORYSCHEME", "ORGANIZATION", "PERSON", "CONTACTPOINT"
+            "ADDRESS", "CATEGORY", "CATEGORYSCHEME", "ORGANIZATION", "PERSON", "CONTACTPOINT"
     );
 
     // Pre-interned status strings avoid repeated string creation in hot paths
@@ -75,6 +75,16 @@ public class RelationSyncUtil {
      */
     private static final ConcurrentHashMap<String, Object> JOIN_LOCKS = new ConcurrentHashMap<>();
     private static final int MAX_JOIN_LOCKS = 10000;
+
+    private static final class QueuedJoin<J> {
+        private final J entity;
+        private final String parentFieldName;
+
+        private QueuedJoin(J entity, String parentFieldName) {
+            this.entity = entity;
+            this.parentFieldName = parentFieldName;
+        }
+    }
 
     private static Object getJoinLock(String joinClassName, String parentId, String targetId) {
         String key = joinClassName + ":" + parentId + ":" + targetId;
@@ -166,6 +176,15 @@ public class RelationSyncUtil {
         return true;
     }
 
+    private static boolean isIngestor(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        return entity != null && entity.getEditorId() != null
+                && INGESTOR.equalsIgnoreCase(entity.getEditorId().trim());
+    }
+
+    private static boolean canMaterializeReference(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        return entity == null || entity.getEditorId() == null || isIngestor(entity);
+    }
+
     // ===== Self-Reference Check =====
 
     private static boolean isSelfReference(LinkedEntity link, String parentId, String parentUid) {
@@ -184,8 +203,8 @@ public class RelationSyncUtil {
     // ===== Status Propagation =====
 
     public static <P, C> void propagateStatusToChildren(P parentEntity, String parentInstanceId,
-                                                        Class<C> childClass, String foreignKeyFieldName,
-                                                        org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
+                                                         Class<C> childClass, String foreignKeyFieldName,
+                                                         org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
         if (shouldApplyReferenceEntityLogic(childClass, mainEntity)) {
             return;
         }
@@ -198,6 +217,10 @@ public class RelationSyncUtil {
         List<Object> children = EposDataModelDAO.getInstance()
                 .getOneFromDBBySpecificKeyNoCache(foreignKeyFieldName, parentInstanceId, childClass);
         if (children == null || children.isEmpty()) {
+            children = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(
+                    foreignKeyFieldName.replace("Instance", "InstanceId"), parentInstanceId, childClass);
+        }
+        if (children == null || children.isEmpty()) {
             return;
         }
 
@@ -208,6 +231,165 @@ public class RelationSyncUtil {
         }
     }
 
+    /** Archives the child versions belonging to a previous parent version. */
+    public static <C> void archiveChildrenOfPreviousVersion(String parentInstanceId,
+                                                            Class<C> childClass,
+                                                            String foreignKeyFieldName) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        String embeddedIdField = foreignKeyFieldName.replace("Instance", "InstanceId");
+        List<Object> children = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByParentId(embeddedIdField, parentInstanceId, childClass);
+        if (children == null) {
+            return;
+        }
+        for (Object child : children) {
+            if (childClass.isInstance(child)) {
+                updateChildEntityStatus(child, StatusType.ARCHIVED);
+            }
+        }
+    }
+
+    public static void archiveVersionByInstanceId(String instanceId) {
+        if (instanceId == null) {
+            return;
+        }
+        archiveVersionStatusByInstanceId(instanceId);
+        archiveOwnedGraphByInstanceId(instanceId);
+    }
+
+    private static void archiveVersionStatusByInstanceId(String instanceId) {
+        List<Versioningstatus> versions = EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, Versioningstatus.class);
+        for (Versioningstatus version : versions) {
+            if (STATUS_PUBLISHED.equals(version.getStatus())) {
+                version.setStatus(STATUS_ARCHIVED);
+                version.setChangeTimestamp(OffsetDateTime.now());
+                EposDataModelDAO.getInstance().updateObject(version);
+            }
+        }
+    }
+
+    private static void archiveOwnedGraphByInstanceId(String instanceId) {
+        for (Object entity : EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Distribution.class)) {
+            archiveRelationTargetsPreservingPublished(instanceId, "distributionInstance",
+                    model.WebserviceDistribution.class, relation -> {
+                        Object target = model.WebserviceDistribution.class.cast(relation).getWebserviceInstance();
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
+                        return target;
+                    });
+            archiveRelationTargetsPreservingPublished(instanceId, "distributionInstance",
+                    model.OperationDistribution.class, relation -> {
+                        Object target = model.OperationDistribution.class.cast(relation).getOperationInstance();
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
+                        return target;
+                    });
+        }
+        for (Object entity : EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Webservice.class)) {
+            propagateStatusToOwnedRelations(entity, StatusType.ARCHIVED);
+        }
+        for (Object entity : EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Operation.class)) {
+            archiveRelationTargetsPreservingPublished(instanceId, "operationInstance",
+                    model.OperationMapping.class, relation -> {
+                        Object target = model.OperationMapping.class.cast(relation).getMappingInstance();
+                        archivePublishedVersionStatusesByUid(getUid(target), getModelId(target));
+                        return target;
+                    });
+            propagateStatusToOwnedRelations(entity, StatusType.ARCHIVED);
+        }
+    }
+
+    public static void archivePublishedVersionsByUid(String uid, String currentInstanceId) {
+        if (uid == null) return;
+        for (Object raw : EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, Versioningstatus.class)) {
+            Versioningstatus version = (Versioningstatus) raw;
+            if (STATUS_PUBLISHED.equals(version.getStatus())
+                    && !Objects.equals(currentInstanceId, version.getInstanceId())) {
+                archiveVersionByInstanceId(version.getInstanceId());
+            }
+        }
+    }
+
+    /** Archives superseded versions without traversing potentially shared descendants. */
+    public static void archivePublishedVersionStatusesByUid(String uid, String currentInstanceId) {
+        if (uid == null) return;
+        for (Object raw : EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, Versioningstatus.class)) {
+            Versioningstatus version = (Versioningstatus) raw;
+            if (STATUS_PUBLISHED.equals(version.getStatus())
+                    && !Objects.equals(currentInstanceId, version.getInstanceId())
+                    && !hasPublishedReferences(version.getInstanceId())) {
+                archiveVersionStatusByInstanceId(version.getInstanceId());
+            }
+        }
+    }
+
+    private static boolean hasPublishedReferences(String instanceId) {
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        if (!dao.getOneFromDBByInstanceIdNoCache(instanceId, model.Webservice.class).isEmpty()) {
+            for (Object raw : dao.getJoinEntitiesByParentId("webserviceInstance", instanceId,
+                    model.WebserviceDistribution.class)) {
+                model.WebserviceDistribution relation = (model.WebserviceDistribution) raw;
+                if (relation.getDistributionInstance() != null
+                        && getStatusFromEntity(relation.getDistributionInstance()) == StatusType.PUBLISHED) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        for (Object raw : dao.getJoinEntitiesByParentId("operationInstance", instanceId,
+                model.OperationDistribution.class)) {
+            model.OperationDistribution relation = (model.OperationDistribution) raw;
+            if (relation.getDistributionInstance() != null
+                    && getStatusFromEntity(relation.getDistributionInstance()) == StatusType.PUBLISHED) {
+                return true;
+            }
+        }
+        for (Object raw : dao.getJoinEntitiesByParentId("operationInstance", instanceId,
+                model.OperationWebservice.class)) {
+            model.OperationWebservice relation = (model.OperationWebservice) raw;
+            if (relation.getWebserviceInstance() != null
+                    && getStatusFromEntity(relation.getWebserviceInstance()) == StatusType.PUBLISHED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Archives the version-owned descendants of a superseded DataProduct. */
+    public static void archiveDataProductOwnedGraph(String dataProductInstanceId) {
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductIdentifier.class, model.DataproductIdentifier::getIdentifierInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductSpatial.class, model.DataproductSpatial::getSpatialInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DataproductTemporal.class, model.DataproductTemporal::getTemporalInstance);
+        archiveRelationTargets(dataProductInstanceId, "dataproductInstance",
+                model.DistributionDataproduct.class, model.DistributionDataproduct::getDistributionInstance);
+    }
+
+    /** Archives the service and operation versions captured by one Distribution snapshot. */
+    public static void archiveDistributionSnapshot(String distributionInstanceId) {
+        if (distributionInstanceId == null) {
+            return;
+        }
+        archiveRelationTargets(distributionInstanceId, "distributionInstance",
+                model.WebserviceDistribution.class, relation -> {
+                    Object target = model.WebserviceDistribution.class.cast(relation).getWebserviceInstance();
+                    archiveVersionStatusByInstanceId(getModelId(target));
+                    return target;
+                });
+        archiveRelationTargets(distributionInstanceId, "distributionInstance",
+                model.OperationDistribution.class, relation -> {
+                    Object target = model.OperationDistribution.class.cast(relation).getOperationInstance();
+                    archiveVersionByInstanceId(getModelId(target));
+                    return target;
+                });
+    }
+
     private static void updateChildEntityStatus(Object childEntity, StatusType newStatus) {
         if (childEntity == null || newStatus == null) {
             return;
@@ -215,15 +397,30 @@ public class RelationSyncUtil {
         try {
             Object versionObj = invokeGetter(childEntity, VERSION_GETTERS, "getVersion");
             if (versionObj instanceof Versioningstatus vs) {
-                if (!newStatus.name().equals(vs.getStatus())) {
-                    if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
-                        archiveOldPublishedVersions(vs.getUid(), vs.getVersionId());
+                if ((newStatus == StatusType.DRAFT || newStatus == StatusType.SUBMITTED)
+                        && (getStatusFromEntity(childEntity) == StatusType.PUBLISHED
+                        || getStatusFromEntity(childEntity) == StatusType.ARCHIVED)) {
+                    @SuppressWarnings("unchecked")
+                    Class<Object> childClass = (Class<Object>) childEntity.getClass();
+                    Object workingVersion = findWorkingVersion(childEntity, childClass);
+                    if (workingVersion != null) {
+                        updateChildEntityStatus(workingVersion, newStatus);
+                        return;
                     }
+                }
+                String previousInstanceId = getInstanceChangedId(versionObj);
+                if (!newStatus.name().equals(vs.getStatus())) {
                     vs.setStatus(newStatus.name());
                     vs.setChangeTimestamp(OffsetDateTime.now());
                     EposDataModelDAO.getInstance().updateObject(vs);
+                    if (newStatus == StatusType.PUBLISHED && previousInstanceId != null) {
+                        archiveVersionByInstanceId(previousInstanceId);
+                    }
                 }
+            } else {
+                updateChildStatusByInstanceId(childEntity, newStatus);
             }
+            propagateStatusToOwnedRelations(childEntity, newStatus);
         } catch (NoSuchMethodError | IllegalStateException e) {
             updateChildStatusByInstanceId(childEntity, newStatus);
         } catch (Exception e) {
@@ -231,37 +428,72 @@ public class RelationSyncUtil {
         }
     }
 
-    private static void archiveOldPublishedVersions(String uid, String currentVersionId) {
-        if (uid == null) {
+    private static String getInstanceChangedId(Object entity) {
+        try {
+            return (String) entity.getClass().getMethod("getInstanceChangedId").invoke(entity);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private static void propagateStatusToOwnedRelations(Object entity, StatusType newStatus) {
+        if (entity instanceof model.Distribution distribution) {
+            updateRelationTargets(distribution.getInstanceId(), "distributionInstance",
+                    model.WebserviceDistribution.class, model.WebserviceDistribution::getWebserviceInstance, newStatus);
+            updateRelationTargets(distribution.getInstanceId(), "distributionInstance",
+                    model.OperationDistribution.class, model.OperationDistribution::getOperationInstance, newStatus);
+        } else if (entity instanceof model.Webservice webservice) {
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.OperationWebservice.class, model.OperationWebservice::getOperationInstance, newStatus);
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.WebserviceSpatial.class, model.WebserviceSpatial::getSpatialInstance, newStatus);
+            updateRelationTargets(webservice.getInstanceId(), "webserviceInstance",
+                    model.WebserviceTemporal.class, model.WebserviceTemporal::getTemporalInstance, newStatus);
+        } else if (entity instanceof model.Operation operation) {
+            updateRelationTargets(operation.getInstanceId(), "operationInstance",
+                    model.OperationMapping.class, model.OperationMapping::getMappingInstance, newStatus);
+        }
+    }
+
+    private static <J, T> void updateRelationTargets(String parentInstanceId, String parentFieldName,
+                                                       Class<J> joinClass, Function<J, T> targetGetter,
+                                                       StatusType newStatus) {
+        if (parentInstanceId == null) {
             return;
         }
-        try {
-            List<Versioningstatus> allVersions = EposDataModelDAO.getInstance()
-                    .getOneFromDBByUIDNoCache(uid, Versioningstatus.class);
-            OffsetDateTime now = OffsetDateTime.now(); // Single timestamp for batch consistency
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), newStatus);
+        }
+    }
 
-            for (Versioningstatus vs : allVersions) {
-                String versionId = vs.getVersionId();
-                if (versionId != null && versionId.equals(currentVersionId)) {
-                    continue;
-                }
-                String metaId = vs.getMetaId();
-                if (metaId != null && metaId.indexOf('.') >= 0) {
-                    continue;
-                }
-                String status = vs.getStatus();
-                if (STATUS_PENDING.equals(status)) {
-                    continue;
-                }
-                if (STATUS_PUBLISHED.equals(status)) {
-                    vs.setStatus(STATUS_ARCHIVED);
-                    vs.setChangeTimestamp(now);
-                    vs.setChangeComment("Auto-archived on status propagation");
-                    EposDataModelDAO.getInstance().updateObject(vs);
-                }
+    private static <J, T> void archiveRelationTargets(String parentInstanceId, String parentFieldName,
+                                                       Class<J> joinClass, Function<J, T> targetGetter) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            updateChildEntityStatus(targetGetter.apply(joinClass.cast(relation)), StatusType.ARCHIVED);
+        }
+    }
+
+    private static <J, T> void archiveRelationTargetsPreservingPublished(String parentInstanceId,
+                                                                           String parentFieldName,
+                                                                           Class<J> joinClass,
+                                                                           Function<J, T> targetGetter) {
+        if (parentInstanceId == null) {
+            return;
+        }
+        List<Object> relations = EposDataModelDAO.getInstance()
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentInstanceId, joinClass);
+        for (Object relation : relations) {
+            T target = targetGetter.apply(joinClass.cast(relation));
+            if (getStatusFromEntity(target) != StatusType.PUBLISHED) {
+                updateChildEntityStatus(target, StatusType.ARCHIVED);
             }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Archive operation failed: {0}", e.getMessage());
         }
     }
 
@@ -276,9 +508,6 @@ public class RelationSyncUtil {
             if (vsList != null && !vsList.isEmpty()) {
                 Versioningstatus vs = vsList.get(0);
                 if (!newStatus.name().equals(vs.getStatus())) {
-                    if (newStatus == StatusType.PUBLISHED && vs.getUid() != null) {
-                        archiveOldPublishedVersions(vs.getUid(), vs.getVersionId());
-                    }
                     vs.setStatus(newStatus.name());
                     vs.setChangeTimestamp(OffsetDateTime.now());
                     EposDataModelDAO.getInstance().updateObject(vs);
@@ -420,11 +649,33 @@ public class RelationSyncUtil {
                                                      org.epos.eposdatamodel.EPOSDataModelEntity mainEntity,
                                                      org.epos.eposdatamodel.EPOSDataModelEntity previousEntity,
                                                      model.StatusType overrideStatus, boolean enableStore) {
+        syncComplexRelationWithInverse(parentDbObject, parentId, inputLinks, relationFromUpdate, relationToUpdate,
+                joinClass, targetClass, parentFieldName, targetGetter, parentSetter, targetSetter,
+                null, null, null, mainEntity, previousEntity, overrideStatus, enableStore);
+    }
+
+    public static <P, J, T> void syncComplexRelationWithInverse(P parentDbObject, String parentId, List<LinkedEntity> inputLinks,
+                                                     LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate,
+                                                     Class<J> joinClass, Class<T> targetClass, String parentFieldName,
+                                                     Function<J, T> targetGetter, BiConsumer<J, P> parentSetter,
+                                                     BiConsumer<J, T> targetSetter,
+                                                     BiConsumer<J, T> inverseParentSetter,
+                                                     BiConsumer<J, P> inverseTargetSetter,
+                                                     String inverseParentFieldName,
+                                                     org.epos.eposdatamodel.EPOSDataModelEntity mainEntity,
+                                                     org.epos.eposdatamodel.EPOSDataModelEntity previousEntity,
+                                                     model.StatusType overrideStatus, boolean enableStore) {
 
         String previousInstanceId = mainEntity.getInstanceChangedId();
         boolean hasInstanceChanged = previousInstanceId != null && !previousInstanceId.equals(parentId);
         StatusType currentStatus = mainEntity.getStatus();
-        boolean isNewVersion = hasInstanceChanged && currentStatus == StatusType.DRAFT;
+        // instanceChangedId stays on a draft for its whole lifetime. A persisted
+        // draft must therefore update its existing graph, not cascade a fresh
+        // graph on every save. previousEntity is the persisted target selected by
+        // the API: it matches parentId only for an in-place draft update.
+        boolean isNewVersion = hasInstanceChanged
+                && currentStatus == StatusType.DRAFT
+                && (previousEntity == null || !Objects.equals(previousEntity.getInstanceId(), parentId));
         boolean effectiveEnableStore = enableStore || isReferenceEntity(targetClass);
 
         String parentMetaId = null;
@@ -438,39 +689,41 @@ public class RelationSyncUtil {
             }
         }
 
+        // Replacing a relation collection is a read/diff/delete/insert operation.
+        // Serialize that complete sequence for this owner in the current service
+        // process; pair-level locks alone cannot protect the delete phase.
+        Object relationSetLock = getJoinLock(joinClass.getName(), parentId, "__relation_set__");
+        synchronized (relationSetLock) {
         try {
             StatusType effectiveStatus = overrideStatus != null ? overrideStatus : mainEntity.getStatus();
 
-            // Handle null or empty list: copy from previous on new versions, otherwise clear existing joins.
+            // A null or empty relation collection explicitly clears the relation.
+            // Lifecycle requests retain their loaded relations in the backoffice
+            // before reaching this point.
             if (inputLinks == null || inputLinks.isEmpty()) {
-                if (isNewVersion) {
-                    copyComplexRelationsFromPreviousVersion(previousInstanceId, parentDbObject, parentId,
-                            joinClass, targetClass, parentFieldName, targetGetter, effectiveStatus, mainEntity);
-                } else {
-                    String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
-                    List<?> existingRawList = EposDataModelDAO.getInstance()
-                            .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
-                    if (existingRawList != null) {
-                        for (Object o : existingRawList) {
-                            EposDataModelDAO.getInstance().deleteObject(o);
-                        }
-                    }
+                String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
+                List<?> existingRawList = EposDataModelDAO.getInstance()
+                        .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+                if (existingRawList != null) {
+                    EposDataModelDAO.getInstance().deleteListOfObjects(existingRawList);
                 }
                 return;
             }
 
-            // Handle update replacement in-place
-            if (relationFromUpdate != null && inputLinks.contains(relationFromUpdate)) {
-                inputLinks.remove(relationFromUpdate);
-                inputLinks.add(relationToUpdate);
+            // Work on a copy so replacing a relation cannot mutate the caller's DTO.
+            inputLinks = new ArrayList<>(inputLinks);
+            if (relationFromUpdate != null && relationToUpdate != null) {
+                for (int i = 0; i < inputLinks.size(); i++) {
+                    LinkedEntity inputLink = inputLinks.get(i);
+                    if (sameLinkedEntity(inputLink, relationFromUpdate)) {
+                        inputLinks.set(i, relationToUpdate);
+                    }
+                }
             }
-
-            // Compute embedded ID field name once
-            String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
 
             // Get existing joins and build lookup map
             List<?> existingRawList = EposDataModelDAO.getInstance()
-                    .getJoinEntitiesByParentId(embeddedIdField, parentId, joinClass);
+                    .getOneFromDBBySpecificKeyNoCache(parentFieldName, parentId, joinClass);
             Map<String, J> existingMap = new HashMap<>(existingRawList != null ? existingRawList.size() : 4);
             if (existingRawList != null) {
                 for (Object o : existingRawList) {
@@ -484,6 +737,9 @@ public class RelationSyncUtil {
             }
 
             Set<String> processedIds = new HashSet<>(inputLinks.size());
+            Set<String> processedUids = new HashSet<>(inputLinks.size());
+            List<QueuedJoin<J>> queuedJoins = new ArrayList<>();
+            Set<String> queuedJoinKeys = new HashSet<>();
             String sourceEntityType = parentDbObject.getClass().getSimpleName().toUpperCase(Locale.ROOT);
             String parentUid = getUid(parentDbObject);
             StatusType cascadeStatus = isNewVersion ? effectiveStatus : null;
@@ -496,23 +752,65 @@ public class RelationSyncUtil {
                 }
 
                 Object rawTarget = null;
+                boolean cascadeSource = false;
 
-                // Direct lookup optimization for non-new versions with instance ID
-                if (!isNewVersion && link.getInstanceId() != null) {
-                    List<Object> directResults = EposDataModelDAO.getInstance()
+                // A status transition must promote the exact child selected by
+                // the caller. Resolving by UID/status here would select a
+                // published sibling and orphan the edited draft.
+                if ((effectiveStatus == StatusType.SUBMITTED || effectiveStatus == StatusType.PUBLISHED)
+                        && link.getInstanceId() != null) {
+                    List<Object> requestedTarget = EposDataModelDAO.getInstance()
                             .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
-                    if (directResults != null && !directResults.isEmpty()) {
-                        rawTarget = directResults.get(0);
+                    if (requestedTarget != null && !requestedTarget.isEmpty()) {
+                        rawTarget = requestedTarget.get(0);
+                    } else {
+                        J currentJoin = existingMap.get(link.getInstanceId());
+                        if (currentJoin != null) {
+                            rawTarget = targetGetter.apply(currentJoin);
+                        }
+                    }
+                }
+
+                // On an ordinary draft update, keep an already-linked draft for
+                // this editor even when the client sends a stale published link.
+                if (rawTarget == null && (isNewVersion || effectiveStatus == StatusType.DRAFT)
+                        && link.getUid() != null) {
+                    for (J existingJoin : existingMap.values()) {
+                        T existingTarget = targetGetter.apply(existingJoin);
+                        if (existingTarget != null
+                                && link.getUid().equals(getUid(existingTarget))) {
+                            rawTarget = existingTarget;
+                            break;
+                        }
                     }
                 }
 
                 if (rawTarget == null) {
-                    rawTarget = RelationChecker.checkRelation(mainEntity, previousEntity, null, link,
+                    // Resolve all other cases centrally so status/editor selection
+                    // cannot be bypassed by a direct instanceId lookup.
+                    RelationChecker.RelationResolution resolution = RelationChecker.resolveRelation(
+                            mainEntity, previousEntity, null, link,
                             effectiveStatus, targetClass, effectiveEnableStore);
+                    rawTarget = resolution.getEntity();
+                    cascadeSource = resolution.isCascadeSource();
                 }
 
-                // Stub creation fallback for reference entities
-                if (rawTarget == null && isReferenceEntity(targetClass) && link.getUid() != null) {
+                // During a cascade, the child may already point to the draft
+                // parent being materialized. Resolve that target directly so
+                // cycle detection does not discard the inverse join.
+                if (rawTarget == null && sameLinkedEntity(link, relationToUpdate)
+                        && link.getInstanceId() != null) {
+                    List<Object> currentTarget = EposDataModelDAO.getInstance()
+                            .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), targetClass);
+                    if (currentTarget != null && !currentTarget.isEmpty()) {
+                        rawTarget = currentTarget.get(0);
+                    }
+                }
+
+                // Only ingestion may materialize a missing shared reference. Backoffice
+                // users can link existing references but must not create them indirectly.
+                if (rawTarget == null && isReferenceEntity(targetClass) && canMaterializeReference(mainEntity)
+                        && link.getUid() != null) {
                     rawTarget = createStubEntity(targetClass, link.getUid(), effectiveStatus);
                 }
 
@@ -536,8 +834,19 @@ public class RelationSyncUtil {
                         T targetForJoin = targetEntity;
                         String targetIdForJoin = targetId;
 
+                        // A published entity can be used as the source for a draft,
+                        // but must never be persisted as the target of a versioned
+                        // draft relation. This also covers ordinary updates whose
+                        // payload contains a stale published LinkedEntity.
+                        boolean targetIsPublished = getStatusFromEntity(targetEntity) == StatusType.PUBLISHED;
+                        boolean materializeDraft = (cascadeSource
+                                && (isNewVersion || effectiveStatus != StatusType.DRAFT))
+                                || (isNewVersion && effectiveStatus == StatusType.DRAFT
+                                && targetIsPublished);
+
                         // Handle cascade versioning or status propagation
-                        if (cascadeStatus != null) {
+                        boolean isCurrentRelationTarget = sameLinkedEntity(link, relationToUpdate);
+                        if ((cascadeStatus != null || materializeDraft) && !isCurrentRelationTarget) {
                             if (shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
                                 T publishedVersion = findPublishedVersion(targetEntity, targetClass);
                                 if (publishedVersion != null) {
@@ -551,25 +860,51 @@ public class RelationSyncUtil {
                                     }
                                 }
                             } else {
-                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, cascadeStatus, mainEntity.getEditorId());
-                                if (newVersionTarget != null) {
-                                    targetForJoin = newVersionTarget;
+                                StatusType versionStatus = cascadeStatus != null ? cascadeStatus : effectiveStatus;
+                                T newVersionTarget = createCascadeVersion(targetEntity, targetClass, versionStatus,
+                                        mainEntity.getEditorId(), toLinkedEntity(previousEntity), toLinkedEntity(mainEntity));
+                                 if (newVersionTarget != null) {
+                                     targetForJoin = newVersionTarget;
                                     targetIdForJoin = getModelId(newVersionTarget);
                                 }
                             }
-                        } else if (effectiveStatus != null && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
-                            updateChildEntityStatus(targetEntity, effectiveStatus);
+                        } else if (effectiveStatus != null
+                                && !(effectiveStatus == StatusType.DRAFT
+                                && targetIsPublished)
+                                && !shouldApplyReferenceEntityLogic(targetClass, mainEntity)) {
+                            // A stale published link may be encountered after
+                            // another branch has already created the working
+                            // version. Promote that version, never the stale
+                            // target, or the single-working-version trigger
+                            // will reject the update.
+                            T workingTarget = findWorkingVersion(targetEntity, targetClass);
+                            if (workingTarget != null
+                                    && !Objects.equals(getModelId(targetEntity), getModelId(workingTarget))) {
+                                targetForJoin = workingTarget;
+                                targetIdForJoin = getModelId(workingTarget);
+                                updateChildEntityStatus(workingTarget, effectiveStatus);
+                            } else {
+                                updateChildEntityStatus(targetEntity, effectiveStatus);
+                            }
                         }
 
-                        processedIds.add(targetIdForJoin);
+                     processedIds.add(targetIdForJoin);
+                     if (targetUid != null) {
+                         processedUids.add(targetUid);
+                     }
 
                         if (!existingMap.containsKey(targetIdForJoin)) {
-                            boolean created = createJoinEntity(joinClass, parentDbObject, targetForJoin,
-                                    parentSetter, targetSetter, parentFieldName);
+                            boolean created = queueJoinEntity(joinClass, parentDbObject, targetForJoin,
+                                    parentSetter, targetSetter, parentFieldName, queuedJoins, queuedJoinKeys);
                             if (!created) {
                                 createPendingRelation(parentId, sourceEntityType, link.getUid(),
                                         link.getEntityType(), joinClass.getName());
                             }
+                        }
+                        if (inverseParentSetter != null && inverseTargetSetter != null) {
+                            queueJoinEntity(joinClass, targetForJoin, parentDbObject,
+                                    inverseParentSetter, inverseTargetSetter, inverseParentFieldName,
+                                    queuedJoins, queuedJoinKeys);
                         }
                     }
                 } else {
@@ -578,12 +913,19 @@ public class RelationSyncUtil {
                 }
             }
 
+            persistQueuedJoinEntities(joinClass, queuedJoins);
+
             // Delete joins no longer present
+            List<J> joinsToDelete = new ArrayList<>();
             for (Map.Entry<String, J> entry : existingMap.entrySet()) {
-                if (!processedIds.contains(entry.getKey())) {
-                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+                T existingTarget = targetGetter.apply(entry.getValue());
+                String existingUid = getUid(existingTarget);
+                if (!processedIds.contains(entry.getKey())
+                        && (isNewVersion || existingUid == null || !processedUids.contains(existingUid))) {
+                    joinsToDelete.add(entry.getValue());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(joinsToDelete);
 
         } finally {
             if (parentMetaId != null) {
@@ -596,6 +938,7 @@ public class RelationSyncUtil {
                 }
             }
         }
+        }
     }
 
     // ===== Stub Entity Creation for Reference Entities =====
@@ -603,7 +946,7 @@ public class RelationSyncUtil {
     @SuppressWarnings("unchecked")
     private static <T> T createStubEntity(Class<T> targetClass, String uid, StatusType status) {
         try {
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 LOG.log(Level.WARNING, "No API for stub creation: {0}", entityName);
@@ -700,9 +1043,10 @@ public class RelationSyncUtil {
      * Uses double-check pattern: check existence, acquire lock, re-check, then insert.
      * Duplicate key exceptions are handled gracefully as they indicate concurrent success.
      */
-    private static <P, J, T> boolean createJoinEntity(Class<J> joinClass, P parentDbObject, T targetEntity,
+    private static <P, J, T> boolean queueJoinEntity(Class<J> joinClass, P parentDbObject, T targetEntity,
                                                       BiConsumer<J, P> parentSetter, BiConsumer<J, T> targetSetter,
-                                                      String parentFieldName) {
+                                                      String parentFieldName, List<QueuedJoin<J>> queuedJoins,
+                                                      Set<String> queuedJoinKeys) {
         String parentId = getModelId(parentDbObject);
         String targetId = getModelId(targetEntity);
 
@@ -726,8 +1070,16 @@ public class RelationSyncUtil {
                     return true;
                 }
 
+                String joinKey = parentId + ":" + targetId + ":" + parentFieldName;
+                if (queuedJoinKeys.contains(joinKey)) {
+                    return true;
+                }
+
                 J newJoin = joinClass.getDeclaredConstructor().newInstance();
-                initializeEmbeddedIdWithFieldName(newJoin, parentDbObject, targetEntity, parentFieldName);
+                // Use the legacy initializer here because it infers both sides of the join
+                // from the entity types, which is more reliable than field-name derivation
+                // for relations such as Distribution-WebService.
+                initializeEmbeddedIdLegacy(newJoin, parentDbObject, targetEntity);
 
                 if (parentSetter != null) {
                     parentSetter.accept(newJoin, parentDbObject);
@@ -741,7 +1093,8 @@ public class RelationSyncUtil {
                     return true;
                 }
 
-                EposDataModelDAO.getInstance().updateObject(newJoin);
+                queuedJoins.add(new QueuedJoin<>(newJoin, parentFieldName));
+                queuedJoinKeys.add(joinKey);
                 cleanupJoinLocksIfNeeded();
                 return true;
 
@@ -757,6 +1110,49 @@ public class RelationSyncUtil {
                         new Object[]{joinClass.getSimpleName(), e.getMessage()});
                 return false;
             }
+        }
+    }
+
+    /** Persists joins together, retaining the original per-join behavior on batch rollback. */
+    private static <J> void persistQueuedJoinEntities(Class<J> joinClass, List<QueuedJoin<J>> queuedJoins) {
+        if (queuedJoins.isEmpty()) {
+            return;
+        }
+        List<J> joinEntities = new ArrayList<>(queuedJoins.size());
+        for (QueuedJoin<J> queuedJoin : queuedJoins) {
+            joinEntities.add(queuedJoin.entity);
+        }
+        if (EposDataModelDAO.getInstance().updateListOfObjects(joinEntities)) {
+            return;
+        }
+
+        LOG.log(Level.WARNING, "Batch join creation failed for {0}; retrying joins individually", joinClass.getSimpleName());
+        for (QueuedJoin<J> queuedJoin : queuedJoins) {
+            J join = queuedJoin.entity;
+            String parentFieldName = queuedJoin.parentFieldName;
+            String parentId = getJoinId(join, parentFieldName);
+            String targetId = getJoinId(join, deriveTargetFieldName(parentFieldName));
+            Object lock = getJoinLock(joinClass.getName(), parentId, targetId);
+            synchronized (lock) {
+                if (joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+                    continue;
+                }
+                if (!EposDataModelDAO.getInstance().updateObject(join)
+                        && !joinExistsWithFieldName(joinClass, parentId, targetId, parentFieldName)) {
+                    LOG.log(Level.WARNING, "Join creation failed for {0}: parent={1}, target={2}",
+                            new Object[]{joinClass.getSimpleName(), parentId, targetId});
+                }
+            }
+        }
+    }
+
+    private static String getJoinId(Object joinEntity, String relationFieldName) {
+        try {
+            Method getter = joinEntity.getClass().getMethod("get" + capitalize(relationFieldName));
+            Object entity = getter.invoke(joinEntity);
+            return getModelId(entity);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -888,9 +1284,12 @@ public class RelationSyncUtil {
                                                                           Function<J, T> targetGetter, StatusType cascadeStatus,
                                                                           org.epos.eposdatamodel.EPOSDataModelEntity mainEntity) {
 
-        String embeddedIdField = parentFieldName.replace("Instance", "InstanceId");
         List<?> oldRelationsRaw = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByParentId(embeddedIdField, oldParentInstanceId, joinClass);
+                .getOneFromDBBySpecificKeyNoCache(parentFieldName, oldParentInstanceId, joinClass);
+        if (oldRelationsRaw == null || oldRelationsRaw.isEmpty()) {
+            oldRelationsRaw = EposDataModelDAO.getInstance().getJoinEntitiesByParentId(
+                    parentFieldName.replace("Instance", "InstanceId"), oldParentInstanceId, joinClass);
+        }
         if (oldRelationsRaw == null || oldRelationsRaw.isEmpty()) {
             return;
         }
@@ -910,7 +1309,9 @@ public class RelationSyncUtil {
                                 targetForJoin = publishedVersion;
                             }
                         } else {
-                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus, mainEntity.getEditorId());
+                            T newVersionTarget = createCascadeVersion(target, targetClass, cascadeStatus,
+                                    mainEntity.getEditorId(), toLinkedEntityById(oldParentInstanceId, mainEntity),
+                                    toLinkedEntity(mainEntity));
                             if (newVersionTarget != null) {
                                 targetForJoin = newVersionTarget;
                             }
@@ -934,8 +1335,47 @@ public class RelationSyncUtil {
 
     // ===== Cascade Version Creation =====
 
+    private static boolean sameLinkedEntity(LinkedEntity left, LinkedEntity right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        if (left.getEntityType() == null || right.getEntityType() == null
+                || !left.getEntityType().equalsIgnoreCase(right.getEntityType())) {
+            return false;
+        }
+        if (left.getUid() != null && left.getUid().equals(right.getUid())) {
+            return true;
+        }
+        return left.getInstanceId() != null && left.getInstanceId().equals(right.getInstanceId());
+    }
+
+    public static LinkedEntity toLinkedEntity(org.epos.eposdatamodel.EPOSDataModelEntity entity) {
+        if (entity == null || entity.getInstanceId() == null) {
+            return null;
+        }
+        return new LinkedEntity()
+                .instanceId(entity.getInstanceId())
+                .metaId(entity.getMetaId())
+                .uid(entity.getUid())
+                .entityType(entity.getClass().getSimpleName().toUpperCase(Locale.ROOT));
+    }
+
+    private static LinkedEntity toLinkedEntityById(String instanceId,
+                                                   org.epos.eposdatamodel.EPOSDataModelEntity template) {
+        if (instanceId == null || template == null) {
+            return null;
+        }
+        return new LinkedEntity()
+                .instanceId(instanceId)
+                .metaId(template.getMetaId())
+                .uid(template.getUid())
+                .entityType(template.getClass().getSimpleName().toUpperCase(Locale.ROOT));
+    }
+
     @SuppressWarnings("unchecked")
-    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus, String editorId) {
+    private static <T> T createCascadeVersion(T originalEntity, Class<T> targetClass, StatusType newStatus,
+                                              String editorId, LinkedEntity relationFromUpdate,
+                                              LinkedEntity relationToUpdate) {
         String originalInstanceId = getModelId(originalEntity);
         if (originalInstanceId == null) {
             return null;
@@ -945,6 +1385,16 @@ public class RelationSyncUtil {
         if (metaId == null) {
             metaId = originalInstanceId;
         }
+
+        // A graph can reach the same target through both direct and inverse
+        // joins. Reuse its existing working version instead of attempting a
+        // second DRAFT/SUBMITTED version for the same UID.
+        T existingWorkingVersion = findWorkingVersion(originalEntity, targetClass);
+        if (existingWorkingVersion != null
+                && !Objects.equals(originalInstanceId, getModelId(existingWorkingVersion))) {
+            return existingWorkingVersion;
+        }
+
         String cacheKey = metaId + "_" + newStatus.name();
 
         Map<String, String> createdVersions = cascadeCreatedVersions.get();
@@ -964,7 +1414,7 @@ public class RelationSyncUtil {
 
         try {
             inProgress.add(metaId);
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 return null;
@@ -977,13 +1427,14 @@ public class RelationSyncUtil {
             }
 
             dto.setInstanceChangedId(originalInstanceId);
-            dto.setInstanceId(null);
             dto.setStatus(newStatus);
             if (editorId != null) {
                 dto.setEditorId(editorId);
             }
 
-            LinkedEntity result = api.create(dto, newStatus, null, null);
+            // Pass the parent replacement so inverse relations can be moved to
+            // the new version. Each API must apply it only to its own relation.
+            LinkedEntity result = api.create(dto, newStatus, relationFromUpdate, relationToUpdate);
             if (result != null && result.getInstanceId() != null) {
                 createdVersions.put(cacheKey, result.getInstanceId());
                 List<Object> newList = EposDataModelDAO.getInstance()
@@ -1000,6 +1451,29 @@ public class RelationSyncUtil {
         return null;
     }
 
+    private static <T> T findWorkingVersion(T originalEntity, Class<T> targetClass) {
+        String uid = getUid(originalEntity);
+        String metaId = getMetaId(originalEntity);
+        if (uid == null && metaId == null) {
+            return null;
+        }
+
+        List<Object> candidates = uid == null
+                ? List.of()
+                : EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, targetClass);
+        if (candidates.isEmpty() && metaId != null) {
+            candidates = EposDataModelDAO.getInstance().getOneFromDB(
+                    null, metaId, null, null, targetClass);
+        }
+        for (Object candidate : candidates) {
+            if (getStatusFromEntity(candidate) == StatusType.DRAFT
+                    || getStatusFromEntity(candidate) == StatusType.SUBMITTED) {
+                return targetClass.cast(candidate);
+            }
+        }
+        return null;
+    }
+
     @SuppressWarnings("unchecked")
     private static <T> T createReferenceEntityAsPublished(T originalEntity, Class<T> targetClass) {
         String originalInstanceId = getModelId(originalEntity);
@@ -1008,7 +1482,7 @@ public class RelationSyncUtil {
         }
 
         try {
-            String entityName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+            String entityName = getApiEntityName(targetClass);
             AbstractAPI api = AbstractAPI.retrieveAPI(entityName);
             if (api == null) {
                 return null;
@@ -1055,6 +1529,15 @@ public class RelationSyncUtil {
             LOG.log(Level.FINE, "Published version lookup failed: {0}", e.getMessage());
         }
         return null;
+    }
+
+    private static String getApiEntityName(Class<?> targetClass) {
+        String modelName = targetClass.getSimpleName().toUpperCase(Locale.ROOT);
+        return switch (modelName) {
+            case "SPATIAL" -> "LOCATION";
+            case "TEMPORAL" -> "PERIODOFTIME";
+            default -> modelName;
+        };
     }
 
     // ===== Pending Relations =====
@@ -1193,7 +1676,11 @@ public class RelationSyncUtil {
             }
 
             try {
-                EposDataModelDAO.getInstance().updateObject(newJoin);
+                boolean persisted = EposDataModelDAO.getInstance().updateObject(newJoin);
+                if (!persisted) {
+                    throw new IllegalStateException("Join persistence failed for " + joinClass.getSimpleName() +
+                            " source=" + sourceId + " target=" + targetId);
+                }
                 cleanupJoinLocksIfNeeded();
             } catch (Exception e) {
                 if (!isDuplicateKeyException(e)) {
@@ -1517,6 +2004,209 @@ public class RelationSyncUtil {
             }
             return null;
         });
+    }
+
+    /** Reconciles a published Distribution with the latest published WebService version. */
+    public static void reconcilePublishedDistributionWebservices(String distributionInstanceId) {
+        if (distributionInstanceId == null) {
+            return;
+        }
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        List<?> relations = dao.getJoinEntitiesByParentId("distributionInstance", distributionInstanceId,
+                model.WebserviceDistribution.class);
+        for (Object rawRelation : relations) {
+            model.WebserviceDistribution relation = (model.WebserviceDistribution) rawRelation;
+            model.Webservice current = relation.getWebserviceInstance();
+            if (current == null || current.getUid() == null) {
+                continue;
+            }
+            model.Webservice latest = null;
+            for (Object candidateRaw : dao.getOneFromDBByUIDNoCache(current.getUid(), model.Webservice.class)) {
+                model.Webservice candidate = (model.Webservice) candidateRaw;
+                if (candidate.getVersion() != null
+                        && STATUS_PUBLISHED.equals(candidate.getVersion().getStatus())
+                        && (latest == null || isLaterVersion(candidate, latest))) {
+                    latest = candidate;
+                }
+            }
+            if (latest == null || Objects.equals(current.getInstanceId(), latest.getInstanceId())) {
+                continue;
+            }
+            dao.deleteObject(relation);
+            model.WebserviceDistribution replacement = new model.WebserviceDistribution();
+            model.WebserviceDistributionId id = new model.WebserviceDistributionId();
+            id.setWebserviceInstanceId(latest.getInstanceId());
+            id.setDistributionInstanceId(distributionInstanceId);
+            replacement.setId(id);
+            replacement.setWebserviceInstance(latest);
+            replacement.setDistributionInstance(retrieveDistribution(distributionInstanceId));
+            dao.createObject(replacement);
+            // The old version may still be used by another published Distribution.
+            // Archive it only after all published references have moved away from it.
+            archivePublishedVersionStatusesByUid(current.getUid(), latest.getInstanceId());
+        }
+    }
+
+    public static void reconcilePublishedDistributionsForWebservice(String webserviceUid) {
+        if (webserviceUid == null) return;
+        Set<String> distributionIds = new LinkedHashSet<>();
+        for (Object rawRelation : EposDataModelDAO.getInstance().getAllFromDB(model.WebserviceDistribution.class)) {
+            model.WebserviceDistribution relation = (model.WebserviceDistribution) rawRelation;
+            model.Webservice current = relation.getWebserviceInstance();
+            Object distribution = relation.getDistributionInstance();
+            if (current != null && webserviceUid.equals(current.getUid())
+                    && distribution != null && getStatusFromEntity(distribution) == StatusType.PUBLISHED) {
+                distributionIds.add(getModelId(distribution));
+            }
+        }
+        for (String distributionId : distributionIds) {
+            reconcilePublishedDistributionWebservices(distributionId);
+        }
+    }
+
+    /** Keeps operations shared with another published Distribution on their published version. */
+    public static void preserveOperationsSharedByPublishedDistributions(String webserviceInstanceId,
+                                                                          String excludedDistributionInstanceId) {
+        if (webserviceInstanceId == null) return;
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        model.Webservice webservice = retrieveWebservice(webserviceInstanceId);
+        if (webservice == null) return;
+
+        for (Object raw : dao.getJoinEntitiesByParentId("webserviceInstance", webserviceInstanceId,
+                model.OperationWebservice.class)) {
+            model.OperationWebservice relation = (model.OperationWebservice) raw;
+            model.Operation operation = relation.getOperationInstance();
+            if (operation == null || operation.getUid() == null) continue;
+
+            boolean sharedByOtherPublishedDistribution = false;
+            for (Object distributionRaw : dao.getJoinEntitiesByParentId("operationInstance",
+                    operation.getInstanceId(), model.OperationDistribution.class)) {
+                model.OperationDistribution distributionRelation = (model.OperationDistribution) distributionRaw;
+                model.Distribution distribution = distributionRelation.getDistributionInstance();
+                if (distribution != null
+                        && !Objects.equals(excludedDistributionInstanceId, distribution.getInstanceId())
+                        && getStatusFromEntity(distribution) == StatusType.PUBLISHED) {
+                    sharedByOtherPublishedDistribution = true;
+                    break;
+                }
+            }
+            if (!sharedByOtherPublishedDistribution) continue;
+
+            model.Operation published = latestPublished(operation, model.Operation.class);
+            if (published == null || Objects.equals(operation.getInstanceId(), published.getInstanceId())) continue;
+
+            dao.deleteObject(relation);
+            model.OperationWebservice replacement = new model.OperationWebservice();
+            model.OperationWebserviceId id = new model.OperationWebserviceId();
+            id.setWebserviceInstanceId(webserviceInstanceId);
+            id.setOperationInstanceId(published.getInstanceId());
+            replacement.setId(id);
+            replacement.setWebserviceInstance(webservice);
+            replacement.setOperationInstance(published);
+            dao.createObject(replacement);
+        }
+    }
+
+    private static void reconcilePublishedDistributionOperations(String distributionInstanceId) {
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        for (Object raw : dao.getJoinEntitiesByParentId("distributionInstance", distributionInstanceId,
+                model.OperationDistribution.class)) {
+            model.OperationDistribution relation = (model.OperationDistribution) raw;
+            model.Operation current = relation.getOperationInstance();
+            model.Operation latest = latestPublished(current, model.Operation.class);
+            if (latest != null && !Objects.equals(current.getInstanceId(), latest.getInstanceId())) {
+                dao.deleteObject(relation);
+                model.OperationDistribution replacement = new model.OperationDistribution();
+                model.OperationDistributionId id = new model.OperationDistributionId();
+                id.setDistributionInstanceId(distributionInstanceId);
+                id.setOperationInstanceId(latest.getInstanceId());
+                replacement.setId(id);
+                replacement.setDistributionInstance(retrieveDistribution(distributionInstanceId));
+                replacement.setOperationInstance(latest);
+                dao.createObject(replacement);
+                archivePublishedVersionStatusesByUid(current.getUid(), latest.getInstanceId());
+            }
+            reconcileOperationMappings(latest != null ? latest : current);
+        }
+    }
+
+    private static void reconcileOperationMappings(model.Operation operation) {
+        if (operation == null) return;
+        EposDataModelDAO dao = EposDataModelDAO.getInstance();
+        for (Object raw : dao.getJoinEntitiesByParentId("operationInstance", operation.getInstanceId(),
+                model.OperationMapping.class)) {
+            model.OperationMapping relation = (model.OperationMapping) raw;
+            model.Mapping current = relation.getMappingInstance();
+            model.Mapping latest = latestPublished(current, model.Mapping.class);
+            if (latest == null || Objects.equals(current.getInstanceId(), latest.getInstanceId())) continue;
+            dao.deleteObject(relation);
+            model.OperationMapping replacement = new model.OperationMapping();
+            model.OperationMappingId id = new model.OperationMappingId();
+            id.setOperationInstanceId(operation.getInstanceId());
+            id.setMappingInstanceId(latest.getInstanceId());
+            replacement.setId(id);
+            replacement.setOperationInstance(operation);
+            replacement.setMappingInstance(latest);
+            dao.createObject(replacement);
+        }
+    }
+
+    private static <T> T latestPublished(T current, Class<T> type) {
+        if (current == null || getModelId(current) == null) return null;
+        String uid = (String) invokeGetter(current, UID_GETTERS, "getUid");
+        if (uid == null) return null;
+        T latest = null;
+        for (Object raw : EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, type)) {
+            T candidate = type.cast(raw);
+            Object version = invokeGetter(candidate, VERSION_GETTERS, "getVersion");
+            if (version instanceof Versioningstatus status
+                    && STATUS_PUBLISHED.equals(status.getStatus())
+                    && (latest == null || isLaterGeneric(candidate, latest))) {
+                latest = candidate;
+            }
+        }
+        return latest;
+    }
+
+    private static boolean isLaterGeneric(Object candidate, Object current) {
+        Versioningstatus candidateVersion = (Versioningstatus) invokeGetter(candidate, VERSION_GETTERS, "getVersion");
+        Versioningstatus currentVersion = (Versioningstatus) invokeGetter(current, VERSION_GETTERS, "getVersion");
+        if (candidateVersion == null || currentVersion == null) return false;
+        OffsetDateTime candidateTimestamp = candidateVersion.getChangeTimestamp();
+        OffsetDateTime currentTimestamp = currentVersion.getChangeTimestamp();
+        if (candidateTimestamp == null || currentTimestamp == null) {
+            return candidateTimestamp != null;
+        }
+        int comparison = candidateTimestamp.compareTo(currentTimestamp);
+        return comparison > 0 || (comparison == 0
+                && String.valueOf(getModelId(candidate)).compareTo(String.valueOf(getModelId(current))) > 0);
+    }
+
+    private static model.Distribution retrieveDistribution(String instanceId) {
+        List<Object> distributions = EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Distribution.class);
+        return distributions.isEmpty() ? null : (model.Distribution) distributions.get(0);
+    }
+
+    private static model.Webservice retrieveWebservice(String instanceId) {
+        List<Object> webservices = EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(instanceId, model.Webservice.class);
+        return webservices.isEmpty() ? null : (model.Webservice) webservices.get(0);
+    }
+
+    private static boolean isLaterVersion(model.Webservice candidate, model.Webservice current) {
+        OffsetDateTime candidateTimestamp = candidate.getVersion().getChangeTimestamp();
+        OffsetDateTime currentTimestamp = current.getVersion().getChangeTimestamp();
+        if (candidateTimestamp == null || currentTimestamp == null) {
+            return candidateTimestamp != null
+                    || (candidateTimestamp == null && currentTimestamp == null
+                    && candidate.getInstanceId() != null
+                    && candidate.getInstanceId().compareTo(current.getInstanceId()) > 0);
+        }
+        int timestampComparison = candidateTimestamp.compareTo(currentTimestamp);
+        return timestampComparison > 0
+                || (timestampComparison == 0 && candidate.getInstanceId() != null
+                && candidate.getInstanceId().compareTo(current.getInstanceId()) > 0);
     }
 
     private static List<Method> getStringSetters(Class<?> idClass) {

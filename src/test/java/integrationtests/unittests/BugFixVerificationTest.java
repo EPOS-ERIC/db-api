@@ -455,6 +455,7 @@ public class BugFixVerificationTest extends TestcontainersLifecycle {
         child.setInScheme(schemeResult);
         child.addBroader(broaderLink);
         child.setStatus(StatusType.PUBLISHED);
+        child.setEditorId("ingestor");
 
         LinkedEntity childResult = categoryAPI.create(child, StatusType.PUBLISHED, null, null);
         assertNotNull(childResult, "Child category should be created");
@@ -494,6 +495,7 @@ public class BugFixVerificationTest extends TestcontainersLifecycle {
         parent.setInScheme(schemeResult);
         parent.addNarrower(narrowerLink);
         parent.setStatus(StatusType.PUBLISHED);
+        parent.setEditorId("ingestor");
 
         LinkedEntity parentResult = categoryAPI.create(parent, StatusType.PUBLISHED, null, null);
         assertNotNull(parentResult);
@@ -551,6 +553,7 @@ public class BugFixVerificationTest extends TestcontainersLifecycle {
         orgLink.setUid(futureOrgUid);
         orgLink.setEntityType(EntityNames.ORGANIZATION.name());
         dp.addPublisher(orgLink);
+        dp.setEditorId("ingestor");
 
         LinkedEntity dpResult = dataProductAPI.create(dp, StatusType.PUBLISHED, null, null);
         assertNotNull(dpResult, "DataProduct should be created with pending relations");

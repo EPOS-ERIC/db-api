@@ -63,6 +63,7 @@ public class IngestionPendingStubTest extends TestcontainersLifecycle {
         org.setUid(ORG_UID);
         org.setLegalName(List.of("Organization With Stub Contact"));
         org.setContactPoint(List.of(contactLink)); // This link triggers creation
+        org.setEditorId("ingestor");
 
         // Execute Creation
         AbstractAPI.retrieveAPI(EntityNames.ORGANIZATION.name())

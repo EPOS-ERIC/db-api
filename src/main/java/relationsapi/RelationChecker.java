@@ -32,6 +32,28 @@ import java.util.logging.Logger;
  */
 public class RelationChecker {
 
+    /**
+     * Result of relation lookup. A published entity can be a cascade source
+     * without being the entity that may be persisted in the final join.
+     */
+    public static final class RelationResolution {
+        private final Object entity;
+        private final boolean cascadeSource;
+
+        private RelationResolution(Object entity, boolean cascadeSource) {
+            this.entity = entity;
+            this.cascadeSource = cascadeSource;
+        }
+
+        public Object getEntity() {
+            return entity;
+        }
+
+        public boolean isCascadeSource() {
+            return cascadeSource;
+        }
+    }
+
     private static final Logger LOG = Logger.getLogger(RelationChecker.class.getName());
 
     private static final ThreadLocal<Set<String>> processingEntities = ThreadLocal.withInitial(() -> new HashSet<>(8));
@@ -74,6 +96,7 @@ public class RelationChecker {
      * unless explicitly in ingestor mode.
      */
     private static final Set<String> SHARED_REFERENCE_ENTITIES = Set.of(
+            EntityNames.ADDRESS.name(),
             EntityNames.CATEGORY.name(),
             EntityNames.CATEGORYSCHEME.name(),
             EntityNames.ORGANIZATION.name(),
@@ -113,6 +136,15 @@ public class RelationChecker {
             }
         }
         return true;
+    }
+
+    private static boolean isIngestor(EPOSDataModelEntity entity) {
+        return entity != null && entity.getEditorId() != null
+                && INGESTOR.equalsIgnoreCase(entity.getEditorId().trim());
+    }
+
+    private static boolean canMaterializeReference(EPOSDataModelEntity entity) {
+        return entity == null || entity.getEditorId() == null || isIngestor(entity);
     }
 
     /**
@@ -170,6 +202,29 @@ public class RelationChecker {
         }
     }
 
+    /**
+     * Resolves a relation and explicitly identifies a PUBLISHED cascade source.
+     * Shared references are final targets and are therefore never marked as
+     * cascade sources.
+     */
+    @SuppressWarnings("rawtypes")
+    public static RelationResolution resolveRelation(EPOSDataModelEntity mainEntity,
+                                                      EPOSDataModelEntity oldMainEntity,
+                                                      Class mainEntityClazz,
+                                                      LinkedEntity linkedEntity,
+                                                      StatusType overrideStatus,
+                                                      Class clazz,
+                                                      Boolean enableStore) {
+        Object entity = checkRelation(mainEntity, oldMainEntity, mainEntityClazz, linkedEntity,
+                overrideStatus, clazz, enableStore);
+        boolean cascadeSource = entity != null
+                && mainEntity != null
+                && StatusType.DRAFT.equals(overrideStatus != null ? overrideStatus : mainEntity.getStatus())
+                && !shouldUsePublishedVersion(linkedEntity.getEntityType(), mainEntity)
+                && STATUS_PUBLISHED.equals(getModelVersionStatus(entity));
+        return new RelationResolution(entity, cascadeSource);
+    }
+
     @SuppressWarnings("rawtypes")
     private static Object handleCycleCase(LinkedEntity linkedEntity, Class clazz) {
         List<Object> results = EposDataModelDAO.getInstance()
@@ -194,6 +249,9 @@ public class RelationChecker {
         String mainEntityTypeName = mainEntityClazz.getSimpleName().toUpperCase(Locale.ROOT);
         String linkedEntityType = linkedEntity.getEntityType();
         String linkedEntityTypeUpper = linkedEntityType != null ? linkedEntityType.toUpperCase(Locale.ROOT) : null;
+        String effectiveEditorId = mainEntity != null && mainEntity.getEditorId() != null
+                ? mainEntity.getEditorId()
+                : oldMainEntity != null ? oldMainEntity.getEditorId() : null;
 
         LinkedEntity newLinkedEntityMainEntity = null;
         if (mainEntity != null) {
@@ -230,10 +288,31 @@ public class RelationChecker {
             StatusType targetStatus = overrideStatus != null ? overrideStatus :
                     (mainEntity != null ? mainEntity.getStatus() : null);
 
+            if (targetStatus == StatusType.DRAFT
+                    && StatusType.DRAFT.equals(relationEntity.getStatus())
+                    && linkedEntity.getInstanceId() != null
+                    && linkedEntity.getInstanceId().equals(relationEntity.getInstanceId())) {
+                List<Object> explicitDraft = EposDataModelDAO.getInstance()
+                        .getOneFromDBByInstanceIdNoCache(linkedEntity.getInstanceId(), clazz);
+                return explicitDraft.isEmpty() ? null : explicitDraft.get(0);
+            }
+
             if (targetStatus != null) {
                 String relationUid = relationEntity.getUid();
                 List<Object> allVersions = EposDataModelDAO.getInstance()
                         .getOneFromDBByUIDNoCache(relationUid, clazz);
+
+                // A draft parent may reference a submitted child. Keep that
+                // exact child; creating a draft sibling would violate the
+                // single-submitted-version policy.
+                if (targetStatus == StatusType.DRAFT
+                        && StatusType.SUBMITTED.equals(relationEntity.getStatus())) {
+                    for (Object version : allVersions) {
+                        if (StatusType.SUBMITTED.toString().equals(getModelVersionStatus(version))) {
+                            return version;
+                        }
+                    }
+                }
 
                 // For shared reference entities, prioritize PUBLISHED
                 if (shouldUsePublishedVersion(linkedEntityType, mainEntity)) {
@@ -245,14 +324,17 @@ public class RelationChecker {
                     }
                 }
 
-                // Standard behavior: find matching status version
-                String targetStatusStr = targetStatus.toString();
-                for (Object v : allVersions) {
-                    String statusStr = getModelVersionStatus(v);
-                    if (targetStatusStr.equals(statusStr)) {
-                        obj = buildLinkedEntity(v, linkedEntityType);
-                        break;
-                    }
+                // Draft relations must be isolated per editor. If this editor has no
+                // draft, resolve the relation from the published version instead of
+                // accidentally reusing another editor's draft. During a new-version
+                // cascade, the caller materializes that published source as a draft.
+                Object bestVersion = findBestMatchingVersion(allVersions, targetStatus,
+                        effectiveEditorId);
+                if (bestVersion != null) {
+                    // Return the resolved model directly. Re-resolving the
+                    // generated LinkedEntity can lose the selected draft when
+                    // caches or identifier fallbacks are involved.
+                    return bestVersion;
                 }
             }
         }
@@ -268,7 +350,7 @@ public class RelationChecker {
 
                 // For shared reference entities, don't propagate status changes
                 if (statusMismatch && isReference && !isSharedReference) {
-                    relationEntity.setEditorId(mainEntity.getEditorId());
+                    relationEntity.setEditorId(effectiveEditorId);
                     relationEntity.setStatus(mainEntity.getStatus());
                     relationEntity.setEditorId(mainEntity.getEditorId());
 
@@ -279,8 +361,11 @@ public class RelationChecker {
 
                     if (obj == null) {
                         String apiName = EntityNames.valueOf(linkedEntityTypeUpper).name();
+                        StatusType relationStatus = overrideStatus != null
+                                ? overrideStatus
+                                : mainEntity.getStatus();
                         obj = AbstractAPI.retrieveAPI(apiName)
-                                .create(relationEntity, overrideStatus, oldLinkedEntityMainEntity, newLinkedEntityMainEntity);
+                                .create(relationEntity, relationStatus, oldLinkedEntityMainEntity, newLinkedEntityMainEntity);
 
                         if (Boolean.TRUE.equals(enableStore)) {
                             OperationWebserviceInDistributionSingleton.getInstance()
@@ -325,7 +410,8 @@ public class RelationChecker {
                                     : (overrideStatus != null ? overrideStatus :
                                     (mainEntity != null ? mainEntity.getStatus() : null));
 
-                            Object existing = findBestMatchingVersion(byUid, preferredStatus);
+                            Object existing = findBestMatchingVersion(byUid, preferredStatus,
+                                    mainEntity != null ? mainEntity.getEditorId() : null);
 
                             if (existing != null) {
                                 obj = buildLinkedEntity(existing, linkedEntityType);
@@ -333,8 +419,12 @@ public class RelationChecker {
                         }
                     }
 
-                    // Last resort: create stub entity if enabled
-                    if (obj == null && Boolean.TRUE.equals(enableStore) && linkedEntityType != null) {
+                    // Last resort: create stub entity if enabled.
+                    // WebService links are handled better as pending relations because
+                    // the stub path does not reliably materialize the join table entry.
+                    if (obj == null && Boolean.TRUE.equals(enableStore) && linkedEntityType != null
+                            && !EntityNames.WEBSERVICE.name().equals(linkedEntityTypeUpper)
+                            && (!isSharedReferenceEntity(linkedEntityType) || canMaterializeReference(mainEntity))) {
                         obj = createStubEntity(linkedEntity, mainEntity, overrideStatus);
                     }
                 }
@@ -417,11 +507,9 @@ public class RelationChecker {
         String uid = linkedEntity.getUid();
         if (uid != null) {
             List<Object> allVersions = EposDataModelDAO.getInstance().getOneFromDBByUIDNoCache(uid, clazz);
-            for (Object v : allVersions) {
-                String status = getModelVersionStatus(v);
-                if (STATUS_PUBLISHED.equals(status)) {
-                    return v;
-                }
+            Object published = findBestMatchingVersion(allVersions, StatusType.PUBLISHED, null);
+            if (published != null && STATUS_PUBLISHED.equals(getModelVersionStatus(published))) {
+                return published;
             }
         }
 
@@ -436,11 +524,9 @@ public class RelationChecker {
                 if (foundUid != null) {
                     List<Object> allVersions = EposDataModelDAO.getInstance()
                             .getOneFromDBByUIDNoCache(foundUid, clazz);
-                    for (Object v : allVersions) {
-                        String status = getModelVersionStatus(v);
-                        if (STATUS_PUBLISHED.equals(status)) {
-                            return v;
-                        }
+                    Object published = findBestMatchingVersion(allVersions, StatusType.PUBLISHED, null);
+                    if (published != null && STATUS_PUBLISHED.equals(getModelVersionStatus(published))) {
+                        return published;
                     }
                 }
             }
@@ -458,7 +544,7 @@ public class RelationChecker {
         return le;
     }
 
-    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus) {
+    private static Object findBestMatchingVersion(List<Object> versions, StatusType targetStatus, String ignoredEditorId) {
         if (versions == null || versions.isEmpty()) {
             return null;
         }
@@ -467,13 +553,68 @@ public class RelationChecker {
         }
 
         String targetStatusStr = targetStatus.toString();
+        if (StatusType.DRAFT.equals(targetStatus)) {
+            for (Object v : versions) {
+                if (StatusType.DRAFT.toString().equals(getModelVersionStatus(v))) {
+                    return v;
+                }
+            }
+            for (Object v : versions) {
+                if (STATUS_PUBLISHED.equals(getModelVersionStatus(v))) {
+                    return v;
+                }
+            }
+            return null;
+        }
+
+        Object bestPublished = null;
+        String bestTimestamp = null;
         for (Object v : versions) {
             String status = getModelVersionStatus(v);
-            if (targetStatusStr.equals(status)) {
-                return v;
+            if (!targetStatusStr.equals(status)) {
+                continue;
+            }
+            String timestamp = getModelVersionTimestamp(v);
+            if (bestPublished == null || (timestamp != null
+                    && (bestTimestamp == null || timestamp.compareTo(bestTimestamp) > 0
+                    || (timestamp.equals(bestTimestamp) && getInstanceChangedId(v) != null
+                    && getInstanceChangedId(bestPublished) == null)))) {
+                bestPublished = v;
+                bestTimestamp = timestamp;
             }
         }
+        if (bestPublished != null) {
+            // DAO ordering is undefined. Prefer the version that is not the
+            // predecessor of another matching published version.
+            for (Object candidate : versions) {
+                if (targetStatusStr.equals(getModelVersionStatus(candidate))
+                        && Objects.equals(getInstanceChangedId(candidate), getModelStrProperty(bestPublished, "getInstanceId"))) {
+                    bestPublished = candidate;
+                }
+            }
+            return bestPublished;
+        }
+
         return versions.get(0);
+    }
+
+    private static String getModelVersionTimestamp(Object modelEntity) {
+        try {
+            Object versionObj = invokeGetter(modelEntity, VERSION_GETTERS, "getVersion");
+            Object timestamp = versionObj != null
+                    ? versionObj.getClass().getMethod("getChangeTimestamp").invoke(versionObj) : null;
+            return timestamp != null ? timestamp.toString() : null;
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private static String getInstanceChangedId(Object modelEntity) {
+        try {
+            return (String) modelEntity.getClass().getMethod("getInstanceChangedId").invoke(modelEntity);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     /**

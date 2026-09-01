@@ -44,14 +44,9 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 getEdmClass());
 
         if (!returnList.isEmpty()) {
-            Person selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Person item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Person selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Person::getVersion);
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
@@ -144,6 +139,7 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -230,13 +226,17 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
         // Delete elements that are no longer present (only if not creating new version)
         if (!isNewVersion) {
+            List<PersonElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (PersonElement relation : existingRelations) {
                 String value = relation.getElementInstance().getValue();
                 if (!newValues.contains(value)) {
-                    EposDataModelDAO.getInstance().deleteObject(relation);
-                    // Optionally delete the element itself if orphaned
+                    relationsToDelete.add(relation);
+                    elementsToDelete.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
 
         // Add elements that don't exist yet
@@ -276,21 +276,11 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("personInstance", instanceId, PersonContactpoint.class);
-        deleteRelations("personInstance", instanceId, PersonIdentifier.class);
-        deleteRelations("personInstance", instanceId, PersonElement.class);
-        deleteRelations("personInstance", instanceId, OrganizationAffiliation.class);
-
-        List<Person> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Person.class);
-        for (Person object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Person.class, List.of(
+                new EposDataModelDAO.RelationField(PersonContactpoint.class, "personInstance"),
+                new EposDataModelDAO.RelationField(PersonIdentifier.class, "personInstance"),
+                new EposDataModelDAO.RelationField(PersonElement.class, "personInstance"),
+                new EposDataModelDAO.RelationField(OrganizationAffiliation.class, "personInstance")));
     }
 
     @Override
@@ -362,12 +352,76 @@ public class PersonAPI extends AbstractAPI<org.epos.eposdatamodel.Person> {
     public List<org.epos.eposdatamodel.Person> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Person.class, status));
     }
+
+    /**
+     * Returns list-oriented Person records without loading their relationship graph.
+     * Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    @Override
+    public List<org.epos.eposdatamodel.Person> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Person.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Person> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Person.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Person> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Person.class));
+    }
+    private List<org.epos.eposdatamodel.Person> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.PersonSummaryRow> rows = dao.fetchPersonSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.PersonSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Person> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.PersonSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Person dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.Person> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.Person toSummaryDto(Person entity) {
+        org.epos.eposdatamodel.Person dto = new org.epos.eposdatamodel.Person();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setFamilyName(entity.getFamilyname());
+        dto.setGivenName(entity.getGivenname());
+        dto.setCVURL(entity.getCvurl());
+        dto.setQualifications(entity.getQualifications() != null
+                ? Arrays.asList(entity.getQualifications().split(", "))
+                : new ArrayList<>());
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.Person toSummaryDto(EposDataModelDAO.PersonSummaryRow row) {
+        org.epos.eposdatamodel.Person dto = new org.epos.eposdatamodel.Person();
+        dto.setInstanceId(row.instanceId());
+        dto.setMetaId(row.metaId());
+        dto.setUid(row.uid());
+        dto.setFamilyName(row.familyname());
+        dto.setGivenName(row.givenname());
+        dto.setCVURL(row.cvurl());
+        dto.setQualifications(row.qualifications() != null
+                ? Arrays.asList(row.qualifications().split(", "))
+                : new ArrayList<>());
+        return dto;
     }
 
     private List<org.epos.eposdatamodel.Person> retrieveBulkInternal(List<String> instanceIds) {

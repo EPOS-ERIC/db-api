@@ -826,7 +826,7 @@ public class StatusTransitionTestThree extends TestcontainersLifecycle {
             String dpInstanceId_Published = dpPublishedLE.getInstanceId();
             System.out.println("✓ DataProduct PUBLISHED (ingestor): instanceId=" + dpInstanceId_Published);
 
-            // 3. Create new DRAFT - with ingestor, Category SHOULD be duplicated
+            // 3. Create new DRAFT - shared reference Category must be reused
             DataProduct dpPublished = dataProductAPI.retrieve(dpInstanceId_Published);
             dpPublished.setStatus(StatusType.DRAFT);
             dpPublished.setEditorId("ingestor");  // Keep ingestor
@@ -835,26 +835,24 @@ public class StatusTransitionTestThree extends TestcontainersLifecycle {
             String dpInstanceId_NewDraft = dpNewDraftLE.getInstanceId();
             System.out.println("✓ New DataProduct DRAFT (ingestor): instanceId=" + dpInstanceId_NewDraft);
 
-            // 4. Verify that Category was DUPLICATED (new instanceId)
+            // 4. Verify that the PUBLISHED Category is reused
             DataProduct dpNewDraft = dataProductAPI.retrieve(dpInstanceId_NewDraft);
             assertNotNull(dpNewDraft.getCategory(), "Category list should not be null");
             assertFalse(dpNewDraft.getCategory().isEmpty(), "Category list should not be empty");
 
             LinkedEntity linkedCategory = dpNewDraft.getCategory().get(0);
 
-            // With ingestor, Category should have a NEW instanceId (duplicated)
-            assertNotEquals(categoryInstanceId_Published, linkedCategory.getInstanceId(),
-                    "Ingestor: Category SHOULD be duplicated (different instanceId)");
+            assertEquals(categoryInstanceId_Published, linkedCategory.getInstanceId(),
+                    "Ingestor: Category must remain linked to its PUBLISHED instance");
 
-            // Verify the new Category is DRAFT
+            // Reference entities are always PUBLISHED, even when linked from a draft.
             org.epos.eposdatamodel.Category linkedCat = (org.epos.eposdatamodel.Category) categoryAPI.retrieve(linkedCategory.getInstanceId());
-            assertEquals(StatusType.DRAFT, linkedCat.getStatus(),
-                    "New Category version should be DRAFT (cascaded from DataProduct)");
+            assertEquals(StatusType.PUBLISHED, linkedCat.getStatus(),
+                    "Referenced Category must remain PUBLISHED");
 
-            System.out.println("✓ Category DUPLICATED for ingestor!");
-            System.out.println("  - Category V1 (PUBLISHED) instanceId: " + categoryInstanceId_Published);
-            System.out.println("  - Category V2 (DRAFT, cascaded) instanceId: " + linkedCategory.getInstanceId());
-            System.out.println("  - Different instanceIds: " + !categoryInstanceId_Published.equals(linkedCategory.getInstanceId()));
+            System.out.println("✓ Category REUSED for ingestor!");
+            System.out.println("  - Category PUBLISHED instanceId: " + categoryInstanceId_Published);
+            System.out.println("  - Draft link instanceId: " + linkedCategory.getInstanceId());
 
             System.out.println("\n========== TEST 12 COMPLETED ✓ ==========\n");
 

@@ -13,7 +13,9 @@ import relationsapi.RelationSyncUtil;
 import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -42,17 +44,9 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Element selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Element item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Element selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Element::getVersion);
 
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -94,6 +88,7 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Documentation.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -131,73 +126,17 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(ContactpointElement.class)){
-            ContactpointElement item = (ContactpointElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(DistributionElement.class)){
-            DistributionElement item = (DistributionElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(WebserviceElement.class)){
-            WebserviceElement item = (WebserviceElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OrganizationElement.class)){
-            OrganizationElement item = (OrganizationElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(PersonElement.class)){
-            PersonElement item = (PersonElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OperationElement.class)){
-            OperationElement item = (OperationElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(MappingElement.class)){
-            MappingElement item = (MappingElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(SoftwaresourcecodeElement.class)){
-            SoftwaresourcecodeElement item = (SoftwaresourcecodeElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(EquipmentElement.class)){
-            EquipmentElement item = (EquipmentElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(FacilityElement.class)){
-            FacilityElement item = (FacilityElement) object;
-            if(item.getElementInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-
-        List<Element> elementList = getDbaccess().getAllFromDB(Element.class);
-        elementList.stream()
-                .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Element.class, Map.of(
+                ContactpointElement.class, "elementInstance",
+                DistributionElement.class, "elementInstance",
+                WebserviceElement.class, "elementInstance",
+                OrganizationElement.class, "elementInstance",
+                PersonElement.class, "elementInstance",
+                OperationElement.class, "elementInstance",
+                MappingElement.class, "elementInstance",
+                SoftwaresourcecodeElement.class, "elementInstance",
+                EquipmentElement.class, "elementInstance",
+                FacilityElement.class, "elementInstance"));
     }
     @Override
     public org.epos.eposdatamodel.Documentation retrieveByUID(String uid) {
@@ -216,13 +155,60 @@ public class DocumentationAPI extends AbstractAPI<org.epos.eposdatamodel.Documen
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Element.class));
     }
     @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Element.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Element.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Documentation> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Element.class));
+    }
+    private List<org.epos.eposdatamodel.Documentation> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.ElementSummaryRow> rows = dao.fetchElementSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.ElementSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Documentation> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.ElementSummaryRow row = rows.get(id);
+            if (row == null || !"DOCUMENTATION".equals(row.type())) continue;
+            JsonObject doc = new Gson().fromJson(row.value(), JsonObject.class);
+            org.epos.eposdatamodel.Documentation dto = new org.epos.eposdatamodel.Documentation();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setTitle(doc.has("Title") ? doc.get("Title").getAsString() : null);
+            dto.setDescription(doc.has("Description") ? doc.get("Description").getAsString() : null);
+            dto.setUri(doc.has("Uri") ? doc.get("Uri").getAsString() : null);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+    @Override
     public List<org.epos.eposdatamodel.Documentation> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Element.class, status));
     }
 
     private List<org.epos.eposdatamodel.Documentation> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Element.class, entity -> {
+            if (!"DOCUMENTATION".equals(entity.getType())) {
+                return null;
+            }
+            JsonObject doc = new Gson().fromJson(entity.getValue(), JsonObject.class);
+            org.epos.eposdatamodel.Documentation dto = new org.epos.eposdatamodel.Documentation();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setTitle(doc.has("Title") ? doc.get("Title").getAsString() : null);
+            dto.setDescription(doc.has("Description") ? doc.get("Description").getAsString() : null);
+            dto.setUri(doc.has("Uri") ? doc.get("Uri").getAsString() : null);
+            return dto;
+        });
     }
 
     @Override

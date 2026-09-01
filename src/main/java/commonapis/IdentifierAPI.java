@@ -7,7 +7,10 @@ import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationSyncUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -35,17 +38,9 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Identifier selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Identifier item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Identifier selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Identifier::getVersion);
 
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -81,6 +76,7 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Identifier.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -91,36 +87,11 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
 
     @Override
     public Boolean delete(String instanceId) {
-        for(Object object : getDbaccess().getAllFromDB(DataproductIdentifier.class)){
-            DataproductIdentifier item = (DataproductIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(WebserviceIdentifier.class)){
-            WebserviceIdentifier item = (WebserviceIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(OrganizationIdentifier.class)){
-            OrganizationIdentifier item = (OrganizationIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        for(Object object : getDbaccess().getAllFromDB(PersonIdentifier.class)){
-            PersonIdentifier item = (PersonIdentifier) object;
-            if(item.getIdentifierInstance().getInstanceId().equals(instanceId)){
-                EposDataModelDAO.getInstance().deleteObject(item);
-            }
-        }
-        List<Identifier> identifierList = getDbaccess().getAllFromDB(Identifier.class);
-        identifierList.stream()
-                .filter(item -> item.getInstanceId().equals(instanceId))
-                .forEach(item -> EposDataModelDAO.getInstance().deleteObject(item));
-
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Identifier.class, Map.of(
+                DataproductIdentifier.class, "identifierInstance",
+                WebserviceIdentifier.class, "identifierInstance",
+                OrganizationIdentifier.class, "identifierInstance",
+                PersonIdentifier.class, "identifierInstance"));
     }
 
     @Override
@@ -157,13 +128,52 @@ public class IdentifierAPI extends AbstractAPI<org.epos.eposdatamodel.Identifier
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Identifier.class));
     }
     @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Identifier.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Identifier.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Identifier> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Identifier.class));
+    }
+    private List<org.epos.eposdatamodel.Identifier> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.IdentifierSummaryRow> rows = dao.fetchIdentifierSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.IdentifierSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Identifier> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.IdentifierSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Identifier dto = new org.epos.eposdatamodel.Identifier();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setType(row.type()); dto.setIdentifier(row.value());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+    @Override
     public List<org.epos.eposdatamodel.Identifier> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Identifier.class, status));
     }
 
     private List<org.epos.eposdatamodel.Identifier> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Identifier.class, entity -> {
+            org.epos.eposdatamodel.Identifier dto = new org.epos.eposdatamodel.Identifier();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setType(entity.getType());
+            dto.setIdentifier(entity.getValue());
+            return dto;
+        });
     }
 
     @Override

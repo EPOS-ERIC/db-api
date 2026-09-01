@@ -12,6 +12,7 @@ import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -39,17 +40,9 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Quantitativevalue selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Quantitativevalue item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Quantitativevalue selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Quantitativevalue::getVersion);
 
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -85,6 +78,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, null, Quantitativevalue.class);
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -95,11 +89,7 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
 
     @Override
     public Boolean delete(String instanceId) {
-        List<Quantitativevalue> itemsToDelete = (List<Quantitativevalue>) getDbaccess().getAllFromDB(Quantitativevalue.class).stream()
-                .filter(item -> ((Quantitativevalue)item).getInstanceId().equals(instanceId))
-                .collect(Collectors.toList());
-        EposDataModelDAO.getInstance().deleteListOfObjects(itemsToDelete);
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Quantitativevalue.class, Collections.emptyMap());
     }
 
     @Override
@@ -138,13 +128,52 @@ public class QuantitativeValueAPI extends AbstractAPI<org.epos.eposdatamodel.Qua
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Quantitativevalue.class));
     }
     @Override
+    public List<org.epos.eposdatamodel.QuantitativeValue> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Quantitativevalue.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Quantitativevalue.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Quantitativevalue.class));
+    }
+    private List<org.epos.eposdatamodel.QuantitativeValue> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.QuantitativeValueSummaryRow> rows = dao.fetchQuantitativeValueSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.QuantitativeValueSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.QuantitativeValue> results = new java.util.ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.QuantitativeValueSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.QuantitativeValue dto = new org.epos.eposdatamodel.QuantitativeValue();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setUnit(row.unitcode()); dto.setValue(row.value());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+    @Override
     public List<org.epos.eposdatamodel.QuantitativeValue> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Quantitativevalue.class, status));
     }
 
     private List<org.epos.eposdatamodel.QuantitativeValue> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> dbEntities = dbFetcher.apply(null);
-        return dbEntities.parallelStream().map(item -> retrieve(item)).collect(Collectors.toList());
+        return retrieveBulk(dbEntities, Quantitativevalue.class, entity -> {
+            org.epos.eposdatamodel.QuantitativeValue dto = new org.epos.eposdatamodel.QuantitativeValue();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            dto.setUnit(entity.getUnitcode());
+            dto.setValue(entity.getValue());
+            return dto;
+        });
     }
 
     @Override

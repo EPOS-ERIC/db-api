@@ -13,6 +13,7 @@ import org.epos.eposdatamodel.*;
 import relationsapi.CategoryRelationsAPI;
 import relationsapi.ContactPointRelationsAPI;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
 import java.util.*;
 import java.util.function.Function;
@@ -43,14 +44,9 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         List<Softwareapplication> returnList = getDbaccess().getOneFromDB(searchInstanceId, obj.getMetaId(), obj.getUid(), null, getEdmClass());
 
         if (!returnList.isEmpty()) {
-            Softwareapplication selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Softwareapplication item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Softwareapplication selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Softwareapplication::getVersion);
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
@@ -148,6 +144,7 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
 
         
             LinkedEntity result = new LinkedEntity().entityType(entityName).instanceId(edmobj.getInstanceId()).metaId(edmobj.getMetaId()).uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -173,26 +170,14 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
         }
 
         Set<String> newKeys = new HashSet<>();
-        for (LinkedEntity link : links) {
-            Object targetEntity = findEntityByLinkedEntity(link, overrideStatus);
-            if (targetEntity != null) {
-                String targetInstanceId = getInstanceId(targetEntity);
-                if (targetInstanceId != null) newKeys.add(link.getEntityType() + ":" + targetInstanceId);
-            }
-        }
-
-        if (!isNewVersion) {
-            for (Map.Entry<String, Object> entry : existingRelations.entrySet()) {
-                if (!newKeys.contains(entry.getKey())) EposDataModelDAO.getInstance().deleteObject(entry.getValue());
-            }
-        }
-
+        List<T> newRelations = new ArrayList<>();
         for (LinkedEntity link : links) {
             Object targetEntity = findEntityByLinkedEntity(link, overrideStatus);
             if (targetEntity != null) {
                 String targetInstanceId = getInstanceId(targetEntity);
                 if (targetInstanceId != null) {
                     String key = link.getEntityType() + ":" + targetInstanceId;
+                    newKeys.add(key);
                     if (!existingRelations.containsKey(key)) {
                         try {
                             T pi = joinClass.getDeclaredConstructor().newInstance();
@@ -202,10 +187,8 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
                             utilities.ReflectionCache.invokeStringSetter(pi, "setResourceEntity", link.getEntityType());
                             utilities.ReflectionCache.invokeStringSetter(pi, "setEntityInstanceId", targetInstanceId);
 
-                            EposDataModelDAO.getInstance().updateObject(pi);
-
+                            newRelations.add(pi);
                         } catch (Exception e) {
-                            // Swallow duplicates or log warning
                             LOG.warning("Failed to create polymorphic relation (likely duplicate): " + e.getMessage());
                         }
                     }
@@ -213,6 +196,20 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             } else {
                 createPendingCreatorRelation(parent.getInstanceId(), link, joinClass.getName());
             }
+        }
+
+        List<Object> obsoleteRelations = new ArrayList<>();
+        if (!isNewVersion) {
+            for (Map.Entry<String, Object> entry : existingRelations.entrySet()) {
+                if (!newKeys.contains(entry.getKey())) obsoleteRelations.add(entry.getValue());
+            }
+        }
+
+        if (!EposDataModelDAO.getInstance().deleteListOfObjects(obsoleteRelations)) {
+            LOG.warning("Failed to delete obsolete polymorphic relations");
+        }
+        if (!EposDataModelDAO.getInstance().updateListOfObjects(newRelations)) {
+            LOG.warning("Failed to create polymorphic relations (likely duplicate)");
         }
     }
 
@@ -286,12 +283,18 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
             }
         }
         if (!isNewVersion) {
+            List<SoftwareapplicationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (Map.Entry<String, SoftwareapplicationElement> entry : existingElements.entrySet()) {
                 if (!values.contains(entry.getKey())) {
-                    if (entry.getValue().getElementInstance() != null) EposDataModelDAO.getInstance().deleteObject(entry.getValue().getElementInstance());
-                    EposDataModelDAO.getInstance().deleteObject(entry.getValue());
+                    relationsToDelete.add(entry.getValue());
+                    if (entry.getValue().getElementInstance() != null) {
+                        elementsToDelete.add(entry.getValue().getElementInstance());
+                    }
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
         for (String value : values) {
             if (!existingElements.containsKey(value)) {
@@ -311,27 +314,20 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     }
 
     @Override public Boolean delete(String instanceId) {
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationContactpoint.class);
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationIdentifier.class);
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationCategory.class);
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationElement.class);
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationParameter.class);
-        deleteRelations("softwareapplicationInstance", instanceId, SoftwareapplicationOperation.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationAuthor.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationContributor.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationFunder.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationMaintainer.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationProvider.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationPublisher.class);
-        deleteRelations("softwareapplication", instanceId, SoftwareapplicationCreator.class);
-        List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
-        for (Softwareapplication object : elementList) EposDataModelDAO.getInstance().deleteObject(object);
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Softwareapplication.class, List.of(
+                new EposDataModelDAO.RelationField(SoftwareapplicationContactpoint.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationIdentifier.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationCategory.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationElement.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationParameter.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationOperation.class, "softwareapplicationInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationAuthor.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationContributor.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationFunder.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationMaintainer.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationProvider.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationPublisher.class, "softwareapplication"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationCreator.class, "softwareapplication")));
     }
 
     @Override public org.epos.eposdatamodel.SoftwareApplication retrieve(String instanceId) {
@@ -403,7 +399,193 @@ public class SoftwareApplicationAPI extends AbstractAPI<org.epos.eposdatamodel.S
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunch(List<String> entities) { return retrieveEntities(db -> getDbaccess().getListIDsFromDBByInstanceId(entities, Softwareapplication.class)); }
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAll() { return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Softwareapplication.class)); }
     @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllWithStatus(StatusType status) { return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Softwareapplication.class, status)); }
-    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<String>> dbFetcher) { return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList()); }
+    @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveBunchSummary(List<String> entities) { return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Softwareapplication.class)); }
+    @Override public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllSummaryWithStatus(StatusType status) { return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Softwareapplication.class, status)); }
+
+    /**
+     * Returns list-oriented SoftwareApplication records without loading their
+     * relationship graph. Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    public List<org.epos.eposdatamodel.SoftwareApplication> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Softwareapplication.class));
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.SoftwareApplicationSummaryRow> rows = dao
+                .fetchSoftwareApplicationSummaryRows(instanceIds).stream()
+                .collect(Collectors.toMap(EposDataModelDAO.SoftwareApplicationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.SoftwareApplication> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.SoftwareApplicationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.SoftwareApplication dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
+    private List<org.epos.eposdatamodel.SoftwareApplication> retrieveEntities(Function<Void, List<String>> dbFetcher) {
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        Map<String, Softwareapplication> applications = getDbaccess().batchFetchByInstanceIds(instanceIds, Softwareapplication.class);
+        if (applications.isEmpty()) return Collections.emptyList();
+        List<String> foundIds = new ArrayList<>(applications.keySet());
+
+        Map<String, List<SoftwareapplicationCategory>> categories = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationCategory.class);
+        Map<String, List<SoftwareapplicationContactpoint>> contactPoints = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationContactpoint.class);
+        Map<String, List<SoftwareapplicationIdentifier>> identifiers = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationIdentifier.class);
+        Map<String, List<SoftwareapplicationParameter>> parameters = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationParameter.class);
+        Map<String, List<SoftwareapplicationOperation>> operations = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationOperation.class);
+        Map<String, List<SoftwareapplicationElement>> elements = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplicationInstance", foundIds, SoftwareapplicationElement.class);
+        Map<String, List<SoftwareapplicationAuthor>> authors = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationAuthor.class);
+        Map<String, List<SoftwareapplicationContributor>> contributors = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationContributor.class);
+        Map<String, List<SoftwareapplicationFunder>> funders = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationFunder.class);
+        Map<String, List<SoftwareapplicationMaintainer>> maintainers = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationMaintainer.class);
+        Map<String, List<SoftwareapplicationProvider>> providers = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationProvider.class);
+        Map<String, List<SoftwareapplicationPublisher>> publishers = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationPublisher.class);
+        Map<String, List<SoftwareapplicationCreator>> creators = getDbaccess()
+                .batchFetchRelationsForMultipleParents("softwareapplication", foundIds, SoftwareapplicationCreator.class);
+
+        Set<String> categoryIds = new HashSet<>(), contactPointIds = new HashSet<>(), identifierIds = new HashSet<>();
+        Set<String> parameterIds = new HashSet<>(), operationIds = new HashSet<>(), elementIds = new HashSet<>();
+        categories.values().forEach(rs -> rs.forEach(r -> categoryIds.add(r.getCategoryInstance().getInstanceId())));
+        contactPoints.values().forEach(rs -> rs.forEach(r -> contactPointIds.add(r.getContactpointInstance().getInstanceId())));
+        identifiers.values().forEach(rs -> rs.forEach(r -> identifierIds.add(r.getIdentifierInstance().getInstanceId())));
+        parameters.values().forEach(rs -> rs.forEach(r -> parameterIds.add(r.getParameterInstance().getInstanceId())));
+        operations.values().forEach(rs -> rs.forEach(r -> operationIds.add(r.getOperationInstance().getInstanceId())));
+        elements.values().forEach(rs -> rs.forEach(r -> elementIds.add(r.getElementInstance().getInstanceId())));
+
+        Set<String> personIds = new HashSet<>(), organizationIds = new HashSet<>();
+        collectPolymorphicIds(authors.values(), personIds, organizationIds);
+        collectPolymorphicIds(contributors.values(), personIds, organizationIds);
+        collectPolymorphicIds(funders.values(), personIds, organizationIds);
+        collectPolymorphicIds(maintainers.values(), personIds, organizationIds);
+        collectPolymorphicIds(providers.values(), personIds, organizationIds);
+        collectPolymorphicIds(publishers.values(), personIds, organizationIds);
+        collectPolymorphicIds(creators.values(), personIds, organizationIds);
+
+        Map<String, model.Category> categoryMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(categoryIds), model.Category.class);
+        Map<String, Contactpoint> contactPointMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(contactPointIds), Contactpoint.class);
+        Map<String, Identifier> identifierMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(identifierIds), Identifier.class);
+        Map<String, Parameter> parameterMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(parameterIds), Parameter.class);
+        Map<String, Operation> operationMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(operationIds), Operation.class);
+        Map<String, Element> elementMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(elementIds), Element.class);
+        Map<String, Person> personMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(personIds), Person.class);
+        Map<String, Organization> organizationMap = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(organizationIds), Organization.class);
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(foundIds);
+        List<String> metaIds = applications.values().stream().map(Softwareapplication::getMetaId)
+                .filter(Objects::nonNull).distinct().toList();
+        Map<String, List<String>> groups = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(metaIds);
+
+        List<org.epos.eposdatamodel.SoftwareApplication> results = new ArrayList<>(applications.size());
+        for (String id : instanceIds) {
+            Softwareapplication entity = applications.get(id);
+            if (entity == null) continue;
+            org.epos.eposdatamodel.SoftwareApplication dto = toBulkDto(entity);
+            for (SoftwareapplicationCategory relation : categories.getOrDefault(id, Collections.emptyList()))
+                addLinked(dto, "addCategory", categoryMap.get(relation.getCategoryInstance().getInstanceId()), EntityNames.CATEGORY);
+            for (SoftwareapplicationContactpoint relation : contactPoints.getOrDefault(id, Collections.emptyList()))
+                addLinked(dto, "addContactPoint", contactPointMap.get(relation.getContactpointInstance().getInstanceId()), EntityNames.CONTACTPOINT);
+            for (SoftwareapplicationIdentifier relation : identifiers.getOrDefault(id, Collections.emptyList()))
+                addLinked(dto, "addIdentifier", identifierMap.get(relation.getIdentifierInstance().getInstanceId()), EntityNames.IDENTIFIER);
+            for (SoftwareapplicationParameter relation : parameters.getOrDefault(id, Collections.emptyList())) {
+                Parameter parameter = parameterMap.get(relation.getParameterInstance().getInstanceId());
+                if (parameter != null && "OBJECT".equals(parameter.getAction())) addLinked(dto, "addInputParameter", parameter, EntityNames.SOFTWAREAPPLICATIONINPUTPARAMETER);
+                if (parameter != null && "RESULT".equals(parameter.getAction())) addLinked(dto, "addOutputParameter", parameter, EntityNames.SOFTWAREAPPLICATIONOUTPUTPARAMETER);
+            }
+            for (SoftwareapplicationOperation relation : operations.getOrDefault(id, Collections.emptyList()))
+                addLinked(dto, "addRelatedOperation", operationMap.get(relation.getOperationInstance().getInstanceId()), EntityNames.OPERATION);
+            for (SoftwareapplicationElement relation : elements.getOrDefault(id, Collections.emptyList())) {
+                Element element = elementMap.get(relation.getElementInstance().getInstanceId());
+                if (element != null && ElementType.CITATION.name().equals(element.getType())) dto.addCitation(element.getValue());
+                if (element != null && ElementType.OPERATINGSYSTEM.name().equals(element.getType())) dto.addOperatingSystem(element.getValue());
+            }
+            addPolymorphicRelations(dto, authors.get(id), personMap, organizationMap, "addAuthor");
+            addPolymorphicRelations(dto, contributors.get(id), personMap, organizationMap, "addContributor");
+            addPolymorphicRelations(dto, funders.get(id), personMap, organizationMap, "addFunder");
+            addPolymorphicRelations(dto, maintainers.get(id), personMap, organizationMap, "addMaintainer");
+            addPolymorphicRelations(dto, providers.get(id), personMap, organizationMap, "addProvider");
+            addPolymorphicRelations(dto, publishers.get(id), personMap, organizationMap, "addPublisher");
+            addPolymorphicRelations(dto, creators.get(id), personMap, organizationMap, "addCreator");
+            VersioningStatusAPI.applyVersion(dto, versions.get(id), groups.get(dto.getMetaId()));
+            results.add(dto);
+        }
+        return results;
+    }
+
+    private org.epos.eposdatamodel.SoftwareApplication toBulkDto(Softwareapplication entity) {
+        org.epos.eposdatamodel.SoftwareApplication dto = new org.epos.eposdatamodel.SoftwareApplication();
+        dto.setInstanceId(entity.getInstanceId()); dto.setMetaId(entity.getMetaId()); dto.setUid(entity.getUid());
+        dto.setName(entity.getName()); dto.setDescription(entity.getDescription()); dto.setDownloadURL(entity.getDownloadurl());
+        dto.setInstallURL(entity.getInstallurl()); dto.addKeywords(entity.getKeywords()); dto.setLicenseURL(entity.getLicenseurl());
+        dto.setMainEntityOfPage(entity.getMainentityofpage()); dto.setRequirements(entity.getRequirements());
+        dto.setSoftwareVersion(entity.getSoftwareversion()); dto.setSoftwareStatus(entity.getSoftwareStatus()); dto.setFileSize(entity.getFileSize());
+        dto.setSpatial(entity.getSpatial()); dto.setTemporal(entity.getTemporal()); dto.setMemoryrequirements(entity.getMemoryrequirements());
+        dto.setProcessorRequirements(entity.getProcessorRequirements()); dto.setStorageRequirements(entity.getStorageRequirements());
+        dto.setTimeRequired(entity.getTimeRequired());
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.SoftwareApplication toSummaryDto(EposDataModelDAO.SoftwareApplicationSummaryRow row) {
+        org.epos.eposdatamodel.SoftwareApplication dto = new org.epos.eposdatamodel.SoftwareApplication();
+        dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+        dto.setName(row.name()); dto.setDescription(row.description()); dto.setDownloadURL(row.downloadUrl());
+        dto.setInstallURL(row.installUrl()); dto.addKeywords(row.keywords()); dto.setLicenseURL(row.licenseUrl());
+        dto.setMainEntityOfPage(row.mainEntityOfPage()); dto.setRequirements(row.requirements());
+        dto.setSoftwareVersion(row.softwareVersion()); dto.setSoftwareStatus(row.softwareStatus()); dto.setFileSize(row.fileSize());
+        dto.setSpatial(row.spatial()); dto.setTemporal(row.temporal()); dto.setMemoryrequirements(row.memoryRequirements());
+        dto.setProcessorRequirements(row.processorRequirements()); dto.setStorageRequirements(row.storageRequirements());
+        dto.setTimeRequired(row.timeRequired());
+        return dto;
+    }
+
+    private void collectPolymorphicIds(Collection<? extends Collection<?>> relationGroups, Set<String> personIds, Set<String> organizationIds) {
+        for (Collection<?> relations : relationGroups) {
+            for (Object relation : relations) {
+                String type = utilities.ReflectionCache.invokeStringGetter(relation, "getResourceEntity");
+                String id = utilities.ReflectionCache.invokeStringGetter(relation, "getEntityInstanceId");
+                if (EntityNames.PERSON.name().equals(type)) personIds.add(id);
+                if (EntityNames.ORGANIZATION.name().equals(type)) organizationIds.add(id);
+            }
+        }
+    }
+
+    private void addPolymorphicRelations(org.epos.eposdatamodel.SoftwareApplication dto, Collection<? extends Object> relations,
+                                         Map<String, Person> people, Map<String, Organization> organizations, String methodName) {
+        if (relations == null) return;
+        for (Object relation : relations) {
+            String type = utilities.ReflectionCache.invokeStringGetter(relation, "getResourceEntity");
+            String id = utilities.ReflectionCache.invokeStringGetter(relation, "getEntityInstanceId");
+            if (EntityNames.PERSON.name().equals(type)) addLinked(dto, methodName, people.get(id), EntityNames.PERSON);
+            if (EntityNames.ORGANIZATION.name().equals(type)) addLinked(dto, methodName, organizations.get(id), EntityNames.ORGANIZATION);
+        }
+    }
+
+    private void addLinked(org.epos.eposdatamodel.SoftwareApplication dto, String methodName, Object entity, EntityNames type) {
+        if (entity == null) return;
+        LinkedEntity link = new LinkedEntity().instanceId(utilities.ReflectionCache.getInstanceId(entity))
+                .metaId(utilities.ReflectionCache.getMetaId(entity)).uid(utilities.ReflectionCache.getUid(entity)).entityType(type.name());
+        utilities.ReflectionCache.invokeSetter(dto, methodName, LinkedEntity.class, link);
+    }
     @Override public LinkedEntity retrieveLinkedEntity(String instanceId) {
         List<Softwareapplication> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Softwareapplication.class);
         if (elementList != null && !elementList.isEmpty()) {

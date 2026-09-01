@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 import static model.StatusType.*;
@@ -26,6 +27,8 @@ public class VersioningStatusAPI {
         }
 
         Versioningstatus edmobj = null;
+        StatusType targetStatus = overrideStatus != null ? overrideStatus :
+                (obj.getStatus() != null ? obj.getStatus() : DRAFT);
 
         if (obj.getInstanceId() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
@@ -37,31 +40,39 @@ public class VersioningStatusAPI {
             }
         }
 
-        if (edmobj == null && obj.getUid() != null) {
+        if (obj.getUid() != null) {
             List<Versioningstatus> list = getDbaccess().getOneFromDBByUIDNoCache(obj.getUid(), Versioningstatus.class);
-            for (Versioningstatus vs : list) {
-                if (isPendingRelationMarker(vs)) {
-                    continue;
-                }
-                edmobj = vs;
-                break;
+            Versioningstatus submitted = findByStatus(list, SUBMITTED);
+            Versioningstatus draft = findByStatus(list, DRAFT);
+            if (targetStatus == DRAFT && submitted != null) {
+                throw new VersionPolicyException("Cannot create a DRAFT while a SUBMITTED version exists");
+            }
+            if (targetStatus == SUBMITTED && submitted != null
+                    && (edmobj == null || !submitted.getInstanceId().equals(edmobj.getInstanceId()))) {
+                throw new VersionPolicyException("A SUBMITTED version already exists for this entity");
+            }
+            if (edmobj == null || (targetStatus == DRAFT && draft != null)) {
+                edmobj = selectVersionForTransition(list, obj, overrideStatus);
             }
         }
 
         if (edmobj != null) {
+            // editorId is audit data only; it never selects or protects a version.
+            if (obj.getEditorId() == null) {
+                obj.setEditorId(edmobj.getEditorId());
+            }
             StatusType currentDbStatus = StatusType.valueOf(edmobj.getStatus());
-            StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
-            if (targetStatus == null) targetStatus = DRAFT;
+            boolean reuseExistingDraft = targetStatus == DRAFT
+                    && currentDbStatus == DRAFT;
 
             if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}",
-                        new Object[]{currentDbStatus, targetStatus});
+                LOG.log(java.util.logging.Level.FINE, "[VERSION CHECK] Existing version found. currentDbStatus={0}, targetStatus={1}, reuseExistingDraft={2}",
+                        new Object[]{currentDbStatus, targetStatus, reuseExistingDraft});
             }
 
-            if (targetStatus == DRAFT && currentDbStatus != DRAFT) {
+            if (targetStatus == DRAFT && !reuseExistingDraft) {
                 createNewVersion(obj, edmobj, targetStatus);
-            }
-            else {
+            } else {
                 if (targetStatus == PUBLISHED && currentDbStatus != PUBLISHED) {
                     String searchUid = edmobj.getUid() != null ? edmobj.getUid() : obj.getUid();
                     archiveOldPublishedVersions(searchUid, edmobj.getVersionId());
@@ -81,8 +92,143 @@ public class VersioningStatusAPI {
             }
 
             createFirstVersion(obj, initialStatus);
+            if (initialStatus == PUBLISHED) {
+                archiveOldPublishedVersions(obj.getUid(), obj.getVersionId());
+            }
             return obj;
         }
+    }
+
+    private static Versioningstatus selectVersionForTransition(List<Versioningstatus> versions, EPOSDataModelEntity obj, StatusType overrideStatus) {
+        if (versions == null || versions.isEmpty()) {
+            return null;
+        }
+
+        StatusType targetStatus = overrideStatus != null ? overrideStatus : obj.getStatus();
+        if (targetStatus == null) {
+            targetStatus = DRAFT;
+        }
+
+        if (targetStatus == DRAFT) {
+            Versioningstatus draft = findByStatus(versions, DRAFT);
+            if (draft != null) return draft;
+
+            Versioningstatus published = findPublishedVersion(versions);
+            if (published != null) {
+                return published;
+            }
+
+            return findFirstNonPending(versions);
+        }
+
+        if (targetStatus == SUBMITTED) {
+            Versioningstatus draft = findByStatus(versions, DRAFT);
+            if (draft != null) {
+                return draft;
+            }
+        }
+
+        // Publishing is a state change of the submitted revision, not a lookup
+        // of an already-published sibling. API mappers call this before
+        // checkVersion, so choosing the published sibling here would otherwise
+        // discard the caller's submitted instance ID.
+        if (targetStatus == PUBLISHED) {
+            Versioningstatus submitted = findByStatus(versions, SUBMITTED);
+            if (submitted != null) {
+                return submitted;
+            }
+        }
+
+        Versioningstatus matching = findByStatus(versions, targetStatus);
+        if (matching != null) {
+            return matching;
+        }
+
+        return findFirstNonPending(versions);
+    }
+
+    /** Selects the single shared draft or submitted version for an entity. */
+    public static <T> T selectVersion(List<T> versions, String ignoredEditorId, StatusType targetStatus,
+                                       Function<T, Versioningstatus> versionGetter) {
+        if (versions == null || versions.isEmpty()) return null;
+
+        if (targetStatus != null) {
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && targetStatus.toString().equals(version.getStatus())) {
+                    if (targetStatus != DRAFT) return entity;
+                }
+            }
+        }
+
+        if (targetStatus == DRAFT) {
+            for (T entity : versions) {
+                Versioningstatus version = versionGetter.apply(entity);
+                if (version != null && PUBLISHED.toString().equals(version.getStatus())) {
+                    return entity;
+                }
+            }
+        }
+
+        return versions.get(0);
+    }
+
+    /**
+     * Selects the most recently changed draft when a read is not scoped to an editor.
+     */
+    public static <T> T selectLatestDraftVersion(List<T> versions,
+                                                  Function<T, Versioningstatus> versionGetter) {
+        T selected = null;
+        Versioningstatus selectedVersion = null;
+
+        if (versions == null) {
+            return null;
+        }
+
+        for (T candidate : versions) {
+            Versioningstatus candidateVersion = versionGetter.apply(candidate);
+            if (candidateVersion == null || !DRAFT.toString().equals(candidateVersion.getStatus())) {
+                continue;
+            }
+
+            if (selectedVersion == null
+                    || (candidateVersion.getChangeTimestamp() != null
+                    && (selectedVersion.getChangeTimestamp() == null
+                    || candidateVersion.getChangeTimestamp().isAfter(selectedVersion.getChangeTimestamp())))) {
+                selected = candidate;
+                selectedVersion = candidateVersion;
+            }
+        }
+
+        return selected;
+    }
+
+    private static Versioningstatus findPublishedVersion(List<Versioningstatus> versions) {
+        return findByStatus(versions, PUBLISHED);
+    }
+
+    private static Versioningstatus findByStatus(List<Versioningstatus> versions, StatusType status) {
+        if (status == null) {
+            return null;
+        }
+        for (Versioningstatus vs : versions) {
+            if (vs == null || isPendingRelationMarker(vs)) {
+                continue;
+            }
+            if (status.toString().equals(vs.getStatus())) {
+                return vs;
+            }
+        }
+        return null;
+    }
+
+    private static Versioningstatus findFirstNonPending(List<Versioningstatus> versions) {
+        for (Versioningstatus vs : versions) {
+            if (vs != null && !isPendingRelationMarker(vs)) {
+                return vs;
+            }
+        }
+        return null;
     }
 
     private static boolean isPendingRelationMarker(Versioningstatus vs) {
@@ -108,6 +254,13 @@ public class VersioningStatusAPI {
         }
 
         return false;
+    }
+
+    /** Expected lifecycle rejection, handled by the API boundary without error logging. */
+    public static final class VersionPolicyException extends IllegalStateException {
+        public VersionPolicyException(String message) {
+            super(message);
+        }
     }
 
     private static void archiveOldPublishedVersions(String uid, String currentVersionId) {
@@ -202,6 +355,7 @@ public class VersioningStatusAPI {
         obj.setVersionId(edmobj.getVersionId());
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse("entity/" + UUID.randomUUID().toString()));
+        obj.setUid(edmobj.getUid());
         edmobj.setInstanceChangeId(null);
         edmobj.setChangeTimestamp(OffsetDateTime.from(ZonedDateTime.now()));
         edmobj.setChangeComment(obj.getChangeComment());
@@ -221,10 +375,7 @@ public class VersioningStatusAPI {
         Versioningstatus vs = null;
 
         if (obj.getInstanceId() != null) {
-            List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceId(obj.getInstanceId(), Versioningstatus.class);
-            if (returnList.isEmpty()) {
-                returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
-            }
+            List<Versioningstatus> returnList = getDbaccess().getOneFromDBByInstanceIdNoCache(obj.getInstanceId(), Versioningstatus.class);
 
             for (Versioningstatus candidate : returnList) {
                 if (!isPendingRelationMarker(candidate)) {
@@ -282,14 +433,57 @@ public class VersioningStatusAPI {
 
         obj.setGroups(UserGroupManagementAPI.retrieveShortGroupsFromMetaId(obj.getMetaId()));
 
-        //TODO: reviewerid and reviewercomment
-
         try {
             obj.setStatus(StatusType.valueOf(vs.getStatus()));
         } catch (IllegalArgumentException e) {
             obj.setStatus(DRAFT);
         }
         return obj;
+    }
+
+    /** Applies already-loaded version and group data during bulk retrieval. */
+    public static void applyVersion(EPOSDataModelEntity obj, Versioningstatus vs, List<String> groups) {
+        if (vs == null || isPendingRelationMarker(vs)) {
+            if (obj.getStatus() == null) {
+                obj.setStatus(DRAFT);
+            }
+            obj.setGroups(groups == null ? List.of() : groups);
+            return;
+        }
+
+        obj.setVersionId(vs.getVersionId());
+        obj.setChangeComment(vs.getChangeComment());
+        if (vs.getChangeTimestamp() != null) {
+            obj.setChangeTimestamp(vs.getChangeTimestamp().toLocalDateTime());
+        }
+        obj.setEditorId(vs.getEditorId());
+        obj.setFileProvenance(vs.getProvenance());
+        obj.setVersion(vs.getVersion());
+        obj.setInstanceChangedId(vs.getInstanceChangeId());
+        obj.setGroups(groups == null ? List.of() : groups);
+        try {
+            obj.setStatus(StatusType.valueOf(vs.getStatus()));
+        } catch (IllegalArgumentException e) {
+            obj.setStatus(DRAFT);
+        }
+    }
+
+    /** Rebuilds a detached version value from a scalar summary projection. */
+    public static Versioningstatus summaryVersion(String versionId, String metaId, String changeComment,
+                                                  OffsetDateTime changeTimestamp, String editorId, String provenance,
+                                                  String version, String instanceChangeId, String status) {
+        if (versionId == null) return null;
+        Versioningstatus result = new Versioningstatus();
+        result.setVersionId(versionId);
+        result.setMetaId(metaId);
+        result.setChangeComment(changeComment);
+        result.setChangeTimestamp(changeTimestamp);
+        result.setEditorId(editorId);
+        result.setProvenance(provenance);
+        result.setVersion(version);
+        result.setInstanceChangeId(instanceChangeId);
+        result.setStatus(status);
+        return result;
     }
 
     public static Versioningstatus retrieveVersioningStatus(EPOSDataModelEntity obj) {

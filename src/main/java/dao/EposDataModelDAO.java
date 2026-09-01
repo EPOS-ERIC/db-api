@@ -1,13 +1,14 @@
 package dao;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.metamodel.Attribute;
+import jakarta.persistence.metamodel.EmbeddableType;
+import jakarta.persistence.metamodel.IdentifiableType;
+import jakarta.persistence.metamodel.ManagedType;
 import model.Category;
 import model.Dataproduct;
 import model.Distribution;
@@ -18,21 +19,17 @@ import model.Person;
 import model.StatusType;
 import model.Versioningstatus;
 import model.Webservice;
+import model.AuthorizationGroup;
+import model.EdmEntityId;
+import model.MetadataGroup;
 
 import org.epos.eposdatamodel.LinkedEntity;
 import org.epos.handler.dbapi.service.EntityManagerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import utilities.MemoryMonitor;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,8 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * High-performance Data Access Object for EPOS data model entities.
  *
- * Implements a multi-tier caching strategy with Caffeine for query, entity, and count caches.
- * Designed for high-throughput scenarios with optimized memory footprint and thread safety.
+ * Queries the database directly so reads always observe the latest committed state.
  *
  * Key optimizations:
  * - Thread-safe singleton with double-checked locking
@@ -55,75 +51,171 @@ public class EposDataModelDAO<T> {
 	private static final Logger LOG = LoggerFactory.getLogger(EposDataModelDAO.class);
 
 	private static final int BATCH_SIZE = 25;
-
-	// Reasonable cache sizes - 1B entries would cause OOM, these are tuned for typical workloads
-	private static final long QUERY_CACHE_MAX_SIZE = 10_000L;
-	private static final long COUNT_CACHE_MAX_SIZE = 1_000L;
-	private static final long ENTITY_CACHE_MAX_SIZE = 50_000L;
-
-	// Connection timeout for cache invalidation HTTP calls (fail-fast)
-	private static final int HTTP_CONNECT_TIMEOUT_MS = 2_000;
-	private static final int HTTP_READ_TIMEOUT_MS = 5_000;
-
-	// Cache key separator - single char for minimal allocation
+	// PostgreSQL supports far more bind parameters; larger read batches remove most
+	// network round-trips when retrieving hundreds of metadata records.
+	private static final int READ_BATCH_SIZE = 1_000;
 	private static final char KEY_SEP = '\u001F';
 
 	// Reflection method cache - eliminates repeated lookups which are expensive
 	private static final ConcurrentHashMap<Class<?>, Method> VERSION_GETTER_CACHE = new ConcurrentHashMap<>(32);
 	private static final ConcurrentHashMap<Class<?>, Method> STATUS_GETTER_CACHE = new ConcurrentHashMap<>(32);
 	private static final ConcurrentHashMap<Class<?>, Map<String, Method>> LIST_GETTER_CACHE = new ConcurrentHashMap<>(32);
+	private static final ConcurrentHashMap<RelationAccessorKey, Optional<EmbeddedIdAccess>> EMBEDDED_ID_ACCESS_CACHE = new ConcurrentHashMap<>(64);
+	private static final ConcurrentHashMap<RelationAccessorKey, Optional<Method>> PARENT_ACCESSOR_CACHE = new ConcurrentHashMap<>(64);
 
-	// Service endpoint mapping - computed once at class load
-	private static final Map<String, String> SERVICE_ENDPOINT_MAP;
-	private static final String[] DEFAULT_SERVICES = {
-			"resources-service", "ingestor-service", "external-access-service",
-			"email-sender-service", "distributed-processing-service"
-	};
+	private record RelationAccessorKey(Class<?> relationClass, String parentFieldName) {}
+	private record EmbeddedIdAccess(Method relationIdGetter, Method parentIdGetter) {}
 
-	static {
-		Map<String, String> map = new HashMap<>(8);
-		map.put("resources", "resources-service");
-		map.put("ingestor", "ingestor-service");
-		map.put("external", "external-access-service");
-		map.put("email", "email-sender-service");
-		map.put("distributed", "distributed-processing-service");
-		SERVICE_ENDPOINT_MAP = Collections.unmodifiableMap(map);
-	}
+	public static record DataProductSummaryRow(String instanceId, String metaId, String uid,
+			String type, String accrualPeriodicity, java.time.LocalDateTime created,
+			java.time.LocalDateTime issued, java.time.LocalDateTime modified, String versionInfo,
+			String documentation, String qualityAssurance, String accessRight, String keywords,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record DataProductTitleRow(String dataProductInstanceId, String title) {}
+
+	/** Lightweight authorization relation used where neither side needs hydration. */
+    public static record AuthorizationGroupRow(String metaId, String groupId, String entityType) {}
+
+	/** Lightweight group membership relation used while assembling full group DTOs. */
+	public static record MetadataGroupUserRow(String groupId, String authIdentifier, String role, String requestStatus) {}
+
+	public static record WebServiceSummaryRow(String instanceId, String metaId, String uid,
+			java.time.LocalDateTime dateModified, java.time.LocalDateTime datePublished, String description,
+			String entryPoint, String license, String name, String aaaiTypes, String keywords,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record SoftwareApplicationSummaryRow(String instanceId, String metaId, String uid,
+			String name, String description, String downloadUrl, String installUrl, String keywords,
+			String licenseUrl, String mainEntityOfPage, String requirements, String softwareVersion,
+			String softwareStatus, String fileSize, String spatial, String temporal,
+			String memoryRequirements, String processorRequirements, String storageRequirements,
+			String timeRequired, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record OrganizationSummaryRow(String instanceId, String metaId, String uid,
+			String acronym, String legalname, String leicode, String logo, String url, String type,
+			String maturity, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record DistributionSummaryRow(String instanceId, String metaId, String uid,
+			String type, String format, String license, String datapolicy, java.time.LocalDateTime issued,
+			java.time.LocalDateTime modified, String byteSize, String maturity, String mediaType,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record PersonSummaryRow(String instanceId, String metaId, String uid,
+			String familyname, String givenname, String cvurl, String qualifications, String versionId,
+			String versionMetaId, String changeComment, OffsetDateTime changeTimestamp, String editorId,
+			String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record ContactPointSummaryRow(String instanceId, String metaId, String uid, String role,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record SoftwareSourceCodeSummaryRow(String instanceId, String metaId, String uid,
+			String name, String description, String downloadUrl, String keywords, String licenseUrl,
+			String mainEntityOfPage, String runtimePlatform, String softwareVersion, String codeRepository,
+			String softwareStatus, String spatial, String temporal, String fileSize, String timeRequired,
+			String softwareRequirements, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record EquipmentSummaryRow(String instanceId, String metaId, String uid, String type,
+			String resolution, String description, String dynamicRange, String filter, String identifier,
+			String name, String pageUrl, String orientation, String samplePeriod, String serialNumber,
+			String keywords, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record FacilitySummaryRow(String instanceId, String metaId, String uid, String type,
+			String identifier, String description, String title, String keywords, String versionId,
+			String versionMetaId, String changeComment, OffsetDateTime changeTimestamp, String editorId,
+			String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record MappingSummaryRow(String instanceId, String metaId, String uid, String label,
+			String valuepattern, String defaultvalue, String maxvalue, String minvalue, String multipleValues,
+			String readOnlyValue, Boolean required, String range, String property, String variable,
+			String healthcheckvalue, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record OperationSummaryRow(String instanceId, String metaId, String uid, String method,
+			String template, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record PayloadSummaryRow(String instanceId, String metaId, String uid, String versionId,
+			String versionMetaId, String changeComment, OffsetDateTime changeTimestamp, String editorId,
+			String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record AttributionSummaryRow(String instanceId, String metaId, String uid, String versionId,
+			String versionMetaId, String changeComment, OffsetDateTime changeTimestamp, String editorId,
+			String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record CategorySummaryRow(String instanceId, String metaId, String uid, String name,
+			String description, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record CategorySchemeSummaryRow(String instanceId, String metaId, String uid, String name,
+			String description, String code, String homepage, String logo, String color, String orderitemnumber,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record AddressSummaryRow(String instanceId, String metaId, String uid, String street, String country,
+			String postalCode, String countrycode, String locality, String versionId, String versionMetaId,
+			String changeComment, OffsetDateTime changeTimestamp, String editorId, String provenance, String version,
+			String instanceChangeId, String status) {}
+
+	public static record ElementSummaryRow(String instanceId, String metaId, String uid, String type, String value,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record IdentifierSummaryRow(String instanceId, String metaId, String uid, String type, String value,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record SpatialSummaryRow(String instanceId, String metaId, String uid, String location,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record TemporalSummaryRow(String instanceId, String metaId, String uid, java.time.LocalDateTime startdate,
+			java.time.LocalDateTime enddate,
+			String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record ParameterSummaryRow(String instanceId, String metaId, String uid, String encodingformat,
+			String conformsto, String action, String versionId, String versionMetaId, String changeComment,
+			OffsetDateTime changeTimestamp, String editorId, String provenance, String version, String instanceChangeId,
+			String status) {}
+
+	public static record QuantitativeValueSummaryRow(String instanceId, String metaId, String uid, String unitcode,
+			String value, String versionId, String versionMetaId, String changeComment, OffsetDateTime changeTimestamp,
+			String editorId, String provenance, String version, String instanceChangeId, String status) {}
+
+	public static record OutputMappingSummaryRow(String instanceId, String metaId, String uid, String label,
+			String valuepattern, Boolean required, String range, String property, String variable, String versionId,
+			String versionMetaId, String changeComment, OffsetDateTime changeTimestamp, String editorId,
+			String provenance, String version, String instanceChangeId, String status) {}
 
 	/*
 	 * Primary query cache - stores list results with optimized TTL.
 	 * Uses write-through expiration plus shorter access-based refresh for better memory efficiency.
 	 * Increased size for higher hit rates on read-heavy workloads.
 	 */
-	private final Cache<String, Object> queryCache = Caffeine.newBuilder()
-			.maximumSize(QUERY_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofMinutes(90))   // Reduced from 120 for fresher data
-			.expireAfterAccess(Duration.ofMinutes(30))  // Reduced from 60 to evict inactive entries faster
-			.recordStats()
-			.build();
-
 	/*
 	 * Count cache - shorter TTL since aggregates change more frequently than individual records.
 	 * Added access-based expiry to keep frequently accessed counts warm.
 	 */
-	private final Cache<String, Long> countCache = Caffeine.newBuilder()
-			.maximumSize(COUNT_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofMinutes(30))   // Reduced from 60 - counts change often
-			.expireAfterAccess(Duration.ofMinutes(15))  // Added - keep hot counts cached
-			.recordStats()
-			.build();
-
 	/*
 	 * Entity cache - longer TTL for individual entity lookups which are more stable.
 	 * Differentiated TTLs: longer write expiry, shorter access expiry for better memory use.
 	 */
-	private final Cache<String, Object> entityCache = Caffeine.newBuilder()
-			.maximumSize(ENTITY_CACHE_MAX_SIZE)
-			.expireAfterWrite(Duration.ofHours(2))      // Increased from 1h for stable entities
-			.expireAfterAccess(Duration.ofMinutes(45))  // Reduced from 60 to evict inactive sooner
-			.recordStats()
-			.build();
-
 	private EntityManagerService entityManagerService;
 
 	private EposDataModelDAO() {
@@ -137,7 +229,6 @@ public class EposDataModelDAO<T> {
 
 	// Volatile for visibility + synchronization for atomicity = safe lazy init
 	private static volatile EposDataModelDAO instance;
-	private static volatile EposDataModelDAO cacheInstance;
 	private static final Object INSTANCE_LOCK = new Object();
 
 	@SuppressWarnings("rawtypes")
@@ -155,180 +246,135 @@ public class EposDataModelDAO<T> {
 		return localRef;
 	}
 
-	// =================== CACHE UTILITY METHODS ===================
-
-	private void putInQueryCache(String key, Object value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting query result in cache. Key: {}", key);
-			}
-			queryCache.put(key, value);
-		}
-	}
-
-	private void putInEntityCache(String key, Object value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting entity in cache. Key: {}", key);
-			}
-			entityCache.put(key, value);
-		}
-	}
-
-	private void putInCountCache(String key, Long value) {
-		if (value != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Putting count in cache. Key: {}", key);
-			}
-			countCache.put(key, value);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private <R> R getFromQueryCache(String key) {
-		Object cached = queryCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Query cache hit for key: {}", key);
-			}
-			if (cached instanceof List) {
-				// Return unmodifiable view instead of defensive copy for performance
-				// Callers should NOT modify the returned list - use new ArrayList<>() if mutation needed
-				return (R) java.util.Collections.unmodifiableList((List<?>) cached);
-			}
-			return (R) cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Query cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	@SuppressWarnings("unchecked")
-	private <R> R getFromEntityCache(String key) {
-		Object cached = entityCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Entity cache hit for key: {}", key);
-			}
-			return (R) cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Entity cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	private Long getFromCountCache(String key) {
-		Long cached = countCache.getIfPresent(key);
-		if (cached != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Count cache hit for key: {}", key);
-			}
-			return cached;
-		} else {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Count cache miss for key: {}", key);
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Evicts cache entries matching the entity pattern and propagates invalidation
-	 * to peer services. Pattern matching uses contains() which is O(n) but acceptable
-	 * given typical cache sizes and infrequent write operations.
-	 */
-	private void evictCacheByPattern(String pattern) {
-		queryCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		entityCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		countCache.asMap().keySet().removeIf(key -> key.contains(pattern));
-		propagateCacheInvalidation(pattern);
-	}
-
-	/**
-	 * Propagates cache invalidation to configured peer services.
-	 * Fire-and-forget semantics with short timeouts to avoid blocking writers.
-	 */
-	private void propagateCacheInvalidation(String pattern) {
-		String servicesEnv = System.getenv("SERVICES");
-		String[] services = (servicesEnv == null || servicesEnv.isBlank())
-				? DEFAULT_SERVICES
-				: servicesEnv.split(",");
-
-		// Allow configurable protocol (http/https) and port for cache invalidation
-		String protocol = System.getenv().getOrDefault("CACHE_INVALIDATION_PROTOCOL", "http");
-		String port = System.getenv().getOrDefault("CACHE_INVALIDATION_PORT", "8080");
-
-		for (String service : services) {
-			for (Map.Entry<String, String> entry : SERVICE_ENDPOINT_MAP.entrySet()) {
-				if (service.contains(entry.getKey())) {
-					String url = protocol + "://" + service + ":" + port + "/api/" + entry.getKey() + "/v1/invalidate";
-					sendInvalidationRequest(url, pattern);
-					break;
-				}
-			}
-		}
-	}
-
-	/**
-	 * Sends HTTP POST to invalidate remote cache. Uses minimal resource footprint
-	 * with proper connection cleanup in all code paths.
-	 */
-	private void sendInvalidationRequest(String targetUrl, String pattern) {
-		HttpURLConnection conn = null;
-		try {
-			conn = (HttpURLConnection) URI.create(targetUrl).toURL().openConnection();
-			conn.setRequestMethod("POST");
-			conn.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
-			conn.setReadTimeout(HTTP_READ_TIMEOUT_MS);
-			conn.setDoOutput(true);
-			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-			byte[] payload = ("pattern=" + pattern).getBytes(StandardCharsets.UTF_8);
-			conn.setFixedLengthStreamingMode(payload.length);
-
-			try (OutputStream os = conn.getOutputStream()) {
-				os.write(payload);
-			}
-
-			int status = conn.getResponseCode();
-			if (status != HttpURLConnection.HTTP_OK) {
-				LOG.debug("Cache invalidation returned non-200: {} for {}", status, targetUrl);
-			}
-
-			// Drain response to allow connection reuse
-			try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-				if (is != null) {
-					while (is.read() != -1) { /* drain */ }
-				}
-			}
-		} catch (IOException e) {
-			LOG.trace("Cache invalidation failed for {}: {}", targetUrl, e.getMessage());
-		} finally {
-			if (conn != null) {
-				conn.disconnect();
-			}
-		}
-	}
-
-	/**
-	 * Generates an interned cache key from method name and parameters.
-	 * Uses unit separator char to avoid collision with typical parameter values.
-	 * Initial capacity is estimated to reduce StringBuilder resizing.
-	 */
-	private String generateCacheKey(String method, Object... params) {
-		int estimatedSize = method.length() + params.length * 20;
-		StringBuilder sb = new StringBuilder(estimatedSize).append(method);
-		for (Object param : params) {
-			sb.append(KEY_SEP).append(param != null ? param.toString() : "null");
-		}
-		return sb.toString();
-	}
+	private void putInQueryCache(String key, Object value) { }
+	private void putInEntityCache(String key, Object value) { }
+	private void putInCountCache(String key, Long value) { }
+	private <R> R getFromQueryCache(String key) { return null; }
+	private <R> R getFromEntityCache(String key) { return null; }
+	private Long getFromCountCache(String key) { return null; }
+	private void evictCacheByPattern(String pattern) { }
+	private String generateCacheKey(String method, Object... params) { return method; }
 
 	// =================== OPTIMIZED CRUD OPERATIONS ===================
+
+	/** Repoints persisted associations from a superseded version to its replacement. */
+	public int repointVersionReferences(String oldInstanceId, String newInstanceId, Class<?> targetClass) {
+		if (oldInstanceId == null || newInstanceId == null || targetClass == null
+				|| oldInstanceId.equals(newInstanceId)) return 0;
+		// A DataProduct owns a versioned graph. Moving inverse references from
+		// the archived parent would mutate its historical snapshot.
+		if ("Dataproduct".equals(targetClass.getSimpleName())) return 0;
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		int updated = 0;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			for (Class<?> entityClass : managedEntityClasses(em)) {
+				// Versioned graph joins belong to the snapshot that owns them. The
+				// version APIs create the replacement joins explicitly; moving these
+				// inverse rows would mutate an archived graph.
+				if (isVersionedGraphJoin(targetClass, entityClass)) continue;
+				Table table = entityClass.getAnnotation(Table.class);
+				if (table == null) continue;
+				for (Field field : allFields(entityClass)) {
+					if (!field.isAnnotationPresent(ManyToOne.class)
+							|| !targetClass.isAssignableFrom(field.getType())) continue;
+					JoinColumn joinColumn = field.getAnnotation(JoinColumn.class);
+					if (joinColumn == null || joinColumn.name().isBlank()) continue;
+					String tableName = (table.schema().isBlank() ? "" : table.schema() + ".") + table.name();
+					String column = joinColumn.name();
+					removeConflictingRelation(em, table, tableName, column, oldInstanceId, newInstanceId);
+					updated += em.createNativeQuery("UPDATE " + tableName + " SET " + column + " = ?1 WHERE " + column + " = ?2")
+							.setParameter(1, newInstanceId)
+							.setParameter(2, oldInstanceId)
+							.executeUpdate();
+				}
+			}
+			tx.commit();
+			return updated;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			throw new IllegalStateException("Unable to repoint version references", e);
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	private boolean isVersionedGraphJoin(Class<?> targetClass, Class<?> relationClass) {
+		String target = targetClass.getSimpleName();
+		String relation = relationClass.getSimpleName();
+		return switch (target) {
+		case "Distribution" -> relation.equals("DistributionDataproduct")
+				|| relation.equals("WebserviceDistribution") || relation.equals("OperationDistribution");
+		case "Webservice" -> relation.equals("WebserviceDistribution")
+				|| relation.equals("OperationWebservice");
+		case "Operation" -> relation.equals("OperationWebservice")
+				|| relation.equals("OperationDistribution") || relation.equals("OperationMapping");
+		case "Mapping" -> relation.equals("OperationMapping");
+		default -> false;
+		};
+	}
+
+	private void removeConflictingRelation(EntityManager em, Table table, String tableName, String targetColumn,
+			String oldInstanceId, String newInstanceId) {
+		List<?> primaryKeyColumns = em.createNativeQuery("SELECT kcu.column_name FROM information_schema.table_constraints tc "
+				+ "JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name "
+				+ "AND tc.table_schema = kcu.table_schema AND tc.table_name = kcu.table_name "
+				+ "WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = ?1 AND tc.table_name = ?2 "
+				+ "ORDER BY kcu.ordinal_position")
+				.setParameter(1, table.schema()).setParameter(2, table.name()).getResultList();
+		List<String> otherKeys = primaryKeyColumns.stream().map(Object::toString)
+				.filter(key -> !key.equals(targetColumn)).toList();
+		if (otherKeys.isEmpty()) return;
+
+		String matchingKeys = otherKeys.stream()
+				.map(key -> "new_row." + key + " = old_row." + key)
+				.collect(java.util.stream.Collectors.joining(" AND "));
+		em.createNativeQuery("DELETE FROM " + tableName + " old_row WHERE old_row." + targetColumn + " = ?1 "
+				+ "AND EXISTS (SELECT 1 FROM " + tableName + " new_row WHERE new_row." + targetColumn + " = ?2 AND "
+				+ matchingKeys + ")")
+				.setParameter(1, oldInstanceId).setParameter(2, newInstanceId).executeUpdate();
+	}
+
+	/** Repoints all archived versions of the same logical entity to its published version. */
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public int repointArchivedVersionReferences(String uid, String newInstanceId, Class<?> targetClass) {
+		if (uid == null || newInstanceId == null || targetClass == null) return 0;
+		List<?> candidates = getOneFromDBByUIDNoCache(uid, (Class) targetClass);
+		int updated = 0;
+		for (Object candidate : candidates) {
+			try {
+				if (newInstanceId.equals(candidate.getClass().getMethod("getInstanceId").invoke(candidate))) continue;
+				Object version = candidate.getClass().getMethod("getVersion").invoke(candidate);
+				if (version != null && StatusType.ARCHIVED.name().equals(version.getClass().getMethod("getStatus").invoke(version))) {
+					updated += repointVersionReferences((String) candidate.getClass().getMethod("getInstanceId").invoke(candidate),
+							newInstanceId, targetClass);
+				}
+			} catch (ReflectiveOperationException ignored) {
+				// Non-versioned model entities are not candidates for version repointing.
+			}
+		}
+		return updated;
+	}
+
+	private Set<Class<?>> managedEntityClasses(EntityManager em) {
+		Set<Class<?>> result = new LinkedHashSet<>();
+		em.getMetamodel().getManagedTypes().forEach(type -> {
+			if (type.getJavaType().isAnnotationPresent(Entity.class)) result.add(type.getJavaType());
+		});
+		return result;
+	}
+
+	private List<Field> allFields(Class<?> type) {
+		List<Field> fields = new ArrayList<>();
+		for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+			fields.addAll(Arrays.asList(current.getDeclaredFields()));
+		}
+		return fields;
+	}
 
 	public Boolean createObject(T entity) {
 		if (entity == null) return false;
@@ -388,8 +434,9 @@ public class EposDataModelDAO<T> {
 					em.merge(vs);
 				}
 			}
-		} catch (Exception ignored) {
-			// Entity may not have version field - this is expected for some types
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to sanitize version status for "
+					+ entity.getClass().getSimpleName(), e);
 		}
 	}
 
@@ -428,8 +475,9 @@ public class EposDataModelDAO<T> {
 				if (vs.getChangeTimestamp() == null) vs.setChangeTimestamp(OffsetDateTime.now());
 				em.merge(vs);
 			}
-		} catch (Exception ignored) {
-			// Expected for entities without version field
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to persist dependent version status for "
+					+ entity.getClass().getSimpleName(), e);
 		}
 	}
 
@@ -444,8 +492,8 @@ public class EposDataModelDAO<T> {
 
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			tx = em.getTransaction();
-			tx.begin();
+			 tx = em.getTransaction();
+			 tx.begin();
 
 			Object parent = em.find(pClass, parentId);
 			Object target = em.find(tClass, targetId);
@@ -496,32 +544,12 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			List<J> result = null;
-
-			// Strategy 1: EmbeddedId path
-			try {
-				TypedQuery<J> query = em.createQuery(
-						"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c.id." + parentIdField + " = :pid",
-						joinClass);
-				query.setParameter("pid", parentId);
-				result = query.getResultList();
-			} catch (Exception e1) {
-				// Strategy 2: Relationship field with instanceId
-				try {
-					TypedQuery<J> query = em.createQuery(
-							"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + ".instanceId = :pid",
-							joinClass);
-					query.setParameter("pid", parentId);
-					result = query.getResultList();
-				} catch (Exception e2) {
-					// Strategy 3: Direct field access
-					TypedQuery<J> query = em.createQuery(
-							"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + parentIdField + " = :pid",
-							joinClass);
-					query.setParameter("pid", parentId);
-					result = query.getResultList();
-				}
-			}
+			String path = joinParentPath(em, joinClass, parentIdField);
+			TypedQuery<J> query = em.createQuery(
+					"SELECT c FROM " + joinClass.getSimpleName() + " c WHERE c." + path + " = :pid",
+					joinClass);
+			query.setParameter("pid", parentId);
+			List<J> result = query.getResultList();
 
 			if (result != null && !result.isEmpty()) {
 				putInQueryCache(cacheKey, result);
@@ -535,6 +563,21 @@ public class EposDataModelDAO<T> {
 		} finally {
 			closeQuietly(em);
 		}
+	}
+
+	private String joinParentPath(EntityManager em, Class<?> joinClass, String parentIdField) {
+		ManagedType<?> managedType = em.getMetamodel().managedType(joinClass);
+		if (managedType instanceof IdentifiableType<?> identifiableType) {
+			if (identifiableType.getIdType() instanceof EmbeddableType<?> idType) {
+				try {
+					idType.getAttribute(parentIdField);
+					return "id." + parentIdField;
+				} catch (IllegalArgumentException ignored) {
+					// The parent key is represented by an entity attribute instead.
+				}
+			}
+		}
+		return specificKeyPath(em, joinClass, parentIdField);
 	}
 
 	/**
@@ -632,6 +675,55 @@ public class EposDataModelDAO<T> {
 	}
 
 	/**
+	 * Batch update with periodic flush/clear for memory efficiency on large datasets.
+	 * Commits all-or-nothing for transactional consistency.
+	 */
+	public Boolean updateListOfObjects(List<T> objects) {
+		if (objects == null || objects.isEmpty()) return true;
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+
+			String entityName = null;
+			int size = objects.size();
+
+			for (int i = 0; i < size; i++) {
+				T obj = objects.get(i);
+				if (entityName == null) {
+					entityName = obj.getClass().getSimpleName();
+				}
+
+				em.merge(obj);
+
+				if ((i + 1) % BATCH_SIZE == 0) {
+					em.flush();
+					em.clear();
+				}
+			}
+
+			em.flush();
+			tx.commit();
+
+			if (entityName != null) {
+				evictCacheByPattern(entityName);
+			}
+			return true;
+
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error during batch update", e);
+			return false;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
 	 * Batch delete with periodic flush/clear for memory efficiency on large datasets.
 	 * Commits all-or-nothing for transactional consistency.
 	 */
@@ -676,6 +768,155 @@ public class EposDataModelDAO<T> {
 		} catch (Exception e) {
 			rollbackQuietly(tx);
 			LOG.error("Error during batch delete", e);
+			return false;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Deletes a principal entity and its referencing join rows in one transaction.
+	 * The relation fields are model property names and are supplied only by internal
+	 * API classes, so they are not derived from request input.
+	 */
+	public Boolean deleteByInstanceIdWithRelations(String instanceId, Class<?> entityClass,
+			Map<Class<?>, String> relationFields) {
+		return deleteByInstanceIdWithRelations(instanceId, entityClass, relationFields, Collections.emptyList());
+	}
+
+	/**
+	 * Deletes a principal entity after removing join rows and nullifying direct references to it.
+	 * All configured fields are internal model properties, never request input.
+	 */
+	public Boolean deleteByInstanceIdWithRelations(String instanceId, Class<?> entityClass,
+			Map<Class<?>, String> relationFields, List<RelationField> referenceFields) {
+		if (instanceId == null || instanceId.isBlank() || entityClass == null) {
+			return false;
+		}
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			String metaId = findMetaId(em, entityClass, instanceId);
+
+			if (relationFields != null) {
+				for (Map.Entry<Class<?>, String> relation : relationFields.entrySet()) {
+					em.createQuery("DELETE FROM " + relation.getKey().getSimpleName()
+							+ " r WHERE r." + relation.getValue() + ".instanceId = :id")
+							.setParameter("id", instanceId)
+							.executeUpdate();
+					evictCacheByPattern(relation.getKey().getSimpleName());
+				}
+			}
+
+			if (referenceFields != null) {
+				for (RelationField reference : referenceFields) {
+					em.createQuery("UPDATE " + reference.entityClass().getSimpleName()
+							+ " r SET r." + reference.parentField() + " = NULL WHERE r."
+							+ reference.parentField() + ".instanceId = :id")
+							.setParameter("id", instanceId)
+							.executeUpdate();
+					evictCacheByPattern(reference.entityClass().getSimpleName());
+				}
+			}
+
+			int deleted = em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
+					.setParameter("id", instanceId)
+					.executeUpdate();
+			if (deleted == 0) {
+				tx.rollback();
+				return false;
+			}
+			cleanupMetaId(em, entityClass, metaId);
+			tx.commit();
+			evictCacheByPattern(entityClass.getSimpleName());
+			return true;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error deleting {} with relations", entityClass.getSimpleName(), e);
+			return false;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	private String findMetaId(EntityManager em, Class<?> entityClass, String instanceId) {
+		List<String> metaIds = em.createQuery(
+				"SELECT e.metaId FROM " + entityClass.getSimpleName()
+						+ " e WHERE e.instanceId = :id", String.class)
+				.setParameter("id", instanceId)
+				.setMaxResults(1)
+				.getResultList();
+		return metaIds.isEmpty() ? null : metaIds.get(0);
+	}
+
+	/** Remove group/index metadata only after the last version is gone. */
+	private void cleanupMetaId(EntityManager em, Class<?> entityClass, String metaId) {
+		if (metaId == null) return;
+		Long remaining = em.createQuery(
+				"SELECT COUNT(e) FROM " + entityClass.getSimpleName()
+						+ " e WHERE e.metaId = :metaId", Long.class)
+				.setParameter("metaId", metaId)
+				.getSingleResult();
+		if (remaining != 0) return;
+
+		em.createQuery("DELETE FROM AuthorizationGroup a WHERE a.meta.metaId = :metaId")
+				.setParameter("metaId", metaId)
+				.executeUpdate();
+		em.createQuery("DELETE FROM EdmEntityId e WHERE e.metaId = :metaId")
+				.setParameter("metaId", metaId)
+				.executeUpdate();
+		evictCacheByPattern(AuthorizationGroup.class.getSimpleName());
+		evictCacheByPattern(EdmEntityId.class.getSimpleName());
+	}
+
+	/** A join entity and the parent-side property used for a targeted bulk delete. */
+	public record RelationField(Class<?> entityClass, String parentField) {
+	}
+
+	/**
+	 * Variant for principals referenced through multiple fields of the same join
+	 * entity, such as bidirectional self-relations.
+	 */
+	public Boolean deleteByInstanceIdWithRelations(String instanceId, Class<?> entityClass,
+			List<RelationField> relationFields) {
+		if (instanceId == null || instanceId.isBlank() || entityClass == null) {
+			return false;
+		}
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			String metaId = findMetaId(em, entityClass, instanceId);
+
+			if (relationFields != null) {
+				for (RelationField relation : relationFields) {
+					String path = relation.parentField().startsWith("id.")
+							? "r." + relation.parentField()
+							: "r." + relation.parentField() + ".instanceId";
+					em.createQuery("DELETE FROM " + relation.entityClass().getSimpleName()
+							+ " r WHERE " + path + " = :id")
+							.setParameter("id", instanceId).executeUpdate();
+					evictCacheByPattern(relation.entityClass().getSimpleName());
+				}
+			}
+
+			em.createQuery("DELETE FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId = :id")
+					.setParameter("id", instanceId)
+					.executeUpdate();
+			cleanupMetaId(em, entityClass, metaId);
+			tx.commit();
+			evictCacheByPattern(entityClass.getSimpleName());
+			return true;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error deleting {} with relations", entityClass.getSimpleName(), e);
 			return false;
 		} finally {
 			closeQuietly(em);
@@ -746,6 +987,235 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+	/**
+	 * Returns distinct scalar values without materializing entity rows or their
+	 * eager associations. The property path is supplied only by internal APIs.
+	 */
+	public List<String> getDistinctStringValues(Class<?> entityClass, String propertyPath) {
+		if (entityClass == null || propertyPath == null || propertyPath.isBlank()) {
+			return Collections.emptyList();
+		}
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			validatePath(em, entityClass, propertyPath);
+			TypedQuery<String> query = em.createQuery(
+					"SELECT DISTINCT e." + propertyPath + " FROM " + entityClass.getSimpleName()
+							+ " e WHERE e." + propertyPath + " IS NOT NULL", String.class);
+			return query.getResultList();
+		} catch (Exception e) {
+			LOG.error("Error retrieving distinct {} from {}", propertyPath, entityClass.getSimpleName(), e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches authorization keys without materializing eager AuthorizationGroup associations. */
+	public List<AuthorizationGroupRow> getAuthorizationGroupRowsByMetaIds(List<String> metaIds) {
+		if (metaIds == null || metaIds.isEmpty()) return Collections.emptyList();
+
+		List<AuthorizationGroupRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < metaIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = metaIds.subList(i, Math.min(i + READ_BATCH_SIZE, metaIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+						+ "FROM AuthorizationGroup ag JOIN ag.meta meta WHERE meta.metaId IN :metaIds", AuthorizationGroupRow.class)
+						.setParameter("metaIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving authorization group rows by metadata IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches authorization keys for groups without loading metadata entities. */
+	public List<AuthorizationGroupRow> getAuthorizationGroupRowsByGroupIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<AuthorizationGroupRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+						+ "FROM AuthorizationGroup ag JOIN ag.meta meta WHERE ag.group.id IN :groupIds", AuthorizationGroupRow.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving authorization group rows by group IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches membership values without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getMetadataGroupUserRowsByGroupIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroupUserRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+						+ "FROM MetadataGroupUser mgu WHERE mgu.group.id IN :groupIds", MetadataGroupUserRow.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving group membership rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches membership values for users without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getMetadataGroupUserRowsByUserIds(List<String> userIds) {
+		if (userIds == null || userIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroupUserRow> rows = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < userIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = userIds.subList(i, Math.min(i + READ_BATCH_SIZE, userIds.size()));
+				rows.addAll(em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+						+ "FROM MetadataGroupUser mgu WHERE mgu.authIdentifier.authIdentifier IN :userIds", MetadataGroupUserRow.class)
+						.setParameter("userIds", batch).getResultList());
+			}
+			return rows;
+		} catch (Exception e) {
+			LOG.error("Error retrieving group membership rows by user IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches all authorization keys without materializing eager AuthorizationGroup associations. */
+	public List<AuthorizationGroupRow> getAllAuthorizationGroupRows() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			return em.createQuery("SELECT NEW dao.EposDataModelDAO$AuthorizationGroupRow(meta.metaId, ag.group.id, meta.tableName) "
+					+ "FROM AuthorizationGroup ag JOIN ag.meta meta", AuthorizationGroupRow.class).getResultList();
+		} catch (Exception e) {
+			LOG.error("Error retrieving all authorization group rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches all membership values without loading eager user or group associations. */
+	public List<MetadataGroupUserRow> getAllMetadataGroupUserRows() {
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			return em.createQuery("SELECT NEW dao.EposDataModelDAO$MetadataGroupUserRow(mgu.group.id, mgu.authIdentifier.authIdentifier, mgu.role, mgu.requestStatus) "
+					+ "FROM MetadataGroupUser mgu", MetadataGroupUserRow.class).getResultList();
+		} catch (Exception e) {
+			LOG.error("Error retrieving all group membership rows", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches groups by ID in bounded queries; MetadataGroup has no eager relations. */
+	public List<MetadataGroup> getMetadataGroupsByIds(List<String> groupIds) {
+		if (groupIds == null || groupIds.isEmpty()) return Collections.emptyList();
+
+		List<MetadataGroup> groups = new ArrayList<>();
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < groupIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = groupIds.subList(i, Math.min(i + READ_BATCH_SIZE, groupIds.size()));
+				groups.addAll(em.createQuery("SELECT g FROM MetadataGroup g WHERE g.id IN :groupIds", MetadataGroup.class)
+						.setParameter("groupIds", batch).getResultList());
+			}
+			return groups;
+		} catch (Exception e) {
+			LOG.error("Error retrieving metadata groups by IDs", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/**
+	 * Creates missing group-metadata associations in one transaction. Null and unknown metadata IDs are ignored;
+	 * the return value is the number of rows inserted.
+	 */
+	public int addMetadataElementsToGroup(List<String> metaIds, String groupId) {
+		if (groupId == null || metaIds == null || metaIds.isEmpty()) return 0;
+		List<String> requestedIds = metaIds.stream().filter(Objects::nonNull).distinct().toList();
+		if (requestedIds.isEmpty()) return 0;
+
+		EntityManager em = null;
+		EntityTransaction tx = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			tx = em.getTransaction();
+			tx.begin();
+			if (em.find(MetadataGroup.class, groupId) == null) {
+				tx.commit();
+				return 0;
+			}
+
+			Set<String> validIds = new LinkedHashSet<>();
+			Set<String> existingIds = new HashSet<>();
+			for (int i = 0; i < requestedIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = requestedIds.subList(i, Math.min(i + READ_BATCH_SIZE, requestedIds.size()));
+				validIds.addAll(em.createQuery("SELECT e.metaId FROM EdmEntityId e WHERE e.metaId IN :metaIds", String.class)
+						.setParameter("metaIds", batch).getResultList());
+				existingIds.addAll(em.createQuery("SELECT ag.meta.metaId FROM AuthorizationGroup ag "
+						+ "WHERE ag.group.id = :groupId AND ag.meta.metaId IN :metaIds", String.class)
+						.setParameter("groupId", groupId).setParameter("metaIds", batch).getResultList());
+			}
+
+			int inserted = 0;
+			MetadataGroup group = em.getReference(MetadataGroup.class, groupId);
+			for (String metaId : validIds) {
+				if (existingIds.contains(metaId)) continue;
+				AuthorizationGroup authorization = new AuthorizationGroup();
+				authorization.setId(UUID.randomUUID().toString());
+				authorization.setGroup(group);
+				authorization.setMeta(em.getReference(EdmEntityId.class, metaId));
+				em.persist(authorization);
+				inserted++;
+				if (inserted % BATCH_SIZE == 0) {
+					em.flush();
+					em.clear();
+					group = em.getReference(MetadataGroup.class, groupId);
+				}
+			}
+			em.flush();
+			tx.commit();
+			evictCacheByPattern(AuthorizationGroup.class.getSimpleName());
+			return inserted;
+		} catch (Exception e) {
+			rollbackQuietly(tx);
+			LOG.error("Error adding metadata elements to group {}", groupId, e);
+			return 0;
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
 	public List<String> getAllIDsFromDB(Class<T> obj) {
 		String cacheKey = generateCacheKey("allIDsFromDB", obj.getSimpleName());
 
@@ -797,8 +1267,9 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			em.clear();
+			String path = specificKeyPath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + ".instanceId = :val", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + path + " = :val", obj);
 			query.setParameter("val", value);
 			query.setHint("javax.persistence.cache.storeMode", "REFRESH");
 			query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
@@ -811,6 +1282,37 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
+	/**
+	 * Resolves the historical relation-key convention without appending
+	 * instanceId to scalar or already-qualified paths.
+	 */
+	private String specificKeyPath(EntityManager em, Class<?> entityClass, String key) {
+		if (key == null || key.isBlank()) {
+			throw new IllegalArgumentException("Lookup key must not be blank");
+		}
+		validatePath(em, entityClass, key);
+		if (key.contains(".")) return key;
+
+		Attribute<?, ?> attribute = em.getMetamodel().managedType(entityClass).getAttribute(key);
+		Attribute.PersistentAttributeType type = attribute.getPersistentAttributeType();
+		boolean association = type == Attribute.PersistentAttributeType.MANY_TO_ONE
+				|| type == Attribute.PersistentAttributeType.ONE_TO_ONE
+				|| type == Attribute.PersistentAttributeType.MANY_TO_MANY
+				|| type == Attribute.PersistentAttributeType.ONE_TO_MANY;
+		return association ? key + ".instanceId" : key;
+	}
+
+	private void validatePath(EntityManager em, Class<?> entityClass, String path) {
+		String[] segments = path.split("\\.");
+		ManagedType<?> current = em.getMetamodel().managedType(entityClass);
+		for (int i = 0; i < segments.length; i++) {
+			Attribute<?, ?> attribute = current.getAttribute(segments[i]);
+			if (i < segments.length - 1) {
+				current = em.getMetamodel().managedType(attribute.getJavaType());
+			}
+		}
+	}
+
 	public List<T> getOneFromDBBySpecificKey(String key, String value, Class<T> obj) {
 		String cacheKey = generateCacheKey("specificKey", key, value, obj.getSimpleName());
 
@@ -820,8 +1322,9 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
+			String path = specificKeyPath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + ".instanceId = :val", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + path + " = :val", obj);
 			query.setParameter("val", value);
 			List<T> result = query.getResultList();
 			putInQueryCache(cacheKey, result);
@@ -843,10 +1346,13 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
-			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :id", obj);
-			query.setParameter("id", instanceId);
-			return query.getResultList();
+            TypedQuery<T> query = em.createQuery(
+                    "SELECT c FROM " + obj.getSimpleName() + " c WHERE c.instanceId = :id", obj);
+            query.setParameter("id", instanceId);
+            query.setHint("javax.persistence.cache.storeMode", "REFRESH");
+            query.setHint("jakarta.persistence.cache.storeMode", "REFRESH");
+            query.setHint("eclipselink.refresh", "true");
+            return query.getResultList();
 
 		} catch (Exception e) {
 			LOG.error("Error in getOneFromDBByInstanceIdNoCache", e);
@@ -891,6 +1397,7 @@ public class EposDataModelDAO<T> {
 		EntityManager em = null;
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
+			validatePath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
 					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + " = :val", obj);
 			query.setParameter("val", value);
@@ -911,6 +1418,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			em.clear();
+			validatePath(em, obj, key);
 			TypedQuery<T> query = em.createQuery(
 					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c." + key + " = :val", obj);
 			query.setParameter("val", value);
@@ -922,6 +1430,28 @@ public class EposDataModelDAO<T> {
 
 		} catch (Exception e) {
 			LOG.error("Error in getOneFromDBBySpecificKeySimpleNoCache", e);
+			return Collections.emptyList();
+		} finally {
+			closeQuietly(em);
+		}
+	}
+
+	/** Fetches rows whose validated scalar or association path matches any supplied value. */
+	public <E> List<E> getListFromDBBySpecificKey(String key, List<?> values, Class<E> entityClass) {
+		if (values == null || values.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			String path = specificKeyPath(em, entityClass, key);
+			TypedQuery<E> query = em.createQuery(
+					"SELECT c FROM " + entityClass.getSimpleName() + " c WHERE c." + path + " IN :values", entityClass);
+			query.setParameter("values", values);
+			return query.getResultList();
+		} catch (Exception e) {
+			LOG.error("Error in getListFromDBBySpecificKey", e);
 			return Collections.emptyList();
 		} finally {
 			closeQuietly(em);
@@ -1000,11 +1530,10 @@ public class EposDataModelDAO<T> {
 				}
 			}
 
-			if (!predicates.isEmpty()) {
-				cq.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
-			} else {
-				cq.select(root);
+			if (predicates.isEmpty()) {
+				throw new IllegalArgumentException("No valid predicates for " + obj.getSimpleName());
 			}
+			cq.select(root).where(cb.and(predicates.toArray(new Predicate[0])));
 
 			List<T> result = em.createQuery(cq).getResultList();
 			putInQueryCache(cacheKey, result);
@@ -1088,7 +1617,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.metaId LIKE :mid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.metaId = :mid", obj);
 			query.setParameter("mid", metaId);
 			List<T> result = query.getResultList();
 			putInEntityCache(cacheKey, result);
@@ -1114,7 +1643,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid LIKE :uid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.uid = :uid", obj);
 			query.setParameter("uid", uid);
 			List<T> result = query.getResultList();
 
@@ -1142,7 +1671,7 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			TypedQuery<T> query = em.createQuery(
-					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.versionId LIKE :vid", obj);
+					"SELECT c FROM " + obj.getSimpleName() + " c WHERE c.versionId = :vid", obj);
 			query.setParameter("vid", versionId);
 			List<T> result = query.getResultList();
 			putInQueryCache(cacheKey, result);
@@ -1275,39 +1804,17 @@ public class EposDataModelDAO<T> {
 		}
 	}
 
-	// =================== ADVANCED CACHE MANAGEMENT ===================
+	// =================== CACHE COMPATIBILITY API ===================
 
-	/**
-	 * Returns detailed statistics for all cache tiers.
-	 * Pre-sizes maps based on known field count for minimal allocation.
-	 */
 	public Map<String, Object> getDetailedCacheStats() {
-		Map<String, Object> stats = new HashMap<>(8);
-
-		CacheStats queryStats = queryCache.stats();
-		stats.put("queryCache", buildStatsMap(queryStats));
-
-		CacheStats entityStats = entityCache.stats();
-		stats.put("entityCache", buildStatsMap(entityStats));
-
-		CacheStats countStats = countCache.stats();
-		stats.put("countCache", buildStatsMap(countStats));
-
-		stats.put("queryCacheSize", queryCache.estimatedSize());
-		stats.put("entityCacheSize", entityCache.estimatedSize());
-		stats.put("countCacheSize", countCache.estimatedSize());
-
+		Map<String, Object> stats = new HashMap<>();
+		stats.put("queryCache", Collections.emptyMap());
+		stats.put("entityCache", Collections.emptyMap());
+		stats.put("countCache", Collections.emptyMap());
+		stats.put("queryCacheSize", 0L);
+		stats.put("entityCacheSize", 0L);
+		stats.put("countCacheSize", 0L);
 		return stats;
-	}
-
-	private Map<String, Object> buildStatsMap(CacheStats stats) {
-		Map<String, Object> map = new HashMap<>(6);
-		map.put("hitCount", stats.hitCount());
-		map.put("missCount", stats.missCount());
-		map.put("hitRate", stats.hitRate() * 100);
-		map.put("evictionCount", stats.evictionCount());
-		map.put("averageLoadPenalty", stats.averageLoadPenalty() / 1_000_000.0);
-		return map;
 	}
 
 	public void warmUpCache(Class<T> entityClass, List<String> commonInstanceIds) {
@@ -1333,39 +1840,12 @@ public class EposDataModelDAO<T> {
 	 * Policy-based cache cleanup triggered by low hit rates.
 	 */
 	public void smartCacheCleanup() {
-		CacheStats queryStats = queryCache.stats();
-		CacheStats entityStats = entityCache.stats();
-
-		if (queryStats.hitRate() < 0.5 && queryStats.requestCount() > 100) {
-			queryCache.cleanUp();
-			LOG.debug("Query cache cleaned due to low hit rate: {}%", queryStats.hitRate() * 100);
-		}
-
-		if (entityStats.hitRate() < 0.3 && entityStats.requestCount() > 100) {
-			entityCache.cleanUp();
-			LOG.debug("Entity cache cleaned due to low hit rate: {}%", entityStats.hitRate() * 100);
-		}
-
-		countCache.cleanUp();
 	}
 
 	public void invalidateAllCachesForClass(String className) {
-		queryCache.asMap().keySet().removeIf(key -> key.contains(className));
-		entityCache.asMap().keySet().removeIf(key -> key.contains(className));
-		countCache.asMap().keySet().removeIf(key -> key.contains(className));
-		LOG.debug("Invalidated all caches for class: {}", className);
 	}
 
 	public void clearAllCaches() {
-		long querySize = queryCache.estimatedSize();
-		long entitySize = entityCache.estimatedSize();
-		long countSize = countCache.estimatedSize();
-
-		queryCache.invalidateAll();
-		entityCache.invalidateAll();
-		countCache.invalidateAll();
-
-		LOG.info("All caches cleared - query: {}, entity: {}, count: {}", querySize, entitySize, countSize);
 	}
 
 	// =================== ECLIPSELINK L2 CACHE EVICTION ===================
@@ -1433,60 +1913,19 @@ public class EposDataModelDAO<T> {
 	// =================== MONITORING AND HEALTH CHECK ===================
 
 	public boolean isCacheHealthy() {
-		try {
-			CacheStats queryStats = queryCache.stats();
-			CacheStats entityStats = entityCache.stats();
-
-			boolean queryHealthy = queryStats.hitRate() > 0.1 || queryStats.requestCount() < 100;
-			boolean entityHealthy = entityStats.hitRate() > 0.1 || entityStats.requestCount() < 100;
-
-			return queryHealthy && entityHealthy;
-		} catch (Exception e) {
-			LOG.warn("Error during cache health check", e);
-			return false;
-		}
+		return true;
 	}
 
 	/**
 	 * Outputs cache performance report to logger at INFO level.
 	 */
-	@SuppressWarnings("unchecked")
     public void printCacheReport() {
-        Map<String, Object> stats = getDetailedCacheStats();
-
-        LOG.info("=== CAFFEINE CACHE PERFORMANCE REPORT ===");
-        LOG.info("Runtime Snapshot: {}", MemoryMonitor.snapshot());
-
-        Map<String, Object> queryStats = (Map<String, Object>) stats.get("queryCache");
-        LOG.info("Query Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-                queryStats.get("hitRate"), queryStats.get("hitCount"), queryStats.get("missCount"),
-                stats.get("queryCacheSize"), queryStats.get("evictionCount"), queryStats.get("averageLoadPenalty"));
-
-		Map<String, Object> entityStats = (Map<String, Object>) stats.get("entityCache");
-		LOG.info("Entity Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-				entityStats.get("hitRate"), entityStats.get("hitCount"), entityStats.get("missCount"),
-				stats.get("entityCacheSize"), entityStats.get("evictionCount"), entityStats.get("averageLoadPenalty"));
-
-		Map<String, Object> countStats = (Map<String, Object>) stats.get("countCache");
-		LOG.info("Count Cache - Hit Rate: {:.2f}% ({} hits, {} misses), Size: {}, Evictions: {}, Avg Load: {:.2f}ms",
-				countStats.get("hitRate"), countStats.get("hitCount"), countStats.get("missCount"),
-				stats.get("countCacheSize"), countStats.get("evictionCount"), countStats.get("averageLoadPenalty"));
-
-		LOG.info("Cache Health: {}", isCacheHealthy() ? "HEALTHY" : "DEGRADED");
+		LOG.info("Caching disabled; all DAO reads query the database directly");
 	}
 
 	// =================== SCHEDULED MAINTENANCE ===================
 
 	public void performCacheMaintenance() {
-		long start = System.nanoTime();
-
-		queryCache.cleanUp();
-		entityCache.cleanUp();
-		countCache.cleanUp();
-
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("Cache maintenance completed in {}ms", (System.nanoTime() - start) / 1_000_000);
-		}
 	}
 
 	public void preloadCriticalData(Class<T> entityClass) {
@@ -1497,23 +1936,7 @@ public class EposDataModelDAO<T> {
 
 	@SuppressWarnings("rawtypes")
 	public void reloadCache() {
-		EposDataModelDAO newCache = new EposDataModelDAO(instance);
-
-		newCache.getAllFromDB(Dataproduct.class);
-		newCache.getAllFromDB(Distribution.class);
-		newCache.getAllFromDB(Webservice.class);
-		newCache.getAllFromDB(Category.class);
-		newCache.getAllFromDB(Mapping.class);
-		newCache.getAllFromDB(Operation.class);
-		newCache.getAllFromDB(Organization.class);
-		newCache.getAllFromDB(Versioningstatus.class);
-		newCache.getAllFromDB(Person.class);
-
-		synchronized (INSTANCE_LOCK) {
-			cacheInstance = newCache;
-			instance = cacheInstance;
-		}
-		LOG.info("Cache reload completed");
+		LOG.debug("Caching disabled; reload ignored");
 	}
 
 	// =================== REFLECTION METHOD CACHING ===================
@@ -1695,9 +2118,8 @@ public class EposDataModelDAO<T> {
 				em = EntityManagerService.getInstance().createEntityManager();
 				
 				// Process in batches to avoid query parameter limits
-				int batchSize = 100;
-				for (int i = 0; i < uncachedIds.size(); i += batchSize) {
-					List<String> batch = uncachedIds.subList(i, Math.min(i + batchSize, uncachedIds.size()));
+				for (int i = 0; i < uncachedIds.size(); i += READ_BATCH_SIZE) {
+					List<String> batch = uncachedIds.subList(i, Math.min(i + READ_BATCH_SIZE, uncachedIds.size()));
 					
 					TypedQuery<E> query = em.createQuery(
 							"SELECT e FROM " + entityClass.getSimpleName() + " e WHERE e.instanceId IN :ids", 
@@ -1720,6 +2142,222 @@ public class EposDataModelDAO<T> {
 		}
 		
 		return results;
+	}
+
+	/** Scalar projections for summary readers; avoids hydrating eager entity associations. */
+	public List<DataProductSummaryRow> fetchDataProductSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$DataProductSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.type, d.accrualperiodicity, d.created, d.issued, d.modified, "
+				+ "d.versioninfo, d.documentation, d.qualityassurance, d.accessright, d.keywords, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Dataproduct d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", DataProductSummaryRow.class);
+	}
+
+	public List<DataProductTitleRow> fetchDataProductSummaryTitles(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$DataProductTitleRow("
+				+ "t.dataproductInstance.instanceId, t.title) FROM DataproductTitle t "
+				+ "WHERE t.dataproductInstance.instanceId IN :ids", DataProductTitleRow.class);
+	}
+
+	public List<WebServiceSummaryRow> fetchWebServiceSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$WebServiceSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.datamodified, d.datapublished, d.description, d.entrypoint, "
+				+ "d.license, d.name, d.aaaitypes, d.keywords, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Webservice d LEFT JOIN d.version v WHERE d.instanceId IN :ids", WebServiceSummaryRow.class);
+	}
+
+	public List<SoftwareApplicationSummaryRow> fetchSoftwareApplicationSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$SoftwareApplicationSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.name, d.description, d.downloadurl, d.installurl, d.keywords, "
+				+ "d.licenseurl, d.mainentityofpage, d.requirements, d.softwareversion, d.softwareStatus, d.fileSize, "
+				+ "d.spatial, d.temporal, d.memoryrequirements, d.processorRequirements, d.storageRequirements, "
+				+ "d.timeRequired, v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, "
+				+ "v.provenance, v.version, v.instanceChangeId, v.status) FROM Softwareapplication d "
+				+ "LEFT JOIN d.version v WHERE d.instanceId IN :ids", SoftwareApplicationSummaryRow.class);
+	}
+
+	public List<OrganizationSummaryRow> fetchOrganizationSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$OrganizationSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.acronym, d.legalname, d.leicode, d.logo, d.url, d.type, d.maturity, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Organization d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", OrganizationSummaryRow.class);
+	}
+
+	public List<DistributionSummaryRow> fetchDistributionSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$DistributionSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.type, d.format, d.license, d.datapolicy, d.issued, d.modified, "
+				+ "d.byteSize, d.maturity, d.mediaType, v.versionId, v.metaId, v.changeComment, v.changeTimestamp, "
+				+ "v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) FROM Distribution d "
+				+ "LEFT JOIN d.version v WHERE d.instanceId IN :ids", DistributionSummaryRow.class);
+	}
+
+	public List<PersonSummaryRow> fetchPersonSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$PersonSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.familyname, d.givenname, d.cvurl, d.qualifications, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Person d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", PersonSummaryRow.class);
+	}
+
+	public List<ContactPointSummaryRow> fetchContactPointSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$ContactPointSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.role, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Contactpoint d LEFT JOIN d.version v WHERE d.instanceId IN :ids", ContactPointSummaryRow.class);
+	}
+
+	public List<SoftwareSourceCodeSummaryRow> fetchSoftwareSourceCodeSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$SoftwareSourceCodeSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.name, d.description, d.downloadurl, d.keywords, d.licenseurl, "
+				+ "d.mainentityofpage, d.runtimeplatform, d.softwareversion, d.coderepository, d.softwareStatus, "
+				+ "d.spatial, d.temporal, d.filesize, d.timerequired, d.softwarerequirements, v.versionId, "
+				+ "v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, v.version, "
+				+ "v.instanceChangeId, v.status) FROM Softwaresourcecode d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", SoftwareSourceCodeSummaryRow.class);
+	}
+
+	public List<EquipmentSummaryRow> fetchEquipmentSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$EquipmentSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.type, d.resolution, d.description, d.dynamicrange, d.filter, "
+				+ "d.identifier, d.name, d.pageurl, d.orientation, d.sampleperiod, d.serialnumber, d.keywords, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Equipment d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", EquipmentSummaryRow.class);
+	}
+
+	public List<FacilitySummaryRow> fetchFacilitySummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$FacilitySummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.type, d.identifier, d.description, d.title, d.keywords, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Facility d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", FacilitySummaryRow.class);
+	}
+
+	public List<MappingSummaryRow> fetchMappingSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$MappingSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.label, d.valuepattern, d.defaultvalue, d.maxvalue, d.minvalue, "
+				+ "d.multipleValues, d.readOnlyValue, d.required, d.range, d.property, d.variable, d.healthcheckvalue, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Mapping d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", MappingSummaryRow.class);
+	}
+
+	public List<OperationSummaryRow> fetchOperationSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$OperationSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.method, d.template, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Operation d LEFT JOIN d.version v WHERE d.instanceId IN :ids", OperationSummaryRow.class);
+	}
+
+	public List<PayloadSummaryRow> fetchPayloadSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$PayloadSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, v.versionId, v.metaId, v.changeComment, v.changeTimestamp, "
+				+ "v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) FROM Payload d "
+				+ "LEFT JOIN d.version v WHERE d.instanceId IN :ids", PayloadSummaryRow.class);
+	}
+
+	public List<AttributionSummaryRow> fetchAttributionSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$AttributionSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, v.versionId, v.metaId, v.changeComment, v.changeTimestamp, "
+				+ "v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) FROM Attribution d "
+				+ "LEFT JOIN d.version v WHERE d.instanceId IN :ids", AttributionSummaryRow.class);
+	}
+
+	public List<CategorySummaryRow> fetchCategorySummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$CategorySummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.name, d.description, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Category d LEFT JOIN d.version v WHERE d.instanceId IN :ids", CategorySummaryRow.class);
+	}
+
+	public List<CategorySchemeSummaryRow> fetchCategorySchemeSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$CategorySchemeSummaryRow("
+				+ "d.instanceId, d.metaId, d.uid, d.name, d.description, d.code, d.homepage, d.logo, d.color, "
+				+ "d.orderitemnumber, v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, "
+				+ "v.provenance, v.version, v.instanceChangeId, v.status) FROM CategoryScheme d LEFT JOIN d.version v "
+				+ "WHERE d.instanceId IN :ids", CategorySchemeSummaryRow.class);
+	}
+
+	public List<AddressSummaryRow> fetchAddressSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$AddressSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.street, e.country, e.postalCode, e.countrycode, e.locality, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM Address e LEFT JOIN e.version v "
+				+ "WHERE e.instanceId IN :ids", AddressSummaryRow.class);
+	}
+
+	public List<ElementSummaryRow> fetchElementSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$ElementSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.type, e.value, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Element e LEFT JOIN e.version v WHERE e.instanceId IN :ids", ElementSummaryRow.class);
+	}
+
+	public List<IdentifierSummaryRow> fetchIdentifierSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$IdentifierSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.type, e.value, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Identifier e LEFT JOIN e.version v WHERE e.instanceId IN :ids", IdentifierSummaryRow.class);
+	}
+
+	public List<SpatialSummaryRow> fetchSpatialSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$SpatialSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.location, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Spatial e LEFT JOIN e.version v WHERE e.instanceId IN :ids", SpatialSummaryRow.class);
+	}
+
+	public List<TemporalSummaryRow> fetchTemporalSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$TemporalSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.startdate, e.enddate, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Temporal e LEFT JOIN e.version v WHERE e.instanceId IN :ids", TemporalSummaryRow.class);
+	}
+
+	public List<ParameterSummaryRow> fetchParameterSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$ParameterSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.encodingformat, e.conformsto, e.action, v.versionId, v.metaId, "
+				+ "v.changeComment, v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Parameter e LEFT JOIN e.version v WHERE e.instanceId IN :ids", ParameterSummaryRow.class);
+	}
+
+	public List<QuantitativeValueSummaryRow> fetchQuantitativeValueSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$QuantitativeValueSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.unitcode, e.value, v.versionId, v.metaId, v.changeComment, "
+				+ "v.changeTimestamp, v.editorId, v.provenance, v.version, v.instanceChangeId, v.status) "
+				+ "FROM Quantitativevalue e LEFT JOIN e.version v WHERE e.instanceId IN :ids", QuantitativeValueSummaryRow.class);
+	}
+
+	public List<OutputMappingSummaryRow> fetchOutputMappingSummaryRows(List<String> ids) {
+		return fetchSummaryRows(ids, "SELECT NEW dao.EposDataModelDAO$OutputMappingSummaryRow("
+				+ "e.instanceId, e.metaId, e.uid, e.label, e.valuepattern, e.required, e.range, e.property, e.variable, "
+				+ "v.versionId, v.metaId, v.changeComment, v.changeTimestamp, v.editorId, v.provenance, "
+				+ "v.version, v.instanceChangeId, v.status) FROM OutputMapping e LEFT JOIN e.version v "
+				+ "WHERE e.instanceId IN :ids", OutputMappingSummaryRow.class);
+	}
+
+	private <R> List<R> fetchSummaryRows(List<String> ids, String jpql, Class<R> rowClass) {
+		if (ids == null || ids.isEmpty()) return Collections.emptyList();
+		List<String> cleanIds = ids.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+		if (cleanIds.isEmpty()) return Collections.emptyList();
+
+		List<R> rows = new ArrayList<>(cleanIds.size());
+		EntityManager em = null;
+		try {
+			em = EntityManagerService.getInstance().createEntityManager();
+			for (int i = 0; i < cleanIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = cleanIds.subList(i, Math.min(i + READ_BATCH_SIZE, cleanIds.size()));
+				TypedQuery<R> query = em.createQuery(jpql, rowClass);
+				query.setParameter("ids", batch);
+				rows.addAll(query.getResultList());
+			}
+			return rows;
+		} finally {
+			closeQuietly(em);
+		}
 	}
 
 	/**
@@ -1750,9 +2388,8 @@ public class EposDataModelDAO<T> {
 			em = EntityManagerService.getInstance().createEntityManager();
 			
 			// Process in batches
-			int batchSize = 100;
-			for (int i = 0; i < cleanUids.size(); i += batchSize) {
-				List<String> batch = cleanUids.subList(i, Math.min(i + batchSize, cleanUids.size()));
+			for (int i = 0; i < cleanUids.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = cleanUids.subList(i, Math.min(i + READ_BATCH_SIZE, cleanUids.size()));
 				
 				TypedQuery<E> query = em.createQuery(
 						"SELECT e FROM " + entityClass.getSimpleName() + " e WHERE e.uid IN :uids", 
@@ -1820,10 +2457,8 @@ public class EposDataModelDAO<T> {
 			String jpqlDirect = "SELECT r FROM " + relationClass.getSimpleName() + 
 					" r WHERE r." + parentFieldName + ".instanceId IN :ids";
 			
-			// Process in batches of 100 to avoid query parameter limits
-			int batchSize = 100;
-			for (int i = 0; i < cleanIds.size(); i += batchSize) {
-				List<String> batch = cleanIds.subList(i, Math.min(i + batchSize, cleanIds.size()));
+			for (int i = 0; i < cleanIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = cleanIds.subList(i, Math.min(i + READ_BATCH_SIZE, cleanIds.size()));
 				
 				List<R> batchResults = null;
 				try {
@@ -1866,29 +2501,57 @@ public class EposDataModelDAO<T> {
 	 * Extracts the parent instance ID from a relation/join entity using reflection.
 	 */
 	private String extractParentInstanceId(Object relation, String parentFieldName) {
+		RelationAccessorKey key = new RelationAccessorKey(relation.getClass(), parentFieldName);
+		try {
+			// Composite join IDs contain the parent key, avoiding initialization of a
+			// lazy parent association while grouping a bulk result.
+			Optional<EmbeddedIdAccess> access = EMBEDDED_ID_ACCESS_CACHE.computeIfAbsent(key, ignored -> {
+				try {
+					Method relationIdGetter = relation.getClass().getMethod("getId");
+					String idFieldName = parentFieldName.replace("Instance", "InstanceId");
+					String idGetterName = "get" + Character.toUpperCase(idFieldName.charAt(0)) + idFieldName.substring(1);
+					return Optional.of(new EmbeddedIdAccess(relationIdGetter,
+							relationIdGetter.getReturnType().getMethod(idGetterName)));
+				} catch (ReflectiveOperationException e) {
+					return Optional.empty();
+				}
+			});
+			Object embeddedId = access.map(value -> {
+				try {
+					return value.relationIdGetter().invoke(relation);
+				} catch (ReflectiveOperationException e) {
+					return null;
+				}
+			}).orElse(null);
+			if (embeddedId != null) {
+				Object idValue = access.orElseThrow().parentIdGetter().invoke(embeddedId);
+				if (idValue != null) return idValue.toString();
+			}
+		} catch (Exception ignored) {
+			// Non-composite relations use the parent association below.
+		}
 		try {
 			// Try to get the parent entity via getter
-			String getterName = "get" + Character.toUpperCase(parentFieldName.charAt(0)) + parentFieldName.substring(1);
-			java.lang.reflect.Method getter = relation.getClass().getMethod(getterName);
-			Object parent = getter.invoke(relation);
+			Optional<Method> getter = PARENT_ACCESSOR_CACHE.computeIfAbsent(key, ignored -> {
+				try {
+					String getterName = "get" + Character.toUpperCase(parentFieldName.charAt(0)) + parentFieldName.substring(1);
+					return Optional.of(relation.getClass().getMethod(getterName));
+				} catch (ReflectiveOperationException e) {
+					return Optional.empty();
+				}
+			});
+			Object parent = getter.map(method -> {
+				try {
+					return method.invoke(relation);
+				} catch (ReflectiveOperationException e) {
+					return null;
+				}
+			}).orElse(null);
 			if (parent != null) {
 				return utilities.ReflectionCache.getInstanceId(parent);
 			}
 		} catch (Exception e) {
-			// Try embedded ID approach
-			try {
-				java.lang.reflect.Method getIdMethod = relation.getClass().getMethod("getId");
-				Object embeddedId = getIdMethod.invoke(relation);
-				if (embeddedId != null) {
-					String idFieldName = parentFieldName.replace("Instance", "InstanceId");
-					String idGetterName = "get" + Character.toUpperCase(idFieldName.charAt(0)) + idFieldName.substring(1);
-					java.lang.reflect.Method idGetter = embeddedId.getClass().getMethod(idGetterName);
-					Object idValue = idGetter.invoke(embeddedId);
-					return idValue != null ? idValue.toString() : null;
-				}
-			} catch (Exception e2) {
-				LOG.trace("Could not extract parent ID from {}: {}", relation.getClass().getSimpleName(), e2.getMessage());
-			}
+			LOG.trace("Could not extract parent ID from {}: {}", relation.getClass().getSimpleName(), e.getMessage());
 		}
 		return null;
 	}
@@ -1920,9 +2583,8 @@ public class EposDataModelDAO<T> {
 		try {
 			em = EntityManagerService.getInstance().createEntityManager();
 			
-			int batchSize = 100;
-			for (int i = 0; i < cleanIds.size(); i += batchSize) {
-				List<String> batch = cleanIds.subList(i, Math.min(i + batchSize, cleanIds.size()));
+			for (int i = 0; i < cleanIds.size(); i += READ_BATCH_SIZE) {
+				List<String> batch = cleanIds.subList(i, Math.min(i + READ_BATCH_SIZE, cleanIds.size()));
 				
 				TypedQuery<Versioningstatus> query = em.createQuery(
 						"SELECT v FROM Versioningstatus v WHERE v.instanceId IN :ids", 

@@ -41,14 +41,16 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
-            Operation selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Operation item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            String requestedInstanceId = obj.getInstanceId();
+            String requestedEditorId = obj.getEditorId();
+            Operation selectedEntity = returnList.stream()
+                    .filter(item -> targetStatus != StatusType.DRAFT
+                            && requestedInstanceId != null
+                            && requestedInstanceId.equals(item.getInstanceId()))
+                    .findFirst()
+                    .orElseGet(() -> VersioningStatusAPI.selectVersion(
+                            returnList, requestedEditorId, targetStatus, Operation::getVersion));
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -69,7 +71,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             obj.setMetaId(UUID.randomUUID().toString());
         }
 
-        EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName);
+        if (!EposDataModelEntityIDAPI.addEntityToEDMEntityID(obj.getMetaId(), entityName)) {
+            throw new IllegalStateException("Unable to register operation meta_id " + obj.getMetaId());
+        }
 
         boolean isUpdate = oldInstanceId != null && oldInstanceId.equals(obj.getInstanceId());
         boolean isNewVersion = obj.getInstanceChangedId() != null && !isUpdate;
@@ -79,7 +83,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         edmobj.setInstanceId(obj.getInstanceId());
         edmobj.setMetaId(obj.getMetaId());
 
-        getDbaccess().updateObject(edmobj);
+        if (!getDbaccess().updateObject(edmobj)) {
+            throw new IllegalStateException("Unable to persist operation " + edmobj.getInstanceId());
+        }
 
         edmobj.setUid(Optional.ofNullable(obj.getUid()).orElse(getEdmClass().getSimpleName() + "/" + UUID.randomUUID().toString()));
         edmobj.setMethod(obj.getMethod());
@@ -97,13 +103,8 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 obj, previousObj, overrideStatus, false
         );
 
-        // WEBSERVICE
-        RelationSyncUtil.syncComplexRelation(
-                edmobj, edmobj.getInstanceId(), obj.getWebservice(), relationFromUpdate, relationToUpdate,
-                OperationWebservice.class, Webservice.class,
-                "operationInstance", OperationWebservice::getWebserviceInstance, OperationWebservice::setOperationInstance, OperationWebservice::setWebserviceInstance,
-                obj, previousObj, overrideStatus, true
-        );
+        // A WebService owns its supportedOperation collection. This inverse is
+        // derived from OperationWebservice and is intentionally read-only.
 
         // PAYLOAD
         RelationSyncUtil.syncComplexRelation(
@@ -129,6 +130,7 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -142,13 +144,14 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (OperationElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
-                // Also delete the Element entity
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -157,11 +160,13 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
                 .getJoinEntitiesByRelationField("operationInstance", oldInstanceId, OperationElement.class);
         if (oldRelations == null) return;
 
+        Set<ElementValue> existingElements = getExistingElementValues(newEdmobj.getInstanceId());
+
         for (Object obj : oldRelations) {
             OperationElement oldRelation = (OperationElement) obj;
             Element oldElement = oldRelation.getElementInstance();
             if (oldElement != null && oldElement.getType().equals(elementType.name())) {
-                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus);
+                createInnerElement(elementType, oldElement.getValue(), newEdmobj, overrideStatus, existingElements);
             }
         }
     }
@@ -169,8 +174,9 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     private void replaceInnerElements(Operation edmobj, List<String> values, ElementType type, StatusType overrideStatus) {
         deleteInnerElementsByType(edmobj.getInstanceId(), type);
         if (values != null && !values.isEmpty()) {
+            Set<ElementValue> existingElements = getExistingElementValues(edmobj.getInstanceId());
             for (String value : values) {
-                createInnerElement(type, value, edmobj, overrideStatus);
+                createInnerElement(type, value, edmobj, overrideStatus, existingElements);
             }
         }
     }
@@ -179,27 +185,40 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
         List<OperationElement> existingRelations = EposDataModelDAO.getInstance()
                 .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
         if (existingRelations != null) {
+            List<OperationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (OperationElement relation : existingRelations) {
                 Element element = relation.getElementInstance();
                 if (element != null && type.name().equals(element.getType())) {
-                    EposDataModelDAO.getInstance().deleteObject(relation);
-                    EposDataModelDAO.getInstance().deleteObject(element);
+                    relationsToDelete.add(relation);
+                    elementsToDelete.add(element);
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
-    private void createInnerElement(ElementType elementType, String value, Operation edmobj, StatusType overrideStatus) {
-        List<Object> existingRelations = EposDataModelDAO.getInstance()
-                .getOneFromDBBySpecificKey("operationInstance", edmobj.getInstanceId(), OperationElement.class);
-        if (existingRelations != null) {
-            for (Object obj : existingRelations) {
-                OperationElement relation = (OperationElement) obj;
-                Element existingElement = relation.getElementInstance();
-                if (existingElement != null && existingElement.getType().equals(elementType.name()) && existingElement.getValue().equals(value)) {
-                    return;
+    private Set<ElementValue> getExistingElementValues(String operationInstanceId) {
+        List<OperationElement> relations = EposDataModelDAO.getInstance()
+                .getJoinEntitiesByRelationField("operationInstance", operationInstanceId, OperationElement.class);
+        Set<ElementValue> values = new HashSet<>();
+        if (relations != null) {
+            for (OperationElement relation : relations) {
+                Element element = relation.getElementInstance();
+                if (element != null && element.getType() != null) {
+                    values.add(new ElementValue(element.getType(), element.getValue()));
                 }
             }
+        }
+        return values;
+    }
+
+    private void createInnerElement(ElementType elementType, String value, Operation edmobj, StatusType overrideStatus,
+                                    Set<ElementValue> existingElements) {
+        ElementValue elementValue = new ElementValue(elementType.name(), value);
+        if (!existingElements.add(elementValue)) {
+            return;
         }
 
         org.epos.eposdatamodel.Element element = new org.epos.eposdatamodel.Element();
@@ -225,7 +244,12 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
             ce.setOperationInstance(edmobj);
             ce.setElementInstance(el.get(0));
             EposDataModelDAO.getInstance().updateObject(ce);
+        } else {
+            existingElements.remove(elementValue);
         }
+    }
+
+    private record ElementValue(String type, String value) {
     }
 
     
@@ -234,23 +258,13 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("operationInstance", instanceId, OperationElement.class);
-        deleteRelations("operationInstance", instanceId, OperationMapping.class);
-        deleteRelations("operationInstance", instanceId, OperationDistribution.class);
-        deleteRelations("operationInstance", instanceId, OperationWebservice.class);
-        deleteRelations("operationInstance", instanceId, OperationPayload.class);
-        deleteRelations("operationInstance", instanceId, SoftwareapplicationOperation.class);
-
-        List<Operation> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Operation.class);
-        for (Operation object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Operation.class, Map.of(
+                OperationElement.class, "operationInstance",
+                OperationMapping.class, "operationInstance",
+                OperationDistribution.class, "operationInstance",
+                OperationWebservice.class, "operationInstance",
+                OperationPayload.class, "operationInstance",
+                SoftwareapplicationOperation.class, "operationInstance"));
     }
 
     @Override
@@ -313,6 +327,40 @@ public class OperationAPI extends AbstractAPI<org.epos.eposdatamodel.Operation> 
     @Override
     public List<org.epos.eposdatamodel.Operation> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Operation.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Operation.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Operation.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Operation> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Operation.class));
+    }
+    private List<org.epos.eposdatamodel.Operation> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.OperationSummaryRow> rows = dao.fetchOperationSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.OperationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Operation> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.OperationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Operation dto = new org.epos.eposdatamodel.Operation();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setMethod(row.method()); dto.setTemplate(row.template());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override

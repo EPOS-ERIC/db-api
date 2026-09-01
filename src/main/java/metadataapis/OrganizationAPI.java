@@ -37,6 +37,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     public LinkedEntity create(org.epos.eposdatamodel.Organization obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         boolean addressExplicitlySet = isFieldExplicitlySet(obj, "address");
@@ -56,14 +57,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
-            Organization selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Organization item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Organization selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Organization::getVersion);
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -173,9 +169,9 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
         // OWNS (polymorphic - can be Facility or Equipment) - Not reference entities, no changes needed
         if (obj.getOwns() == null || obj.getOwns().isEmpty()) {
-            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+            deleteRelations("organizationInstanceId", edmobj.getInstanceId(), OrganizationOwn.class);
         } else {
-            deleteRelations("organizationInstance", edmobj.getInstanceId(), OrganizationOwn.class);
+            deleteRelations("organizationInstanceId", edmobj.getInstanceId(), OrganizationOwn.class);
             for (LinkedEntity rel : obj.getOwns()) {
                 LinkedEntity le = LinkedEntityAPI.createFromLinkedEntity(rel, overrideStatus, edmobj.getVersion(), obj.getFileProvenance());
                 if (le != null && le.getInstanceId() != null && le.getEntityType() != null) {
@@ -205,6 +201,7 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid())
                 .entityType(EntityNames.ORGANIZATION.name());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -364,19 +361,17 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
     private void deleteExistingElements(String instanceId) {
         List<Object> elements = getDbaccess().getOneFromDBBySpecificKey("organizationInstance", instanceId, OrganizationElement.class);
         if (elements != null) {
+            List<OrganizationElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (Object obj : elements) {
                 OrganizationElement oe = (OrganizationElement) obj;
-
-                EposDataModelDAO.getInstance().deleteObject(oe);
-
                 if (oe.getElementInstance() != null) {
-                    try {
-                        EposDataModelDAO.getInstance().deleteObject(oe.getElementInstance());
-                    } catch (Exception e) {
-                        // Ignore if element is used elsewhere
-                    }
+                    elementsToDelete.add(oe.getElementInstance());
                 }
+                relationsToDelete.add(oe);
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
 
@@ -470,16 +465,15 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("organizationInstance", instanceId, OrganizationContactpoint.class);
-        deleteRelations("organization", instanceId, OrganizationOwn.class);
-        deleteRelations("organizationInstance", instanceId, DataproductPublisher.class);
-        deleteRelations("organization1Instance", instanceId, OrganizationMemberof.class);
-        deleteRelations("organizationInstance", instanceId, OrganizationIdentifier.class);
-        deleteRelations("organizationInstance", instanceId, OrganizationElement.class);
-        deleteRelations("organizationInstance", instanceId, OrganizationAffiliation.class);
-        List<Organization> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Organization.class);
-        for (Organization object : elementList) EposDataModelDAO.getInstance().deleteObject(object);
-        return true;
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Organization.class, List.of(
+                new EposDataModelDAO.RelationField(OrganizationContactpoint.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationOwn.class, "organization"),
+                new EposDataModelDAO.RelationField(DataproductPublisher.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationMemberof.class, "organization1Instance"),
+                new EposDataModelDAO.RelationField(OrganizationMemberof.class, "organization2Instance"),
+                new EposDataModelDAO.RelationField(OrganizationIdentifier.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationElement.class, "organizationInstance"),
+                new EposDataModelDAO.RelationField(OrganizationAffiliation.class, "organizationInstance")));
     }
 
     private void deleteRelations(String key, String instanceId, Class<?> clazz) {
@@ -546,12 +540,83 @@ public class OrganizationAPI extends AbstractAPI<org.epos.eposdatamodel.Organiza
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status));
     }
 
+    /**
+     * Returns list-oriented Organization records without loading their
+     * relationship graph. Use {@link #retrieveAll()} when linked metadata is needed.
+     */
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Organization.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Organization.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Organization> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Organization.class));
+    }
+    private List<org.epos.eposdatamodel.Organization> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.OrganizationSummaryRow> rows = dao.fetchOrganizationSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.OrganizationSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Organization> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.OrganizationSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Organization dto = toSummaryDto(row);
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     private List<org.epos.eposdatamodel.Organization> retrieveEntities(Function<Void, List<String>> dbFetcher) {
         List<String> instanceIds = dbFetcher.apply(null);
         if (instanceIds == null || instanceIds.isEmpty()) {
             return Collections.emptyList();
         }
         return retrieveBulkInternal(instanceIds);
+    }
+
+    private org.epos.eposdatamodel.Organization toSummaryDto(Organization entity) {
+        org.epos.eposdatamodel.Organization dto = new org.epos.eposdatamodel.Organization();
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setMetaId(entity.getMetaId());
+        dto.setUid(entity.getUid());
+        dto.setAcronym(entity.getAcronym());
+        dto.setLeiCode(entity.getLeicode());
+        dto.setLogo(entity.getLogo());
+        dto.setURL(entity.getUrl());
+        dto.setType(entity.getType());
+        dto.setMaturity(entity.getMaturity());
+        if (entity.getLegalname() != null && !entity.getLegalname().isBlank()) {
+            for (String item : entity.getLegalname().split("\\|")) {
+                dto.addLegalName(item);
+            }
+        }
+        return dto;
+    }
+
+    private org.epos.eposdatamodel.Organization toSummaryDto(EposDataModelDAO.OrganizationSummaryRow row) {
+        org.epos.eposdatamodel.Organization dto = new org.epos.eposdatamodel.Organization();
+        dto.setInstanceId(row.instanceId());
+        dto.setMetaId(row.metaId());
+        dto.setUid(row.uid());
+        dto.setAcronym(row.acronym());
+        dto.setLeiCode(row.leicode());
+        dto.setLogo(row.logo());
+        dto.setURL(row.url());
+        dto.setType(row.type());
+        dto.setMaturity(row.maturity());
+        if (row.legalname() != null && !row.legalname().isBlank()) {
+            for (String item : row.legalname().split("\\|")) dto.addLegalName(item);
+        }
+        return dto;
     }
 
     /**

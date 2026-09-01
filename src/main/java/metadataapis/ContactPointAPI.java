@@ -27,6 +27,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     public LinkedEntity create(ContactPoint obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         // Performance: Single retrieve call instead of potentially calling twice
@@ -43,14 +44,9 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
-            Contactpoint selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Contactpoint item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Contactpoint selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Contactpoint::getVersion);
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -103,6 +99,7 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -116,12 +113,14 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 .getJoinEntitiesByRelationField("contactpointInstance", contactpointInstanceId, ContactpointElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (ContactpointElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -179,13 +178,17 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
                 .getJoinEntitiesByRelationField("contactpointInstance", contactpointInstanceId, ContactpointElement.class);
 
         if (existingRelations != null) {
+            List<ContactpointElement> relationsToDelete = new ArrayList<>();
+            List<Element> elementsToDelete = new ArrayList<>();
             for (ContactpointElement relation : existingRelations) {
                 Element element = relation.getElementInstance();
                 if (element != null && type.name().equals(element.getType())) {
-                    EposDataModelDAO.getInstance().deleteObject(relation);
-                    EposDataModelDAO.getInstance().deleteObject(element);
+                    relationsToDelete.add(relation);
+                    elementsToDelete.add(element);
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(relationsToDelete);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elementsToDelete);
         }
     }
     
@@ -194,41 +197,17 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("contactpointInstance", instanceId, ContactpointElement.class);
-        deleteRelations("contactpointInstance", instanceId, WebserviceContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, DataproductContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, EquipmentContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, FacilityContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, SoftwaresourcecodeContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, SoftwareapplicationContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, ServiceContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, PersonContactpoint.class);
-        deleteRelations("contactpointInstance", instanceId, OrganizationContactpoint.class);
-        deleteElementRelations(instanceId);
-
-        List<Contactpoint> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Contactpoint.class);
-        for (Contactpoint object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteElementRelations(String instanceId) {
-        List<ContactpointElement> list = EposDataModelDAO.getInstance()
-                .getJoinEntitiesByRelationField("contactpointInstance", instanceId, ContactpointElement.class);
-        if (list != null) {
-            for (ContactpointElement ce : list) {
-                if (ce.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(ce.getElementInstance());
-                }
-                EposDataModelDAO.getInstance().deleteObject(ce);
-            }
-        }
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getJoinEntitiesByParentId(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Contactpoint.class, Map.of(
+                ContactpointElement.class, "contactpointInstance",
+                WebserviceContactpoint.class, "contactpointInstance",
+                DataproductContactpoint.class, "contactpointInstance",
+                EquipmentContactpoint.class, "contactpointInstance",
+                FacilityContactpoint.class, "contactpointInstance",
+                SoftwaresourcecodeContactpoint.class, "contactpointInstance",
+                SoftwareapplicationContactpoint.class, "contactpointInstance",
+                ServiceContactpoint.class, "contactpointInstance",
+                PersonContactpoint.class, "contactpointInstance",
+                OrganizationContactpoint.class, "contactpointInstance"));
     }
 
     @Override
@@ -280,6 +259,42 @@ public class ContactPointAPI extends AbstractAPI<ContactPoint> {
     @Override
     public List<org.epos.eposdatamodel.ContactPoint> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Contactpoint.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Contactpoint.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Contactpoint.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.ContactPoint> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Contactpoint.class));
+    }
+    private List<org.epos.eposdatamodel.ContactPoint> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.ContactPointSummaryRow> rows = dao.fetchContactPointSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.ContactPointSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.ContactPoint> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.ContactPointSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.ContactPoint dto = new org.epos.eposdatamodel.ContactPoint();
+            dto.setInstanceId(row.instanceId());
+            dto.setMetaId(row.metaId());
+            dto.setUid(row.uid());
+            dto.setRole(row.role());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override

@@ -49,7 +49,6 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         webService.setMetaId(UUID.randomUUID().toString());
         webService.setUid(UUID.randomUUID().toString());
         webService.setStatus(StatusType.PUBLISHED);
-        webService.setDistribution(List.of(linkedEntityDistribution));
         webService.setEditorId("test");
 
         LinkedEntity linkedEntityWebservice = api.create(webService, null, null, null);
@@ -66,7 +65,6 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
         operation.setMetaId(UUID.randomUUID().toString());
         operation.setUid(UUID.randomUUID().toString());
         operation.setStatus(StatusType.PUBLISHED);
-        operation.setWebservice(List.of(linkedEntityWebservice));
 
         LinkedEntity linkedEntityOperation = api.create(operation, null, null, null);
 
@@ -96,7 +94,14 @@ public class EntityManagementDistirbutionNestedStatusTest extends Testcontainers
 
         linkedEntityOperation = api.create(operation, null, null, null);
 
+        // WebService is the canonical owner of its Operation collection.
+        api = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name());
+        webService.addSupportedOperation(linkedEntityOperation);
+        linkedEntityWebservice = api.create(webService, null, null, null);
+
         api = AbstractAPI.retrieveAPI(EntityNames.DISTRIBUTION.name());
+        // Distribution is the canonical owner of its accessService collection.
+        distribution.addAccessService(linkedEntityWebservice);
         distribution.addSupportedOperation(linkedEntityOperation);
 
         linkedEntityOperation = api.create(distribution, null, null, null);

@@ -5,17 +5,30 @@ import dao.EposDataModelDAO;
 import metadataapis.*;
 import model.*;
 import org.epos.eposdatamodel.LinkedEntity;
+import org.epos.eposdatamodel.EPOSDataModelEntity;
+import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 import utilities.MemoryMonitor;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.function.Function;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class AbstractAPI<T> {
+
+    private static final Set<String> PUBLISHED_REFERENCE_ENTITIES = Set.of(
+            EntityNames.CATEGORY.name(),
+            EntityNames.CATEGORYSCHEME.name(),
+            EntityNames.CONTACTPOINT.name(),
+            EntityNames.ORGANIZATION.name());
 
     protected final Logger LOG = Logger.getLogger(getClass().getName());
 
@@ -31,6 +44,74 @@ public abstract class AbstractAPI<T> {
 
     public EposDataModelDAO getDbaccess() {
         return EposDataModelDAO.getInstance();
+    }
+
+    /**
+     * Loads entity rows, version metadata and groups in bulk. This avoids opening a
+     * persistence context for every item returned by retrieveAll/retrieveBunch.
+     */
+    protected <E, D extends EPOSDataModelEntity> List<D> retrieveBulk(
+            List<String> instanceIds, Class<E> entityClass, Function<E, D> mapper) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, E> entities = getDbaccess().batchFetchByInstanceIds(instanceIds, entityClass);
+        if (entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(new ArrayList<>(entities.keySet()));
+        List<String> metaIds = entities.values().stream()
+                .map(utilities.ReflectionCache::getMetaId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<String, List<String>> groups = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(metaIds);
+
+        List<D> results = new ArrayList<>(entities.size());
+        for (String instanceId : instanceIds) {
+            E entity = entities.get(instanceId);
+            if (entity == null) {
+                continue;
+            }
+            D dto = mapper.apply(entity);
+            if (dto == null) {
+                continue;
+            }
+            VersioningStatusAPI.applyVersion(dto, versions.get(instanceId), groups.get(dto.getMetaId()));
+            results.add(dto);
+        }
+        return results;
+    }
+
+    /** Loads scalar list records and version metadata without resolving user groups. */
+    protected <E, D extends EPOSDataModelEntity> List<D> retrieveBulkSummary(
+            List<String> instanceIds, Class<E> entityClass, Function<E, D> mapper) {
+        if (instanceIds == null || instanceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, E> entities = getDbaccess().batchFetchByInstanceIds(instanceIds, entityClass);
+        if (entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(new ArrayList<>(entities.keySet()));
+        List<D> results = new ArrayList<>(entities.size());
+        for (String instanceId : instanceIds) {
+            E entity = entities.get(instanceId);
+            if (entity == null) {
+                continue;
+            }
+            D dto = mapper.apply(entity);
+            if (dto == null) {
+                continue;
+            }
+            VersioningStatusAPI.applyVersion(dto, versions.get(instanceId), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     public void setEdmClass(Class<?> edmClass) {
@@ -51,15 +132,57 @@ public abstract class AbstractAPI<T> {
 
     public abstract LinkedEntity create(T obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate);
 
+    /**
+     * Reference entities are shared across drafts and must never acquire a draft version.
+     */
+    protected StatusType enforcePublishedReferenceStatus(EPOSDataModelEntity obj, StatusType overrideStatus) {
+        if (PUBLISHED_REFERENCE_ENTITIES.contains(entityName)) {
+            obj.setStatus(StatusType.PUBLISHED);
+            return StatusType.PUBLISHED;
+        }
+        return overrideStatus;
+    }
+
+    protected void repointPublishedVersion(EPOSDataModelEntity obj, String oldInstanceId, Class<?> modelClass) {
+        if (obj == null || obj.getStatus() != StatusType.PUBLISHED || obj.getInstanceId() == null) {
+            return;
+        }
+        String newInstanceId = obj.getInstanceId();
+        String previousInstanceId = obj.getInstanceChangedId();
+        if (previousInstanceId != null && !previousInstanceId.equals(newInstanceId)) {
+            getDbaccess().repointVersionReferences(previousInstanceId, newInstanceId, modelClass);
+        }
+        if (oldInstanceId != null && !oldInstanceId.equals(newInstanceId)
+                && !oldInstanceId.equals(previousInstanceId)) {
+            getDbaccess().repointVersionReferences(oldInstanceId, newInstanceId, modelClass);
+        }
+        if (previousInstanceId == null && (oldInstanceId == null || oldInstanceId.equals(newInstanceId))
+                && obj.getUid() != null) {
+            getDbaccess().repointArchivedVersionReferences(obj.getUid(), obj.getInstanceId(), modelClass);
+        }
+        if (obj.getUid() != null) {
+            RelationSyncUtil.archivePublishedVersionsByUid(obj.getUid(), newInstanceId);
+        }
+        if (previousInstanceId != null && !previousInstanceId.equals(newInstanceId)) {
+            RelationSyncUtil.archiveVersionByInstanceId(previousInstanceId);
+        }
+    }
+
     protected void logCreateStart(T obj, StatusType overrideStatus) {
-        if (LOG.isLoggable(Level.INFO)) {
-            LOG.log(Level.INFO, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}", 
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "==> [CREATE START] Entity Type: {0}, EDM Class: {1}",
                     new Object[]{entityName, edmClass != null ? edmClass.getSimpleName() : "null"});
-            LOG.log(Level.INFO, "[RUNTIME SNAPSHOT] {0}", MemoryMonitor.snapshot());
+            LOG.log(Level.FINE, "[RUNTIME SNAPSHOT] {0}", MemoryMonitor.snapshot());
         }
 
         if (obj == null) {
             LOG.log(Level.WARNING, "[VALIDATION WARNING] Incoming object for {0} is NULL!", entityName);
+            return;
+        }
+
+        // Full getter inspection is diagnostic work and can trigger expensive
+        // relation traversal; do it only when the diagnostic output is enabled.
+        if (!LOG.isLoggable(Level.FINE)) {
             return;
         }
 
@@ -87,10 +210,8 @@ public abstract class AbstractAPI<T> {
                     }
                 }
             }
-            if (LOG.isLoggable(Level.FINE)) {
-                LOG.log(Level.FINE, "[VALIDATION] Populated fields for {0}: {1}", new Object[]{entityName, populatedFields});
-                LOG.log(Level.FINE, "[VALIDATION] Null/Empty fields for {0}: {1}", new Object[]{entityName, emptyFields});
-            }
+            LOG.log(Level.FINE, "[VALIDATION] Populated fields for {0}: {1}", new Object[]{entityName, populatedFields});
+            LOG.log(Level.FINE, "[VALIDATION] Null/Empty fields for {0}: {1}", new Object[]{entityName, emptyFields});
             
             // Highlight missing key identifiers which could lead to empty or broken draft creations
             if (emptyFields.contains("instanceId") && emptyFields.contains("uid") && emptyFields.contains("metaId")) {
@@ -129,8 +250,8 @@ public abstract class AbstractAPI<T> {
         if (error != null) {
             LOG.log(Level.SEVERE, "<== [CREATE ERROR] Entity Type: " + entityName + " creation failed with exception", error);
         } else if (result != null) {
-            if (LOG.isLoggable(Level.INFO)) {
-                LOG.log(Level.INFO, "<== [CREATE SUCCESS] Entity Type: {0}, LinkedEntity Result -> instanceId: {1}, metaId: {2}, uid: {3}", 
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "<== [CREATE SUCCESS] Entity Type: {0}, LinkedEntity Result -> instanceId: {1}, metaId: {2}, uid: {3}",
                         new Object[]{entityName, result.getInstanceId(), result.getMetaId(), result.getUid()});
             }
         } else {
@@ -182,6 +303,30 @@ public abstract class AbstractAPI<T> {
     public abstract List<T> retrieveBunch(List<String> entities);
 
     public abstract List<T> retrieveAll();
+
+    /**
+     * Returns an efficient list representation when the concrete API provides
+     * one. Scalar-only APIs use their regular bulk reader as the summary.
+     */
+    public List<T> retrieveAllSummary() {
+        return retrieveAll();
+    }
+
+    /**
+     * Returns an efficient representation for the requested instances when the
+     * concrete API provides one; otherwise falls back to {@link #retrieveBunch(List)}.
+     */
+    public List<T> retrieveBunchSummary(List<String> entities) {
+        return retrieveBunch(entities);
+    }
+
+    /**
+     * Returns an efficient representation for the requested status when the
+     * concrete API provides one; otherwise falls back to {@link #retrieveAllWithStatus(StatusType)}.
+     */
+    public List<T> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveAllWithStatus(status);
+    }
 
     public abstract List<T> retrieveAllWithStatus(StatusType status);
 

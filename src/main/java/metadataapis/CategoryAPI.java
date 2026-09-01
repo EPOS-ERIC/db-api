@@ -27,9 +27,11 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     public LinkedEntity create(org.epos.eposdatamodel.Category obj, StatusType overrideStatus, LinkedEntity relationFromUpdate, LinkedEntity relationToUpdate) {
         logCreateStart(obj, overrideStatus);
         try {
+        overrideStatus = enforcePublishedReferenceStatus(obj, overrideStatus);
 
 
         EPOSDataModelEntity previousObj = retrieve(obj.getInstanceId())!=null?retrieve(obj.getInstanceId()):null;
+        String oldInstanceId = previousObj != null ? previousObj.getInstanceId() : null;
 
         String searchInstanceId = obj.getInstanceId();
         if (obj.getUid() != null) {
@@ -44,17 +46,9 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 getEdmClass());
 
         if(!returnList.isEmpty()){
-            Category selectedEntity = returnList.get(0);
-
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-
-            for (Category item : returnList) {
-                if (item.getVersion() != null &&
-                        targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Category selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Category::getVersion);
 
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -132,6 +126,7 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -191,31 +186,21 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("categoryInstance", instanceId, CategoryHastopconcept.class);
-        deleteRelations("category1Instance", instanceId, CategoryIspartof.class);
-        deleteRelations("category2Instance", instanceId, CategoryIspartof.class);
-        deleteRelations("categoryInstance", instanceId, DataproductCategory.class);
-        deleteRelations("categoryInstance", instanceId, WebserviceCategory.class);
-        deleteRelations("categoryInstance", instanceId, SoftwareapplicationCategory.class);
-        deleteRelations("categoryInstance", instanceId, SoftwaresourcecodeCategory.class);
-        deleteRelations("categoryInstance", instanceId, FacilityCategory.class);
-        deleteRelations("categoryInstance", instanceId, EquipmentCategory.class);
-
-        List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
-        for(Category object : elementList){
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if(list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Category.class, List.of(
+                new EposDataModelDAO.RelationField(CategoryHastopconcept.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(CategoryIspartof.class, "category1Instance"),
+                new EposDataModelDAO.RelationField(CategoryIspartof.class, "category2Instance"),
+                new EposDataModelDAO.RelationField(DataproductCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(WebserviceCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(SoftwareapplicationCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(SoftwaresourcecodeCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(FacilityCategory.class, "categoryInstance"),
+                new EposDataModelDAO.RelationField(EquipmentCategory.class, "categoryInstance")));
     }
 
     @Override
     public org.epos.eposdatamodel.Category retrieve(String instanceId) {
-        List<Category> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Category.class);
+        List<Category> elementList = getDbaccess().getOneFromDBByInstanceIdNoCache(instanceId, Category.class);
         if (elementList == null || elementList.isEmpty()) return null;
 
         Category edmobj = elementList.get(0);
@@ -288,6 +273,40 @@ public class CategoryAPI extends AbstractAPI<org.epos.eposdatamodel.Category> {
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Category.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Category.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Category.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Category> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Category.class));
+    }
+    private List<org.epos.eposdatamodel.Category> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.CategorySummaryRow> rows = dao.fetchCategorySummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.CategorySummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Category> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.CategorySummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Category dto = new org.epos.eposdatamodel.Category();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setName(row.name()); dto.setDescription(row.description());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
     @Override
     public List<org.epos.eposdatamodel.Category> retrieveAllWithStatus(StatusType status) {

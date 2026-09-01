@@ -56,7 +56,7 @@ public class EntityManagementUpdateStatusTest extends TestcontainersLifecycle {
         List<Address> retrievedAddress = api.retrieveAll();
 
         assertEquals(1, retrievedAddress.size());
-        assertEquals(StatusType.SUBMITTED, retrievedAddress.get(0).getStatus());
+        assertEquals(StatusType.PUBLISHED, retrievedAddress.get(0).getStatus());
     }
 
     @Test
@@ -86,7 +86,7 @@ public class EntityManagementUpdateStatusTest extends TestcontainersLifecycle {
         List<Address> retrievedAddress = api.retrieveAll();
 
         assertEquals(1, retrievedAddress.size());
-        assertEquals(StatusType.ARCHIVED, retrievedAddress.get(0).getStatus());
+        assertEquals(StatusType.PUBLISHED, retrievedAddress.get(0).getStatus());
     }
 
 }

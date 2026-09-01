@@ -7,9 +7,18 @@ import jakarta.persistence.Persistence;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 
 import javax.sql.DataSource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -58,11 +67,10 @@ public class EntityManagerService {
         hikariConfig.setInitializationFailTimeout(9000);
 
         // PostgreSQL specific optimizations
-        hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
-        hikariConfig.addDataSourceProperty("rewriteBatchedStatements", "true");
+        hikariConfig.addDataSourceProperty("prepareThreshold", "5");
+        hikariConfig.addDataSourceProperty("preparedStatementCacheQueries", "256");
+        hikariConfig.addDataSourceProperty("preparedStatementCacheSizeMiB", "8");
+        hikariConfig.addDataSourceProperty("reWriteBatchedInserts", "true");
 
         // Connection validation
         hikariConfig.setConnectionTestQuery("SELECT 1");
@@ -107,8 +115,74 @@ public class EntityManagerService {
 
         properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, hikariDataSource);
         instance = Persistence.createEntityManagerFactory(persistenceName, properties);
+        applyPerformanceIndexesIfEnabled();
 
         LOG.fine("EntityManagerService initialized successfully");
+    }
+
+    private void applyPerformanceIndexesIfEnabled() {
+        if ("false".equalsIgnoreCase(System.getenv("APPLY_PERFORMANCE_INDEXES"))) {
+            return;
+        }
+
+        InputStream resource = EntityManagerService.class.getClassLoader()
+                .getResourceAsStream("db/performance-indexes.sql");
+        if (resource == null) {
+            throw new IllegalStateException("Performance index script is missing from the application resources");
+        }
+
+        EntityManager entityManager = null;
+        EntityTransaction transaction = null;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource, StandardCharsets.UTF_8))) {
+            String sql = reader.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("--"))
+                    .collect(Collectors.joining(" "));
+
+            entityManager = instance.createEntityManager();
+            transaction = entityManager.getTransaction();
+            transaction.begin();
+            // Concurrent instances serialize the DDL to prevent index-creation races at startup.
+            entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(88017421)").getSingleResult();
+            for (String statement : splitSqlStatements(sql)) {
+                if (!statement.isBlank()) {
+                    entityManager.createNativeQuery(statement).executeUpdate();
+                }
+            }
+            transaction.commit();
+            LOG.info("Performance indexes verified");
+        } catch (IOException | RuntimeException e) {
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new IllegalStateException("Unable to apply performance indexes", e);
+        } finally {
+            if (entityManager != null) {
+                entityManager.close();
+            }
+        }
+    }
+
+    private static List<String> splitSqlStatements(String sql) {
+        List<String> statements = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inDollarQuote = false;
+        for (int i = 0; i < sql.length(); i++) {
+            if (sql.startsWith("$$", i)) {
+                inDollarQuote = !inDollarQuote;
+                current.append("$$");
+                i++;
+            } else if (sql.charAt(i) == ';' && !inDollarQuote) {
+                statements.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(sql.charAt(i));
+            }
+        }
+        if (!current.isEmpty()) {
+            statements.add(current.toString());
+        }
+        return statements;
     }
 
     /**

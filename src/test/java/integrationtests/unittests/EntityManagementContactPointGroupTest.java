@@ -1,9 +1,11 @@
 package integrationtests.unittests;
 
 import abstractapis.AbstractAPI;
+import dao.EposDataModelDAO;
 import integrationtests.TestcontainersLifecycle;
 import metadataapis.EntityNames;
 import model.StatusType;
+import model.Versioningstatus;
 import org.epos.eposdatamodel.*;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,44 @@ public class EntityManagementContactPointGroupTest extends TestcontainersLifecyc
 
         assertNotNull(retrievedContactPoint);
         assertEquals(1,retrievedContactPoint.size());
+    }
+
+    @Test
+    void referenceEntitiesAlwaysPersistAsPublished() {
+        assertPublished(new Address(), EntityNames.ADDRESS);
+        assertPublished(new Category(), EntityNames.CATEGORY);
+        assertPublished(new CategoryScheme(), EntityNames.CATEGORYSCHEME);
+        assertPublished(new ContactPoint(), EntityNames.CONTACTPOINT);
+        assertPublished(new Organization(), EntityNames.ORGANIZATION);
+    }
+
+    @Test
+    void backofficeDraftCannotCreateMissingContactPointThroughARelation() {
+        String missingUid = "https://example.org/contact-point/" + UUID.randomUUID();
+        DataProduct dataProduct = new DataProduct();
+        dataProduct.setUid("https://example.org/data-product/" + UUID.randomUUID());
+        dataProduct.setEditorId("editor");
+        dataProduct.setStatus(StatusType.DRAFT);
+        dataProduct.setContactPoint(List.of(new LinkedEntity()
+                .entityType(EntityNames.CONTACTPOINT.name())
+                .uid(missingUid)));
+
+        AbstractAPI.retrieveAPI(EntityNames.DATAPRODUCT.name()).create(dataProduct, null, null, null);
+
+        assertEquals(0, EposDataModelDAO.getInstance()
+                .getOneFromDBByUIDNoCache(missingUid, model.Contactpoint.class).size());
+    }
+
+    private void assertPublished(EPOSDataModelEntity entity, EntityNames entityName) {
+        entity.setUid(UUID.randomUUID().toString());
+        entity.setStatus(StatusType.DRAFT);
+
+        LinkedEntity link = AbstractAPI.retrieveAPI(entityName.name()).create(entity, StatusType.DRAFT, null, null);
+        Versioningstatus version = (Versioningstatus) EposDataModelDAO.getInstance()
+                .getOneFromDBByInstanceIdNoCache(link.getInstanceId(), Versioningstatus.class)
+                .get(0);
+
+        assertEquals(StatusType.PUBLISHED.name(), version.getStatus(), entityName + " must remain published");
     }
 
 

@@ -204,18 +204,14 @@ public class StatusTransitionRelationsTest extends TestcontainersLifecycle {
         LinkedEntity updatedV2 = AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name())
                 .create(v2, StatusType.SUBMITTED, null, null);
 
-        // The instanceId might change or stay the same depending on implementation
         String newInstanceId = updatedV2.getInstanceId();
         System.out.println("\nAfter SUBMITTED transition:");
         System.out.println("  New InstanceId: " + newInstanceId);
         System.out.println("  Old InstanceId V2: " + wsInstanceIdV2);
         System.out.println("  Changed: " + (!newInstanceId.equals(wsInstanceIdV2)));
 
-        // Update our reference if changed
-        if (!newInstanceId.equals(wsInstanceIdV2)) {
-            System.out.println("  NOTE: InstanceId changed during SUBMITTED transition!");
-            wsInstanceIdV2 = newInstanceId;
-        }
+        assertEquals(wsInstanceIdV2, newInstanceId,
+                "DRAFT to SUBMITTED must update the same version instance");
 
         // Verify V2 is now SUBMITTED with provider
         WebService retrievedV2 = (WebService) AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name())
@@ -280,10 +276,8 @@ public class StatusTransitionRelationsTest extends TestcontainersLifecycle {
         System.out.println("\n*** AFTER PUBLISHED TRANSITION ***");
         System.out.println("Returned InstanceId: " + newInstanceId);
 
-        if (!newInstanceId.equals(wsInstanceIdV2)) {
-            System.out.println("NOTE: InstanceId changed during PUBLISHED transition!");
-            wsInstanceIdV2 = newInstanceId;
-        }
+        assertEquals(wsInstanceIdV2, newInstanceId,
+                "SUBMITTED to PUBLISHED must update the same version instance");
 
         // *** VERIFY V2 IS PUBLISHED WITH PROVIDER ***
         WebService retrievedV2 = (WebService) AbstractAPI.retrieveAPI(EntityNames.WEBSERVICE.name())
@@ -315,6 +309,8 @@ public class StatusTransitionRelationsTest extends TestcontainersLifecycle {
                 "V2 provider should still be the Organization");
         assertEquals(StatusType.PUBLISHED, retrievedV2.getStatus(),
                 "V2 should be PUBLISHED");
+        assertEquals(StatusType.ARCHIVED, retrievedV1.getStatus(),
+                "The previously published version must be archived");
 
         // V1 should be ARCHIVED (if auto-archive is working)
         // Note: If the system doesn't auto-archive, this might still be PUBLISHED

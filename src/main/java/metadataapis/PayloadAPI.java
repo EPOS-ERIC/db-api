@@ -10,13 +10,11 @@ import org.epos.eposdatamodel.EPOSDataModelEntity;
 import org.epos.eposdatamodel.LinkedEntity;
 import relationsapi.RelationChecker;
 import relationsapi.RelationSyncUtil;
+import usermanagementapis.UserGroupManagementAPI;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
@@ -46,14 +44,9 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
                 getEdmClass());
 
         if (!returnList.isEmpty()) {
-            Payload selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Payload item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Payload selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Payload::getVersion);
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
             obj.setUid(selectedEntity.getUid());
@@ -93,32 +86,8 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
             );
         }
 
-        // SUPPORTED OPERATION
-        if (obj.getSupportedOperation() != null) {
-            Object resolvedObj = RelationChecker.checkRelation(obj, previousObj, null, obj.getSupportedOperation(), overrideStatus, Operation.class, true);
-
-            if (resolvedObj != null) {
-                // Extract instanceId from resolved object (could be DTO or JPA entity)
-                String relatedInstanceId = extractInstanceId(resolvedObj);
-
-                if (relatedInstanceId != null) {
-                    // Delete existing relations only if updating same version
-                    if (!isNewVersion) {
-                        List<Object> existing = getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), OperationPayload.class);
-                        if (existing != null) existing.forEach(EposDataModelDAO.getInstance()::deleteObject);
-                    }
-
-                    // Get the JPA entity for the relation
-                    List<Operation> operations = EposDataModelDAO.getInstance().getOneFromDBByInstanceId(relatedInstanceId, Operation.class);
-                    if (!operations.isEmpty()) {
-                        OperationPayload pi = new OperationPayload();
-                        pi.setPayloadInstance(edmobj);
-                        pi.setOperationInstance(operations.get(0));
-                        EposDataModelDAO.getInstance().updateObject(pi);
-                    }
-                }
-            }
-        }
+        // An Operation owns its payload collection. This inverse is derived from
+        // OperationPayload and is intentionally read-only.
 
         getDbaccess().updateObject(edmobj);
 
@@ -129,6 +98,7 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -167,19 +137,9 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("payloadInstance", instanceId, PayloadOutputMapping.class);
-        deleteRelations("payloadInstance", instanceId, OperationPayload.class);
-
-        List<Payload> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Payload.class);
-        for (Payload object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Payload.class, Map.of(
+                PayloadOutputMapping.class, "payloadInstance",
+                OperationPayload.class, "payloadInstance"));
     }
 
     @Override
@@ -195,13 +155,13 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
 
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), OperationPayload.class)) {
             OperationPayload item = (OperationPayload) object;
-            LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getOperationInstance().getInstanceId());
+            LinkedEntity le = retrieveAPI(EntityNames.OPERATION.name()).retrieveLinkedEntity(item.getId().getOperationInstanceId());
             o.setSupportedOperation(le);
         }
 
         for (Object object : getDbaccess().getOneFromDBBySpecificKey("payloadInstance", edmobj.getInstanceId(), PayloadOutputMapping.class)) {
             PayloadOutputMapping item = (PayloadOutputMapping) object;
-            LinkedEntity le = retrieveAPI(EntityNames.OUTPUTMAPPING.name()).retrieveLinkedEntity(item.getOutputMappingInstance().getInstanceId());
+            LinkedEntity le = retrieveAPI(EntityNames.OUTPUTMAPPING.name()).retrieveLinkedEntity(item.getId().getOutputMappingInstanceId());
             o.addOutputMapping(le);
         }
 
@@ -222,12 +182,97 @@ public class PayloadAPI extends AbstractAPI<org.epos.eposdatamodel.Payload> {
     public List<org.epos.eposdatamodel.Payload> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Payload.class));
     }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Payload> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Payload.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Payload> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Payload.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Payload> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Payload.class));
+    }
+    private List<org.epos.eposdatamodel.Payload> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.PayloadSummaryRow> rows = dao.fetchPayloadSummaryRows(instanceIds)
+                .stream().collect(java.util.stream.Collectors.toMap(EposDataModelDAO.PayloadSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Payload> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.PayloadSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Payload dto = new org.epos.eposdatamodel.Payload();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
+    }
+
     @Override
     public List<org.epos.eposdatamodel.Payload> retrieveAllWithStatus(StatusType status) {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDBWithStatus(Payload.class, status));
     }
     private List<org.epos.eposdatamodel.Payload> retrieveEntities(Function<Void, List<String>> dbFetcher) {
-        return dbFetcher.apply(null).parallelStream().map(this::retrieve).collect(Collectors.toList());
+        List<String> instanceIds = dbFetcher.apply(null);
+        if (instanceIds == null || instanceIds.isEmpty()) return Collections.emptyList();
+
+        Map<String, Payload> payloads = getDbaccess().batchFetchByInstanceIds(instanceIds, Payload.class);
+        if (payloads.isEmpty()) return Collections.emptyList();
+        List<String> foundIds = new ArrayList<>(payloads.keySet());
+        Map<String, List<OperationPayload>> operationRelations = getDbaccess()
+                .batchFetchRelationsForMultipleParents("payloadInstance", foundIds, OperationPayload.class);
+        Map<String, List<PayloadOutputMapping>> mappingRelations = getDbaccess()
+                .batchFetchRelationsForMultipleParents("payloadInstance", foundIds, PayloadOutputMapping.class);
+
+        Set<String> operationIds = new HashSet<>();
+        operationRelations.values().forEach(relations -> relations.forEach(relation -> {
+            if (relation.getId() != null) operationIds.add(relation.getId().getOperationInstanceId());
+        }));
+        Set<String> mappingIds = new HashSet<>();
+        mappingRelations.values().forEach(relations -> relations.forEach(relation -> {
+            if (relation.getId() != null) mappingIds.add(relation.getId().getOutputMappingInstanceId());
+        }));
+
+        Map<String, Operation> operations = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(operationIds), Operation.class);
+        Map<String, OutputMapping> mappings = getDbaccess().batchFetchByInstanceIds(new ArrayList<>(mappingIds), OutputMapping.class);
+        Map<String, Versioningstatus> versions = getDbaccess().batchFetchVersioningStatus(foundIds);
+        List<String> metaIds = payloads.values().stream().map(Payload::getMetaId).filter(Objects::nonNull).distinct().toList();
+        Map<String, List<String>> groups = UserGroupManagementAPI.batchRetrieveGroupsFromMetaIds(metaIds);
+
+        List<org.epos.eposdatamodel.Payload> results = new ArrayList<>(payloads.size());
+        for (String id : instanceIds) {
+            Payload entity = payloads.get(id);
+            if (entity == null) continue;
+            org.epos.eposdatamodel.Payload dto = new org.epos.eposdatamodel.Payload();
+            dto.setInstanceId(entity.getInstanceId());
+            dto.setMetaId(entity.getMetaId());
+            dto.setUid(entity.getUid());
+            for (OperationPayload relation : operationRelations.getOrDefault(id, Collections.emptyList())) {
+                Operation operation = relation.getId() == null ? null : operations.get(relation.getId().getOperationInstanceId());
+                if (operation != null) dto.setSupportedOperation(toLinkedEntity(operation, EntityNames.OPERATION));
+            }
+            for (PayloadOutputMapping relation : mappingRelations.getOrDefault(id, Collections.emptyList())) {
+                OutputMapping mapping = relation.getId() == null ? null : mappings.get(relation.getId().getOutputMappingInstanceId());
+                if (mapping != null) dto.addOutputMapping(toLinkedEntity(mapping, EntityNames.OUTPUTMAPPING));
+            }
+            VersioningStatusAPI.applyVersion(dto, versions.get(id), groups.get(dto.getMetaId()));
+            results.add(dto);
+        }
+        return results;
+    }
+
+    private LinkedEntity toLinkedEntity(Object entity, EntityNames type) {
+        return new LinkedEntity().instanceId(utilities.ReflectionCache.getInstanceId(entity))
+                .metaId(utilities.ReflectionCache.getMetaId(entity))
+                .uid(utilities.ReflectionCache.getUid(entity)).entityType(type.name());
     }
     @Override
     public LinkedEntity retrieveLinkedEntity(String instanceId) {

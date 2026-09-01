@@ -41,7 +41,7 @@ public class EntityManagementOverrideStatusTest extends TestcontainersLifecycle 
 
         assertNotNull(retrievedAddress);
         assertEquals(address, retrievedAddress);
-        assertEquals(StatusType.DRAFT, retrievedAddress.getStatus());
+        assertEquals(StatusType.PUBLISHED, retrievedAddress.getStatus());
     }
 
 

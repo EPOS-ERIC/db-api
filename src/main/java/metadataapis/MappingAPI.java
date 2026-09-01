@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,14 +47,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
         String oldInstanceId = null;
         if (!returnList.isEmpty()) {
-            Mapping selectedEntity = returnList.get(0);
             StatusType targetStatus = overrideStatus != null ? overrideStatus : (obj.getStatus() != null ? obj.getStatus() : StatusType.DRAFT);
-            for (Mapping item : returnList) {
-                if (item.getVersion() != null && targetStatus.toString().equals(item.getVersion().getStatus())) {
-                    selectedEntity = item;
-                    break;
-                }
-            }
+            Mapping selectedEntity = VersioningStatusAPI.selectVersion(
+                    returnList, obj.getEditorId(), targetStatus, Mapping::getVersion);
             oldInstanceId = selectedEntity.getInstanceId();
             obj.setInstanceId(selectedEntity.getInstanceId());
             obj.setMetaId(selectedEntity.getMetaId());
@@ -114,6 +110,7 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 .instanceId(edmobj.getInstanceId())
                 .metaId(edmobj.getMetaId())
                 .uid(edmobj.getUid());
+            repointPublishedVersion(obj, oldInstanceId, edmobj.getClass());
             logCreateEnd(result, null);
             return result;
         } catch (Throwable t) {
@@ -127,12 +124,14 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
                 .getJoinEntitiesByRelationField("mappingInstance", mappingInstanceId, MappingElement.class);
 
         if (existingRelations != null) {
+            List<Element> elements = new ArrayList<>();
             for (MappingElement relation : existingRelations) {
-                EposDataModelDAO.getInstance().deleteObject(relation);
                 if (relation.getElementInstance() != null) {
-                    EposDataModelDAO.getInstance().deleteObject(relation.getElementInstance());
+                    elements.add(relation.getElementInstance());
                 }
             }
+            EposDataModelDAO.getInstance().deleteListOfObjects(existingRelations);
+            EposDataModelDAO.getInstance().deleteListOfObjects(elements);
         }
     }
 
@@ -226,19 +225,9 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
 
     @Override
     public Boolean delete(String instanceId) {
-        deleteRelations("mappingInstance", instanceId, MappingElement.class);
-        deleteRelations("mappingInstance", instanceId, OperationMapping.class);
-
-        List<Mapping> elementList = getDbaccess().getOneFromDBByInstanceId(instanceId, Mapping.class);
-        for (Mapping object : elementList) {
-            EposDataModelDAO.getInstance().deleteObject(object);
-        }
-        return true;
-    }
-
-    private void deleteRelations(String key, String instanceId, Class<?> clazz) {
-        List<Object> list = getDbaccess().getOneFromDBBySpecificKey(key, instanceId, clazz);
-        if (list != null) list.forEach(EposDataModelDAO.getInstance()::deleteObject);
+        return getDbaccess().deleteByInstanceIdWithRelations(instanceId, Mapping.class, Map.of(
+                MappingElement.class, "mappingInstance",
+                OperationMapping.class, "mappingInstance"));
     }
 
     @Override
@@ -290,6 +279,45 @@ public class MappingAPI extends AbstractAPI<org.epos.eposdatamodel.Mapping> {
     @Override
     public List<org.epos.eposdatamodel.Mapping> retrieveAll() {
         return retrieveEntities(db -> getDbaccess().getAllIDsFromDB(Mapping.class));
+    }
+
+    /** Returns list-oriented records without loading relations or groups. */
+    @Override
+    public List<org.epos.eposdatamodel.Mapping> retrieveBunchSummary(List<String> entities) {
+        return retrieveSummary(getDbaccess().getListIDsFromDBByInstanceId(entities, Mapping.class));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Mapping> retrieveAllSummaryWithStatus(StatusType status) {
+        return retrieveSummary(getDbaccess().getAllIDsFromDBWithStatus(Mapping.class, status));
+    }
+    @Override
+    public List<org.epos.eposdatamodel.Mapping> retrieveAllSummary() {
+        return retrieveSummary(getDbaccess().getAllIDsFromDB(Mapping.class));
+    }
+    private List<org.epos.eposdatamodel.Mapping> retrieveSummary(List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.isEmpty()) return java.util.Collections.emptyList();
+
+        EposDataModelDAO<?> dao = getDbaccess();
+        Map<String, EposDataModelDAO.MappingSummaryRow> rows = dao.fetchMappingSummaryRows(instanceIds)
+                .stream().collect(Collectors.toMap(EposDataModelDAO.MappingSummaryRow::instanceId, row -> row));
+        List<org.epos.eposdatamodel.Mapping> results = new ArrayList<>(rows.size());
+        for (String id : instanceIds) {
+            EposDataModelDAO.MappingSummaryRow row = rows.get(id);
+            if (row == null) continue;
+            org.epos.eposdatamodel.Mapping dto = new org.epos.eposdatamodel.Mapping();
+            dto.setInstanceId(row.instanceId()); dto.setMetaId(row.metaId()); dto.setUid(row.uid());
+            dto.setLabel(row.label()); dto.setValuePattern(row.valuepattern()); dto.setDefaultValue(row.defaultvalue());
+            dto.setMaxValue(row.maxvalue()); dto.setMinValue(row.minvalue()); dto.setMultipleValues(row.multipleValues());
+            dto.setReadOnlyValue(row.readOnlyValue());
+            dto.setRequired(row.required() != null ? Boolean.toString(row.required()) : null);
+            dto.setRange(row.range()); dto.setProperty(row.property()); dto.setVariable(row.variable());
+            dto.setHealthCheckVariable(row.healthcheckvalue());
+            VersioningStatusAPI.applyVersion(dto, VersioningStatusAPI.summaryVersion(row.versionId(), row.versionMetaId(),
+                    row.changeComment(), row.changeTimestamp(), row.editorId(), row.provenance(), row.version(),
+                    row.instanceChangeId(), row.status()), java.util.Collections.emptyList());
+            results.add(dto);
+        }
+        return results;
     }
 
     @Override
